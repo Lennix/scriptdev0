@@ -1,0 +1,57 @@
+From 5e5c940808f7bd019953fc32de6cb361914cfe36 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@.(none)>
+Date: Tue, 8 Mar 2011 14:32:07 +0100
+Subject: [PATCH] Startup log
+
+---
+ src/mangosd/Master.cpp |    6 +++---
+ src/realmd/Main.cpp    |    2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/mangosd/Master.cpp b/src/mangosd/Master.cpp
+index 8444b57..ea63e32 100644
+--- a/src/mangosd/Master.cpp
++++ b/src/mangosd/Master.cpp
+@@ -425,7 +425,7 @@ bool Master::_StartDB()
+         sLog.outError("Database not specified in configuration file");
+         return false;
+     }
+-    sLog.outString("World Database: %s, total connections: %i", dbstring.c_str(), nConnections + 1);
++    //sLog.outString("World Database: %s, total connections: %i", dbstring.c_str(), nConnections + 1);
+ 
+     ///- Initialise the world database
+     if(!WorldDatabase.Initialize(dbstring.c_str(), nConnections))
+@@ -451,7 +451,7 @@ bool Master::_StartDB()
+         WorldDatabase.HaltDelayThread();
+         return false;
+     }
+-    sLog.outString("Character Database: %s, total connections: %i", dbstring.c_str(), nConnections + 1);
++    //sLog.outString("Character Database: %s, total connections: %i", dbstring.c_str(), nConnections + 1);
+ 
+     ///- Initialise the Character database
+     if(!CharacterDatabase.Initialize(dbstring.c_str(), nConnections))
+@@ -485,7 +485,7 @@ bool Master::_StartDB()
+     }
+ 
+     ///- Initialise the login database
+-    sLog.outString("Login Database: %s, total connections: %i", dbstring.c_str(), nConnections + 1);
++    //sLog.outString("Login Database: %s, total connections: %i", dbstring.c_str(), nConnections + 1);
+     if(!LoginDatabase.Initialize(dbstring.c_str(), nConnections))
+     {
+         sLog.outError("Cannot connect to login database %s",dbstring.c_str());
+diff --git a/src/realmd/Main.cpp b/src/realmd/Main.cpp
+index 1365992..a0ea9ff 100644
+--- a/src/realmd/Main.cpp
++++ b/src/realmd/Main.cpp
+@@ -355,7 +355,7 @@ bool StartDB()
+         return false;
+     }
+ 
+-    sLog.outString("Database: %s", dbstring.c_str() );
++    //sLog.outString("Database: %s", dbstring.c_str() );
+     if(!LoginDatabase.Initialize(dbstring.c_str()))
+     {
+         sLog.outError("Cannot connect to database");
+-- 
+1.7.3.1.msysgit.0
+

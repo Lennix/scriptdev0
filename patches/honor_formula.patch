@@ -1,0 +1,33 @@
+From add89cba983517057b04657e6f225cd5ec527aa8 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@.(none)>
+Date: Sat, 19 Jun 2010 18:15:09 +0200
+Subject: [PATCH] honor update
+
+---
+ src/game/Formulas.h |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/game/Formulas.h b/src/game/Formulas.h
+index d2ef84f..23620fe 100644
+--- a/src/game/Formulas.h
++++ b/src/game/Formulas.h
+@@ -176,13 +176,13 @@ namespace MaNGOS
+ 
+         inline float CalculateRpDecay(float rpEarning,float RP)
+         {
+-            float Decay = floor( (0.2f * RP) + 0.5f);
++            float Decay = floor( (0.4f * RP) + 0.5f);
+             float Delta = rpEarning - Decay;
+             if (Delta < 0) {
+                Delta = Delta / 2;
+             }
+-            if (Delta < -2500) {
+-               Delta = -2500;
++            if (Delta < -5000) {
++               Delta = -5000;
+             }
+             return RP + Delta;
+         }
+-- 
+1.6.5.1.1367.gcd48
+

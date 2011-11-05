@@ -1,0 +1,281 @@
+From ad5c1dd0006b6c19f3984e5d87ebe6fed17db608 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@none.com>
+Date: Mon, 12 Sep 2011 21:53:00 +0200
+Subject: [PATCH] SpellRequireArea, SpellDbcCorections handlers
+
+---
+ src/game/Chat.cpp     |    1 +
+ src/game/Chat.h       |    1 +
+ src/game/Level3.cpp   |    9 +++++
+ src/game/Spell.cpp    |    8 +----
+ src/game/SpellMgr.cpp |   87 +++++++++++++++++++++++++++++++++++++++++++++++--
+ src/game/SpellMgr.h   |   14 ++++++++
+ src/game/World.cpp    |    6 +++
+ 7 files changed, 116 insertions(+), 10 deletions(-)
+
+diff --git a/src/game/Chat.cpp b/src/game/Chat.cpp
+index a37c045..7cee50e 100644
+--- a/src/game/Chat.cpp
++++ b/src/game/Chat.cpp
+@@ -490,6 +490,7 @@ ChatCommand * ChatHandler::getCommandTable()
+         { "spell_pet_auras",             SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellPetAurasCommand,           "", NULL },
+         { "spell_proc_event",            SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellProcEventCommand,          "", NULL },
+         { "spell_proc_item_enchant",     SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellProcItemEnchantCommand,    "", NULL },
++        { "spell_require_area",          SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellRequireAreaCommand,        "", NULL },
+         { "spell_script_target",         SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellScriptTargetCommand,       "", NULL },
+         { "spell_scripts",               SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellScriptsCommand,            "", NULL },
+         { "spell_target_position",       SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellTargetPositionCommand,     "", NULL },
+diff --git a/src/game/Chat.h b/src/game/Chat.h
+index 2e935a9..4b96a1d 100644
+--- a/src/game/Chat.h
++++ b/src/game/Chat.h
+@@ -424,6 +424,7 @@ class MANGOS_DLL_SPEC ChatHandler
+         bool HandleReloadSpellLearnSpellCommand(char* args);
+         bool HandleReloadSpellProcEventCommand(char* args);
+         bool HandleReloadSpellProcItemEnchantCommand(char* args);
++        bool HandleReloadSpellRequireAreaCommand(char* args);
+         bool HandleReloadSpellScriptTargetCommand(char* args);
+         bool HandleReloadSpellScriptsCommand(char* args);
+         bool HandleReloadSpellTargetPositionCommand(char* args);
+diff --git a/src/game/Level3.cpp b/src/game/Level3.cpp
+index 50b4afb..d898773 100644
+--- a/src/game/Level3.cpp
++++ b/src/game/Level3.cpp
+@@ -159,6 +159,7 @@ bool ChatHandler::HandleReloadAllSpellCommand(char* /*args*/)
+     HandleReloadSpellProcEventCommand((char*)"a");
+     HandleReloadSpellBonusesCommand((char*)"a");
+     HandleReloadSpellProcItemEnchantCommand((char*)"a");
++    HandleReloadSpellRequireAreaCommand((char*)"a");
+     HandleReloadSpellScriptTargetCommand((char*)"a");
+     HandleReloadSpellTargetPositionCommand((char*)"a");
+     HandleReloadSpellThreatsCommand((char*)"a");
+@@ -569,6 +570,14 @@ bool ChatHandler::HandleReloadSpellProcItemEnchantCommand(char* /*args*/)
+     return true;
+ }
+ 
++bool ChatHandler::HandleReloadSpellRequireAreaCommand(char* /*args*/)
++{
++    sLog.outString( "Re-Loading Spell Require Area..." );
++    sSpellMgr.LoadSpellRequireArea();
++    SendGlobalSysMessage("DB table `spell_require_area` (spell cast area requirements) reloaded.");
++    return true;
++}
++
+ bool ChatHandler::HandleReloadSpellScriptTargetCommand(char* /*args*/)
+ {
+     sLog.outString( "Re-Loading SpellsScriptTarget..." );
+diff --git a/src/game/Spell.cpp b/src/game/Spell.cpp
+index e350243..651dcc7 100644
+--- a/src/game/Spell.cpp
++++ b/src/game/Spell.cpp
+@@ -3033,13 +3033,7 @@ void Spell::SendCastResult(Player* caster, SpellEntry const* spellInfo, SpellCas
+                 data << uint32(spellInfo->RequiresSpellFocus);
+                 break;
+             case SPELL_FAILED_REQUIRES_AREA:
+-            /* [-ZERO]    // hardcode areas limitation case
+-                switch(spellInfo->Id)
+-                {
+-                    default:                                    // default case
+-                        data << uint32(spellInfo->AreaId);
+-                        break;
+-                } */
++                data << uint32(sSpellMgr.GetSpellRequireArea(spellInfo->Id));
+                 break;
+             case SPELL_FAILED_EQUIPPED_ITEM_CLASS:
+                 data << uint32(spellInfo->EquippedItemClass);
+diff --git a/src/game/SpellMgr.cpp b/src/game/SpellMgr.cpp
+index 494d5ce..41dac58 100644
+--- a/src/game/SpellMgr.cpp
++++ b/src/game/SpellMgr.cpp
+@@ -1374,6 +1374,52 @@ void SpellMgr::LoadSpellProcItemEnchant()
+     sLog.outString( ">> Loaded %u proc item enchant definitions", count );
+ }
+ 
++void SpellMgr::LoadSpellRequireArea()
++{
++    mSpellRequireAreaMap.clear();                       // need for reload case
++
++    QueryResult* result = WorldDatabase.Query("SELECT entry, area FROM spell_require_area");
++    if (!result)
++    {
++
++        BarGoLink bar(1);
++
++        bar.step();
++
++        sLog.outString();
++        sLog.outString(">> Loaded 0 spell area requirements. DB table `spell_require_area` is empty.");
++        return;
++    }
++
++    BarGoLink bar((int)result->GetRowCount());
++
++    do
++    {
++        Field* fields = result->Fetch();
++
++        bar.step();
++
++        uint32 entry = fields[0].GetUInt32();
++        uint32 area = fields[1].GetUInt32();
++
++        SpellEntry const* spellInfo = sSpellStore.LookupEntry(entry);
++
++        if (!spellInfo)
++        {
++            sLog.outErrorDb("Spell %u listed in `spell_require_area` does not exist", entry);
++            continue;
++        }
++
++        mSpellRequireAreaMap[entry] = area;
++
++    } while (result->NextRow());
++
++    delete result;
++
++    sLog.outString();
++    sLog.outString(">> Loaded %u spell area requirements definitions", mSpellRequireAreaMap.size());
++}
++
+ struct DoSpellBonuses
+ {
+     DoSpellBonuses(SpellBonusMap& _spellBonusMap, SpellBonusEntry const& _spellBonus) : spellBonusMap(_spellBonusMap), spellBonus(_spellBonus) {}
+@@ -3342,6 +3388,11 @@ void SpellMgr::LoadSpellAreas()
+ 
+ SpellCastResult SpellMgr::GetSpellAllowedInLocationError(SpellEntry const *spellInfo, uint32 map_id, uint32 zone_id, uint32 area_id, Player const* player)
+ {
++    uint32 reqArea = GetSpellRequireArea(spellInfo->Id);
++
++    if (reqArea > 0 && reqArea != zone_id && reqArea != area_id)
++         return SPELL_FAILED_REQUIRES_AREA;
++
+     // DB base check (if non empty then must fit at least single for allow)
+     SpellAreaMapBounds saBounds = GetSpellAreaMapBounds(spellInfo->Id);
+     if (saBounds.first != saBounds.second)
+@@ -3373,9 +3424,6 @@ SpellCastResult SpellMgr::GetSpellAllowedInLocationError(SpellEntry const *spell
+             return map_id == 30 && bg
+                 && bg->GetStatus() != STATUS_WAIT_JOIN ? SPELL_CAST_OK : SPELL_FAILED_REQUIRES_AREA;
+         }
+-        case 23333:                                         // Warsong Flag
+-        case 23335:                                         // Silverwing Flag
+-            return map_id == 489 && player && player->InBattleGround() ? SPELL_CAST_OK : SPELL_FAILED_REQUIRES_AREA;
+         case 2584:                                          // Waiting to Resurrect
+         {
+             return player && player->InBattleGround() ? SPELL_CAST_OK : SPELL_FAILED_ONLY_BATTLEGROUNDS;
+@@ -4028,3 +4076,36 @@ void SpellMgr::LoadFacingCasterFlags()
+     sLog.outString();
+     sLog.outString(">> Loaded %u facing caster flags", count);
+ }
++
++void SpellMgr::LoadDbcDataCorrections()
++{
++    SpellEntry* spellInfo = NULL;
++    for (uint32 i = 0; i < sSpellStore.GetNumRows(); ++i)
++    {
++        spellInfo = (SpellEntry*)sSpellStore.LookupEntry(i);
++        if (!spellInfo)
++            continue;
++
++        switch (spellInfo->Id)
++        {
++            case 13419: // Enchant Cloak - Minor Agility
++                spellInfo->EquippedItemClass = 4;
++                spellInfo->EquippedItemSubClassMask = 31;
++                break;
++            case 17941: // Shadow Trance
++            case 22008: // Netherwind Focus
++                spellInfo->procCharges = 1;
++                break;
++            case 23269: // Holy Blast
++                spellInfo->AttributesEx |= SPELL_ATTR_EX_NO_THREAT;
++                spellInfo->AttributesEx |= SPELL_ATTR_EX_NO_INITIAL_AGGRO;
++                break;
++            case 28200: // Ascendance (Talisman of Ascendance trinket)
++                spellInfo->procCharges = 6;
++                break;
++        }
++    }
++
++    sLog.outString(">> Loading spell dbc data corrections.");
++    sLog.outString();
++}
+diff --git a/src/game/SpellMgr.h b/src/game/SpellMgr.h
+index 20f27aa..4e5d6b1 100644
+--- a/src/game/SpellMgr.h
++++ b/src/game/SpellMgr.h
+@@ -585,6 +585,7 @@ struct SpellThreatEntry
+ 
+ typedef std::map<uint32, uint8> SpellElixirMap;
+ typedef std::map<uint32, float> SpellProcItemEnchantMap;
++typedef std::map<uint32, uint32> SpellRequireAreaMap;
+ typedef std::map<uint32, SpellThreatEntry> SpellThreatMap;
+ 
+ // Spell script target related declarations (accessed using SpellMgr functions)
+@@ -847,6 +848,16 @@ class SpellMgr
+             return itr->second;
+         }
+ 
++        // Spell require area
++        uint32 GetSpellRequireArea(uint32 spellid) const
++        {
++            SpellRequireAreaMap::const_iterator itr = mSpellRequireAreaMap.find(spellid);
++            if (itr == mSpellRequireAreaMap.end())
++                return NULL;
++
++            return itr->second;
++        }
++
+         static bool IsSpellProcEventCanTriggeredBy( SpellProcEventEntry const * spellProcEvent, uint32 EventProcFlag, SpellEntry const * procSpell, uint32 procFlags, uint32 procExtra);
+ 
+         // Spell bonus data
+@@ -1056,6 +1067,7 @@ class SpellMgr
+         void CheckUsedSpells(char const* table);
+ 
+         // Loading data at server startup
++        void LoadDbcDataCorrections();
+         void LoadSpellChains();
+         void LoadSpellLearnSkills();
+         void LoadSpellLearnSpells();
+@@ -1064,6 +1076,7 @@ class SpellMgr
+         void LoadSpellElixirs();
+         void LoadSpellProcEvents();
+         void LoadSpellProcItemEnchant();
++        void LoadSpellRequireArea();
+         void LoadSpellBonuses();
+         void LoadSpellTargetPositions();
+         void LoadSpellThreats();
+@@ -1085,6 +1098,7 @@ class SpellMgr
+         SpellThreatMap     mSpellThreatMap;
+         SpellProcEventMap  mSpellProcEventMap;
+         SpellProcItemEnchantMap mSpellProcItemEnchantMap;
++        SpellRequireAreaMap mSpellRequireAreaMap;
+         SpellBonusMap      mSpellBonusMap;
+         SkillLineAbilityMap mSkillLineAbilityMap;
+         SkillRaceClassInfoMap mSkillRaceClassInfoMap;
+diff --git a/src/game/World.cpp b/src/game/World.cpp
+index 44b05b3..301dda3 100644
+--- a/src/game/World.cpp
++++ b/src/game/World.cpp
+@@ -870,6 +870,9 @@ void World::SetInitialWorldSettings()
+     DetectDBCLang();
+     sObjectMgr.SetDBCLocaleIndex(GetDefaultDbcLocale());    // Get once for all the locale index of DBC language (console/broadcasts)
+ 
++    sLog.outString( "Loading Spell Corections...");
++    sSpellMgr.LoadDbcDataCorrections();
++
+     sLog.outString( "Loading Script Names...");
+     sScriptMgr.LoadScriptNames();
+ 
+@@ -929,6 +932,9 @@ void World::SetInitialWorldSettings()
+     sLog.outString( "Loading Spell Proc Item Enchant..." );
+     sSpellMgr.LoadSpellProcItemEnchant();                   // must be after LoadSpellChains
+ 
++    sLog.outString( "Loading Spell Area requirements..." );
++    sSpellMgr.LoadSpellRequireArea();
++
+     sLog.outString( "Loading Aggro Spells Definitions...");
+     sSpellMgr.LoadSpellThreats();
+ 
+-- 
+1.7.6.msysgit.0
+

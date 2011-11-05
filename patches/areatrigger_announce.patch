@@ -1,0 +1,26 @@
+From df530061afe8d337639bfb010737e3e3d23550d1 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@.(none)>
+Date: Tue, 20 Jul 2010 15:42:49 +0200
+Subject: [PATCH] Areatrigger announce for GM
+
+---
+ src/game/MiscHandler.cpp |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/src/game/MiscHandler.cpp b/src/game/MiscHandler.cpp
+index 46fc0c3..5297ea5 100644
+--- a/src/game/MiscHandler.cpp
++++ b/src/game/MiscHandler.cpp
+@@ -662,6 +662,9 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket & recv_data)
+     recv_data >> Trigger_ID;
+     DEBUG_LOG("Trigger ID: %u", Trigger_ID);
+ 
++    if (GetPlayer()->isGameMaster())
++        SendAreaTriggerMessage("Entered %u areatrigger.", Trigger_ID);
++
+     if(GetPlayer()->IsTaxiFlying())
+     {
+         DEBUG_LOG("Player '%s' (GUID: %u) in flight, ignore Area Trigger ID: %u", GetPlayer()->GetName(), GetPlayer()->GetGUIDLow(), Trigger_ID);
+-- 
+1.7.0.2.msysgit.0
+

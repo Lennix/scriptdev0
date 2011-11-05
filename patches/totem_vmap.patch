@@ -1,0 +1,62 @@
+From aecb0a92180a1dfee75e255a51c7f5f47bd72de5 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@.(none)>
+Date: Fri, 16 Jul 2010 19:35:11 +0200
+Subject: [PATCH] Totem VMap check
+
+---
+ src/game/World.cpp               |    1 +
+ src/game/World.h                 |    1 +
+ src/mangosd/mangosd.conf.dist.in |    6 ++++++
+ 4 files changed, 30 insertions(+), 0 deletions(-)
+
+diff --git a/src/game/World.cpp b/src/game/World.cpp
+index fc3a026..bdbda8d 100644
+--- a/src/game/World.cpp
++++ b/src/game/World.cpp
+@@ -650,6 +650,7 @@ void World::LoadConfigSettings(bool reload)
+ 
+     setConfig(CONFIG_BOOL_QUEST_IGNORE_RAID, "Quests.IgnoreRaid", false);
+ 
++    setConfig(CONFIG_BOOL_VMAP_TOTEM, "vmap.totem", true);
+     setConfig(CONFIG_BOOL_DETECT_POS_COLLISION, "DetectPosCollision", true);
+ 
+     setConfig(CONFIG_BOOL_RESTRICTED_LFG_CHANNEL,      "Channel.RestrictedLfg", true);
+diff --git a/src/game/World.h b/src/game/World.h
+index 81e28f3..4cbb9da 100644
+--- a/src/game/World.h
++++ b/src/game/World.h
+@@ -273,6 +273,7 @@ enum eConfigBoolValues
+     CONFIG_BOOL_WEATHER,
+     CONFIG_BOOL_EVENT_ANNOUNCE,
+     CONFIG_BOOL_QUEST_IGNORE_RAID,
++    CONFIG_BOOL_VMAP_TOTEM,
+     CONFIG_BOOL_DETECT_POS_COLLISION,
+     CONFIG_BOOL_RESTRICTED_LFG_CHANNEL,
+     CONFIG_BOOL_SILENTLY_GM_JOIN_TO_CHANNEL,
+diff --git a/src/mangosd/mangosd.conf.dist.in b/src/mangosd/mangosd.conf.dist.in
+index 7c4ab04..d8684f2 100644
+--- a/src/mangosd/mangosd.conf.dist.in
++++ b/src/mangosd/mangosd.conf.dist.in
+@@ -144,6 +144,11 @@ BindIP = "0.0.0.0"
+ #                 0 (Disabled)
+ #
+ #
++#    vmap.totem
++#        Use VMAP for totem summon place calculation
++#        Default: 1 (enable, each totem created check LOS)
++#                 0 (disable, less CPU usage)
++#
+ #    DetectPosCollision
+ #        Check final move position, summon position, etc for visible collision with other objects or
+ #        wall (wall only if vmaps are enabled)
+@@ -196,6 +201,7 @@ vmap.enableHeight = 0
+ vmap.enableHeight = 1
+ vmap.ignoreSpellIds = "7720"
+ vmap.enableIndoorCheck = 1
++vmap.totem = 1
+ DetectPosCollision = 1
+ TargetPosRecalculateRange = 1.5
+ UpdateUptimeInterval = 10
+-- 
+1.7.0.2.msysgit.0
+

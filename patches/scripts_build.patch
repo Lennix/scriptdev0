@@ -1,0 +1,23 @@
+From 6e06999c5f919ea8851a00abdf72faecfd44b3f6 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@.(none)>
+Date: Sat, 19 Feb 2011 12:41:34 +0100
+Subject: [PATCH] Archaica Scripts linux build
+
+---
+ src/bindings/CMakeLists.txt |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/src/bindings/CMakeLists.txt b/src/bindings/CMakeLists.txt
+index 543f915..aae45b8 100644
+--- a/src/bindings/CMakeLists.txt
++++ b/src/bindings/CMakeLists.txt
+@@ -15,4 +15,4 @@
+ # along with this program; if not, write to the Free Software
+ # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ 
+-# add_subdirectory(universal)
++# add_subdirectory(scripts)
+
+-- 
+1.7.3.1.msysgit.0
+

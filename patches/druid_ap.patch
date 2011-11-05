@@ -1,0 +1,32 @@
+From 79dab005108c52df1a0dc858d20518f7b99704ea Mon Sep 17 00:00:00 2001
+From: Zataron <none@.(none)>
+Date: Tue, 8 Feb 2011 14:20:36 +0100
+Subject: [PATCH] druid AP formulas
+
+---
+ src/game/StatSystem.cpp |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/game/StatSystem.cpp b/src/game/StatSystem.cpp
+index b6acd0b..670a8d1 100644
+--- a/src/game/StatSystem.cpp
++++ b/src/game/StatSystem.cpp
+@@ -284,12 +284,12 @@ void Player::UpdateAttackPowerAndDamage(bool ranged )
+                 switch(form)
+                 {
+                     case FORM_CAT:
+-                        val2 = getLevel()*(mLevelMult+2.0f) + GetStat(STAT_STRENGTH)*2.0f + GetStat(STAT_AGILITY) - 20.0f; break;
++                        val2 = getLevel()*mLevelMult + GetStat(STAT_STRENGTH)*2.0f + GetStat(STAT_AGILITY) - 20.0f; break;
+                     case FORM_BEAR:
+                     case FORM_DIREBEAR:
+-                        val2 = getLevel()*(mLevelMult+3.0f) + GetStat(STAT_STRENGTH)*2.0f - 20.0f; break;
++                        val2 = getLevel()*(mLevelMult) + GetStat(STAT_STRENGTH)*2.0f - 20.0f; break;
+                     case FORM_MOONKIN:
+-                        val2 = getLevel()*(mLevelMult+1.5f) + GetStat(STAT_STRENGTH)*2.0f - 20.0f; break;
++                        val2 = getLevel()*(mLevelMult) + GetStat(STAT_STRENGTH)*2.0f - 20.0f; break;
+                     default:
+                         val2 = GetStat(STAT_STRENGTH)*2.0f - 20.0f; break;
+                 }
+-- 
+1.7.3.1.msysgit.0
+

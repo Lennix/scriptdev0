@@ -1,0 +1,59 @@
+From 2703ff504dc1a769fedadac962c396fe0ca2556c Mon Sep 17 00:00:00 2001
+From: Zataron <none@.(none)>
+Date: Tue, 18 Jan 2011 18:48:51 +0100
+Subject: [PATCH] Lava damage in instances
+
+---
+ src/game/MovementHandler.cpp |    6 ++++++
+ src/game/Player.cpp          |    3 +++
+ src/game/Player.h            |    3 +++
+ 3 files changed, 12 insertions(+), 0 deletions(-)
+
+diff --git a/src/game/MovementHandler.cpp b/src/game/MovementHandler.cpp
+index 2622321..03f3736 100644
+--- a/src/game/MovementHandler.cpp
++++ b/src/game/MovementHandler.cpp
+@@ -293,6 +293,12 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
+     if (opcode == MSG_MOVE_FALL_LAND && plMover && !plMover->IsTaxiFlying())
+         plMover->HandleFall(movementInfo);
+ 
++    // jumping in lava in instances
++    if (opcode == MSG_MOVE_JUMP && plMover && plMover->IsInWater() && (plMover->m_LavaTimer != DISABLED_MIRROR_TIMER))      // start jumping
++        plMover->m_LavaActive = true;
++    if ((opcode == MSG_MOVE_START_SWIM || opcode == MSG_MOVE_FALL_LAND) && plMover && (plMover->m_LavaActive == true))      // end jumping
++        plMover->m_LavaActive = false;
++
+     /* process position-change */
+     HandleMoverRelocation(movementInfo);
+ 
+diff --git a/src/game/Player.cpp b/src/game/Player.cpp
+index d424368..c73e39e 100644
+--- a/src/game/Player.cpp
++++ b/src/game/Player.cpp
+@@ -456,6 +456,9 @@ Player::Player (WorldSession *session): Unit(), m_reputationMgr(this), m_mover(t
+     for (int i=0; i<MAX_TIMERS; ++i)
+         m_MirrorTimer[i] = DISABLED_MIRROR_TIMER;
+ 
++    m_LavaActive = false;
++    m_LavaTimer = DISABLED_MIRROR_TIMER;
++
+     m_MirrorTimerFlags = UNDERWATER_NONE;
+     m_MirrorTimerFlagsLast = UNDERWATER_NONE;
+ 
+diff --git a/src/game/Player.h b/src/game/Player.h
+index 359d4c8..c2b4f37 100644
+--- a/src/game/Player.h
++++ b/src/game/Player.h
+@@ -2050,6 +2050,9 @@ class MANGOS_DLL_SPEC Player : public Unit
+ 
+         bool isAllowedToLoot(Creature* creature);
+ 
++        bool m_LavaActive;
++        uint32 m_LavaTimer;
++
+     protected:
+ 
+         uint32 m_contestedPvPTimer;
+-- 
+1.7.3.1.msysgit.0
+

@@ -1,0 +1,68 @@
+From a851ca611660200676cabe8b4c3cbf2049dff4fb Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@.(none)>
+Date: Wed, 9 Feb 2011 16:17:02 +0100
+Subject: [PATCH] EventAI immunity
+
+---
+ src/game/CreatureEventAI.cpp    |    6 ++++++
+ src/game/CreatureEventAI.h      |    7 +++++++
+ src/game/CreatureEventAIMgr.cpp |    1 +
+ 3 files changed, 14 insertions(+), 0 deletions(-)
+
+diff --git a/src/game/CreatureEventAI.cpp b/src/game/CreatureEventAI.cpp
+index e32b56c..69e98ef 100644
+--- a/src/game/CreatureEventAI.cpp
++++ b/src/game/CreatureEventAI.cpp
+@@ -841,6 +841,12 @@ void CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
+ 
+             break;
+         }
++        case ACTION_T_SET_SCHOOL_IMUNITY:
++        {
++            if (action.immunity.schoolMask)
++                m_creature->ApplySpellImmune(0, IMMUNITY_DAMAGE, action.immunity.schoolMask, action.immunity.apply);
++            break;
++        }
+     }
+ }
+ 
+diff --git a/src/game/CreatureEventAI.h b/src/game/CreatureEventAI.h
+index 2e73c79..d2c5507 100644
+--- a/src/game/CreatureEventAI.h
++++ b/src/game/CreatureEventAI.h
+@@ -113,6 +113,7 @@ enum EventAI_ActionType
+     ACTION_T_FORCE_DESPAWN              = 41,               // Delay (0-instant despawn)
+     ACTION_T_SET_INVINCIBILITY_HP_LEVEL = 42,               // MinHpValue, format(0-flat,1-percent from max health)
+     ACTION_T_MOUNT_TO_ENTRY_OR_MODEL    = 43,               // Creature_template entry(param1) OR ModelId (param2) (or 0 for both to unmount)
++    ACTION_T_SET_SCHOOL_IMUNITY         = 44,               // Set immunity for spell school
+     ACTION_T_END,
+ };
+ 
+@@ -386,6 +387,12 @@ struct CreatureEventAI_Action
+             uint32 creatureId;                              // set one from fields (or 0 for both to dismount)
+             uint32 modelId;
+         } mount;
++        // ACTION_T_SET_SCHOOL_IMUNITY                      = 44
++        struct
++        {
++            uint32 schoolMask;
++            bool apply;
++        } immunity;
+         // RAW
+         struct
+         {
+diff --git a/src/game/CreatureEventAIMgr.cpp b/src/game/CreatureEventAIMgr.cpp
+index f4ab736..2d34bdc 100644
+--- a/src/game/CreatureEventAIMgr.cpp
++++ b/src/game/CreatureEventAIMgr.cpp
+@@ -796,6 +796,7 @@ void CreatureEventAIMgr::LoadCreatureEventAI_Scripts()
+                     case ACTION_T_COMBAT_MOVEMENT:          //AllowCombatMovement (0 = stop combat based movement, anything else continue attacking)
+                     case ACTION_T_RANGED_MOVEMENT:          //Distance, Angle
+                     case ACTION_T_CALL_FOR_HELP:            //Distance
++                    case ACTION_T_SET_SCHOOL_IMUNITY:
+                         break;
+ 
+                     case ACTION_T_RANDOM_SAY:
+-- 
+1.7.3.1.msysgit.0
+

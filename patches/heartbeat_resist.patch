@@ -1,0 +1,55 @@
+From d0eb6915950d475b2b61ebb03408df9fecaed361 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@none.com>
+Date: Wed, 14 Sep 2011 16:47:33 +0200
+Subject: [PATCH] CC - Heartbeat resist (based on Spike formula)
+
+---
+ src/game/extras/SpellMod.cpp |   25 ++++++++++++++++++++++---
+ 1 files changed, 22 insertions(+), 3 deletions(-)
+
+diff --git a/src/game/extras/SpellMod.cpp b/src/game/extras/SpellMod.cpp
+index 771bff1..b19821b 100644
+--- a/src/game/extras/SpellMod.cpp
++++ b/src/game/extras/SpellMod.cpp
+@@ -39,8 +39,8 @@ void ModClass::auraApplyModifier(Aura *aura, AuraType aType, bool apply, bool re
+ 
+ void ModClass::applyDiminishingToDuration(Unit *unit, Unit *caster, int32 &duration, DiminishingGroup group)
+ {
+-    // [MOD] Duration of crowd control abilities on pvp target is limited by 10 sec. (after patch 2.2.0)
+-    if(getModConfig(MODCONFIG_BOOL_TBC_DIMINISHING_DURATION) && duration > 10*IN_MILLISECONDS && IsDiminishingReturnsGroupDurationLimited(group))
++    // Duration of crowd control abilities on pvp target is limited
++    if (IsDiminishingReturnsGroupDurationLimited(group))
+     {
+         // test pet/charm masters instead pets/charmeds
+         Unit const* targetOwner = unit->GetCharmerOrOwner();
+@@ -50,7 +50,26 @@ void ModClass::applyDiminishingToDuration(Unit *unit, Unit *caster, int32 &durat
+         Unit const* source = casterOwner ? casterOwner : caster;
+ 
+         if(target->GetTypeId() == TYPEID_PLAYER && source->GetTypeId() == TYPEID_PLAYER)
+-            duration = 10000;
++        {
++            int32 maxduration = duration;
++
++            if (maxduration < 10000)
++            {
++                duration = urand(1,maxduration)*10000/maxduration*16;
++
++                if (duration > maxduration)
++                    duration = maxduration;
++            }
++            else
++            {
++                duration = urand(1,25)*urand(1,25)*urand(1,25)*6+urand(0,15000);
++
++                if (duration > 15000 && duration <= 30000)
++                    duration = 12000;
++                else if (duration > 30000)
++                    duration = 10000;
++            }
++        }
+     }
+ }
+ 
+-- 
+1.7.6.msysgit.0
+

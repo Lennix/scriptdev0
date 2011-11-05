@@ -1,0 +1,122 @@
+From 26710051b1508b42a3dda415bef8ba25bd3edee6 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@.(none)>
+Date: Fri, 8 Oct 2010 20:18:40 +0200
+Subject: [PATCH] Revive pet in battleground
+
+---
+ src/game/Pet.cpp          |    4 ++++
+ src/game/Player.cpp       |    4 +++-
+ src/game/Player.h         |    7 +++++++
+ src/game/SpellEffects.cpp |   30 ++++++++++++++++++++++++++++--
+ 4 files changed, 42 insertions(+), 3 deletions(-)
+
+diff --git a/src/game/Pet.cpp b/src/game/Pet.cpp
+index 5d5afcb..ecaf897 100644
+--- a/src/game/Pet.cpp
++++ b/src/game/Pet.cpp
+@@ -352,6 +352,10 @@ bool Pet::LoadPetFromDB( Player* owner, uint32 petentry, uint32 petnumber, bool
+             ((Player*)owner)->SetGroupUpdateFlag(GROUP_UPDATE_PET);
+     }
+ 
++    // set last used pet number (for use in BG's)
++    if (owner->GetTypeId() == TYPEID_PLAYER && isControlled() && !isTemporarySummoned() && (getPetType() == SUMMON_PET || getPetType() == HUNTER_PET))
++        ((Player*)owner)->SetLastPetNumber(pet_number);
++
+     m_loading = false;
+ 
+     SynchronizeLevelWithOwner();
+diff --git a/src/game/Player.cpp b/src/game/Player.cpp
+index 87161ee..8c7fe6a 100644
+--- a/src/game/Player.cpp
++++ b/src/game/Player.cpp
+@@ -495,6 +495,8 @@ Player::Player (WorldSession *session): Unit(), m_reputationMgr(this), m_mover(t
+ 
+     m_temporaryUnsummonedPetNumber = 0;
+ 
++    m_lastpetnumber = 0;
++
+     ////////////////////Rest System/////////////////////
+     time_inn_enter=0;
+     inn_trigger_id=0;
+diff --git a/src/game/Player.h b/src/game/Player.h
+index d7f95ee..cf609b2 100644
+--- a/src/game/Player.h
++++ b/src/game/Player.h
+@@ -1993,6 +1993,10 @@ class MANGOS_DLL_SPEC Player : public Unit
+         static void ConvertInstancesToGroup(Player *player, Group *group = NULL, ObjectGuid player_guid = ObjectGuid());
+         DungeonPersistentState* GetBoundInstanceSaveForSelfOrGroup(uint32 mapid);
+ 
++        // last used pet number (for BG's)
++        uint32 GetLastPetNumber() const { return m_lastpetnumber; }
++        void SetLastPetNumber(uint32 petnumber) { m_lastpetnumber = petnumber; }
++
+         /*********************************************************/
+         /***                   GROUP SYSTEM                    ***/
+         /*********************************************************/
+@@ -2238,6 +2238,9 @@ class MANGOS_DLL_SPEC Player : public Unit
+ 
+         ObjectGuid m_miniPetGuid;
+ 
++        // last used pet number (for BG's)
++        uint32 m_lastpetnumber;
++
+         // Player summoning
+         time_t m_summon_expire;
+         uint32 m_summon_mapid;
+diff --git a/src/game/SpellEffects.cpp b/src/game/SpellEffects.cpp
+index 720af96..aa4b301 100644
+--- a/src/game/SpellEffects.cpp
++++ b/src/game/SpellEffects.cpp
+@@ -3608,14 +3608,37 @@ void Spell::EffectSummonObjectWild(SpellEffectIndex eff_idx)
+ 
+ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
+ {
+-    // TODO: we must implement hunter pet summon at login there (spell 6962)
+-
+     switch(m_spellInfo->SpellFamilyName)
+     {
+         case SPELLFAMILY_GENERIC:
+         {
+             switch(m_spellInfo->Id)
+             {
++                case 6962:
++                {
++                    if (m_caster->GetTypeId() != TYPEID_PLAYER)
++                        return;
++
++                    Player* plr = (Player*)m_caster;
++                    if (plr && plr->GetLastPetNumber())
++                    {
++                        PetType NewPetType = (plr->getClass() == CLASS_HUNTER) ? HUNTER_PET : SUMMON_PET;
++                        if (Pet* NewPet = new Pet(NewPetType))
++                        {
++                            if (NewPet->LoadPetFromDB(plr, 0, plr->GetLastPetNumber(), true))
++                            {
++                                NewPet->SetHealth(NewPet->GetMaxHealth());
++                                NewPet->SetPower(NewPet->getPowerType(), NewPet->GetMaxPower(NewPet->getPowerType()));
++
++                                if (NewPet->GetEntry() == 89)
++                                    NewPet->UpdateEntry(416);
++                            }
++                            else
++                                delete NewPet;
++                        }
++                    }
++                    return;
++                }
+                 case 8856:                                  // Bending Shinbone
+                 {
+                     if (!itemTarget && m_caster->GetTypeId()!=TYPEID_PLAYER)
+@@ -4903,6 +4926,9 @@ void Spell::EffectSpiritHeal(SpellEffectIndex /*eff_idx*/)
+ 
+     ((Player*)unitTarget)->ResurrectPlayer(1.0f);
+     ((Player*)unitTarget)->SpawnCorpseBones();
++
++    // revive player's last pet if any
++    ((Player*)unitTarget)->CastSpell(unitTarget, 6962, true);
+ }
+ 
+ // remove insignia spell effect
+-- 
+1.7.3.1.msysgit.0
+

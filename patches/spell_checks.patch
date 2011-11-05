@@ -1,0 +1,91 @@
+From b881c7b3fd5e9b599db4e75632f00ae2b24c416e Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@example.com>
+Date: Wed, 29 Jun 2011 19:25:26 +0200
+Subject: [PATCH] Spell checks, precasts etc.
+
+---
+ src/game/Spell.cpp |   33 ++++++++++++++++++++++++++++-----
+ 1 files changed, 28 insertions(+), 5 deletions(-)
+
+diff --git a/src/game/Spell.cpp b/src/game/Spell.cpp
+index 2232ba1..ba162d2 100644
+--- a/src/game/Spell.cpp
++++ b/src/game/Spell.cpp
+@@ -610,6 +610,10 @@ void Spell::prepareDataForTriggerSystem()
+     {
+         switch (m_spellInfo->SpellFamilyName)
+         {
++            case SPELLFAMILY_GENERIC:
++                if (m_spellInfo->Id == 13897)   // Fiery Weapon
++                    m_canTrigger = true;
++                break;
+             case SPELLFAMILY_MAGE:
+                 // Arcane Missiles / Blizzard triggers need do it
+                 if (m_spellInfo->IsFitToFamilyMask(UI64LIT(0x0000000000200080)))
+@@ -633,6 +637,13 @@ void Spell::prepareDataForTriggerSystem()
+             default:
+                 break;
+         }
++
++        if (m_triggeredByAuraSpell)
++        {
++            if (m_triggeredByAuraSpell->SpellFamilyName == SPELLFAMILY_PALADIN &&       // Seal of Command
++                m_triggeredByAuraSpell->SpellFamilyFlags & UI64LIT(0x0000000002000000))
++                m_canTrigger = true;
++        }
+     }
+ 
+     // Get data for type of attack and fill base info for trigger
+@@ -916,8 +927,8 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
+             if(real_caster && real_caster != unit)
+             {
+                 // can cause back attack (if detected)
+-                if (!(m_spellInfo->AttributesEx3 & SPELL_ATTR_EX3_NO_INITIAL_AGGRO) && !IsPositiveSpell(m_spellInfo->Id) &&
+-                    m_caster->isVisibleForOrDetect(unit, unit, false))
++                if (!(m_spellInfo->AttributesEx3 & SPELL_ATTR_EX3_NO_INITIAL_AGGRO) && !(m_spellInfo->AttributesEx & SPELL_ATTR_EX_NO_INITIAL_AGGRO) &&
++                    !IsPositiveSpell(m_spellInfo->Id) && m_caster->isVisibleForOrDetect(unit, unit, false))
+                 {
+                     if (!unit->isInCombat() && unit->GetTypeId() != TYPEID_PLAYER && ((Creature*)unit)->AI())
+                         ((Creature*)unit)->AI()->AttackedBy(real_caster);
+@@ -1098,8 +1109,8 @@ void Spell::DoSpellHitOnUnit(Unit *unit, uint32 effectMask)
+                 unit->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
+ 
+             // can cause back attack (if detected), stealth removed at Spell::cast if spell break it
+-            if (!(m_spellInfo->AttributesEx3 & SPELL_ATTR_EX3_NO_INITIAL_AGGRO) && !IsPositiveSpell(m_spellInfo->Id) &&
+-                m_caster->isVisibleForOrDetect(unit, unit, false))
++            if (!(m_spellInfo->AttributesEx3 & SPELL_ATTR_EX3_NO_INITIAL_AGGRO) && !(m_spellInfo->AttributesEx & SPELL_ATTR_EX_NO_INITIAL_AGGRO) &&
++                    !IsPositiveSpell(m_spellInfo->Id) && m_caster->isVisibleForOrDetect(unit, unit, false))
+             {
+                 // use speedup check to avoid re-remove after above lines
+                 if (m_spellInfo->AttributesEx & SPELL_ATTR_EX_NOT_BREAK_STEALTH)
+@@ -2585,7 +2596,7 @@ void Spell::cast(bool skipCheck)
+         case SPELLFAMILY_PRIEST:
+         {
+             // Power Word: Shield
+-            if(m_spellInfo->SpellFamilyName == SPELLFAMILY_PRIEST && m_spellInfo->SpellFamilyFlags & UI64LIT(0x0000000000000001))
++            if (m_spellInfo->SpellFamilyName == SPELLFAMILY_PRIEST && m_spellInfo->SpellFamilyFlags & UI64LIT(0x0000000000000001) && m_spellInfo->Id != 27779)
+                 AddPrecastSpell(6788);                      // Weakened Soul
+ 
+             switch(m_spellInfo->Id)
+@@ -4705,6 +4716,18 @@ SpellCastResult Spell::CheckCast(bool strict)
+ 
+                 break;
+             }
++            case SPELL_AURA_SCHOOL_ABSORB:
++            {
++                if (!m_targets.getUnitTarget())
++                    return SPELL_FAILED_BAD_IMPLICIT_TARGETS;
++
++                Unit::AuraList const &mAbsorbAuras = m_targets.getUnitTarget()->GetAurasByType(SPELL_AURA_SCHOOL_ABSORB);
++                for(Unit::AuraList::const_iterator i = mAbsorbAuras.begin(); i != mAbsorbAuras.end(); ++i)
++                    if (m_spellInfo->EffectBasePoints[EFFECT_INDEX_0] <= (*i)->GetModifier()->m_amount && (*i)->GetEffIndex() == 0)
++                        return SPELL_FAILED_MORE_POWERFUL_SPELL_ACTIVE;
++
++                break;
++            }
+             default:
+                 break;
+         }
+-- 
+1.7.4.msysgit.0
+

@@ -1,0 +1,363 @@
+From 7511f8578dab450b50a02c0fb9f438d55389bfdf Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@.(none)>
+Date: Wed, 16 Feb 2011 12:09:04 +0100
+Subject: [PATCH] Creature linked respawn
+
+---
+ src/game/Chat.cpp      |    1 +
+ src/game/Chat.h        |    1 +
+ src/game/Creature.cpp  |  113 +++++++++++++++++++++++++++++++++++------------
+ src/game/Creature.h    |    4 ++
+ src/game/Level3.cpp    |    8 +++
+ src/game/ObjectMgr.cpp |   81 ++++++++++++++++++++++++++++++++++
+ src/game/ObjectMgr.h   |   12 +++++
+ src/game/World.cpp     |    3 +
+ 8 files changed, 194 insertions(+), 29 deletions(-)
+
+diff --git a/src/game/Chat.cpp b/src/game/Chat.cpp
+index 5e06586..309630b 100644
+--- a/src/game/Chat.cpp
++++ b/src/game/Chat.cpp
+@@ -421,6 +421,7 @@ ChatCommand * ChatHandler::getCommandTable()
+         { "creature_ai_texts",           SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadEventAITextsCommand,            "", NULL },
+         { "creature_battleground",       SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadBattleEventCommand,             "", NULL },
+         { "creature_involvedrelation",   SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadCreatureQuestInvRelationsCommand,"",NULL },
++        { "creature_linked_respawn",     SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadCreatureLinkedRespawnCommand,   "", NULL },
+         { "creature_loot_template",      SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadLootTemplatesCreatureCommand,   "", NULL },
+         { "creature_questrelation",      SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadCreatureQuestRelationsCommand,  "", NULL },
+         { "db_script_string",            SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadDbScriptStringCommand,          "", NULL },
+diff --git a/src/game/Chat.h b/src/game/Chat.h
+index 5604029..4d32115 100644
+--- a/src/game/Chat.h
++++ b/src/game/Chat.h
+@@ -357,6 +357,7 @@ class ChatHandler
+         bool HandleReloadBattleEventCommand(char* args);
+         bool HandleReloadCreatureQuestRelationsCommand(char* args);
+         bool HandleReloadCreatureQuestInvRelationsCommand(char* args);
++        bool HandleReloadCreatureLinkedRespawnCommand(char* args);
+         bool HandleReloadDbScriptStringCommand(char* args);
+         bool HandleReloadGameGraveyardZoneCommand(char* args);
+         bool HandleReloadGameObjectScriptsCommand(char* args);
+diff --git a/src/game/Creature.cpp b/src/game/Creature.cpp
+index 5f03dca..2cc8ecc 100644
+--- a/src/game/Creature.cpp
++++ b/src/game/Creature.cpp
+@@ -410,42 +410,63 @@ void Creature::Update(uint32 diff)
+         {
+             if( m_respawnTime <= time(NULL) )
+             {
+-                DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "Respawning...");
+-                m_respawnTime = 0;
+-                lootForPickPocketed = false;
+-                lootForBody         = false;
+-                lootForSkin         = false;
++                bool canRespawn = false;
+ 
+-                // Clear possible auras having IsDeathPersistent() attribute
+-                RemoveAllAuras();
+-
+-                if(m_originalEntry != GetEntry())
++                if (!GetLinkedCreatureRespawnTime()) // Can respawn
++                    canRespawn = true;
++                else // the master is dead
+                 {
+-                    // need preserver gameevent state
+-                    GameEventCreatureData const* eventData = sGameEventMgr.GetCreatureUpdateDataForActiveEvent(GetGUIDLow());
+-                    UpdateEntry(m_originalEntry, TEAM_NONE, NULL, eventData);
++                    if (uint32 targetGuid = sObjectMgr.GetLinkedRespawnGuid(GetGUIDLow()))
++                    {
++                        if (targetGuid == GetGUIDLow()) // if linking self, never respawn (check delayed to next day)
++                            SetRespawnTime(DAY);
++                        else
++                            m_respawnTime = (time(NULL) > GetLinkedCreatureRespawnTime() ? time(NULL) : GetLinkedCreatureRespawnTime()) + urand(5, MINUTE); // else copy time from master and add a little
++                        SaveRespawnTime(); // also save to DB immediately
++                    }
++                    else
++                        canRespawn = true;
+                 }
+ 
+-                CreatureInfo const *cinfo = GetCreatureInfo();
+-
+-                SelectLevel(cinfo);
+-                SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_NONE);
+-                if (m_isDeadByDefault)
++                if (canRespawn)
+                 {
+-                    SetDeathState(JUST_DIED);
+-                    SetHealth(0);
+-                    i_motionMaster.Clear();
+-                    clearUnitState(UNIT_STAT_ALL_STATE);
+-                    LoadCreatureAddon(true);
+-                }
+-                else
+-                    SetDeathState( JUST_ALIVED );
++                    DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "Respawning...");
++                    m_respawnTime = 0;
++                    lootForPickPocketed = false;
++                    lootForBody         = false;
++                    lootForSkin         = false;
+ 
+-                //Call AI respawn virtual function
+-                if (AI())
+-                    AI()->JustRespawned();
++                    // Clear possible auras having IsDeathPersistent() attribute
++                    RemoveAllAuras();
++
++                    if(m_originalEntry != GetEntry())
++                    {
++                        // need preserver gameevent state
++                        GameEventCreatureData const* eventData = sGameEventMgr.GetCreatureUpdateDataForActiveEvent(GetGUIDLow());
++                        UpdateEntry(m_originalEntry);
++                    }
++
++                    CreatureInfo const *cinfo = GetCreatureInfo();
+ 
+-                GetMap()->Add(this);
++                    SelectLevel(cinfo);
++                    SetUInt32Value(UNIT_DYNAMIC_FLAGS, 0);
++                    if (m_isDeadByDefault)
++                    {
++                        SetDeathState(JUST_DIED);
++                        SetHealth(0);
++                        i_motionMaster.Clear();
++                        clearUnitState(UNIT_STAT_ALL_STATE);
++                        LoadCreatureAddon(true);
++                    }
++                    else
++                        SetDeathState( JUST_ALIVED );
++
++                    //Call AI respawn virtual function
++                    if (AI())
++                        AI()->JustRespawned();
++
++                    GetMap()->Add(this);
++                }
+             }
+             break;
+         }
+@@ -2297,3 +2318,37 @@ void Creature::SetVirtualItemRaw(VirtualItemSlot slot, uint32 display_id, uint32
+     SetUInt32Value(UNIT_VIRTUAL_ITEM_INFO + (slot * 2) + 0, info0);
+     SetUInt32Value(UNIT_VIRTUAL_ITEM_INFO + (slot * 2) + 1, info1);
+ }
++
++const CreatureData* Creature::GetLinkedRespawnCreatureData() const
++{
++    if (!GetGUIDLow()) // only hard-spawned creatures from DB can have a linked master
++        return NULL;
++
++    if (uint32 targetGuid = sObjectMgr.GetLinkedRespawnGuid(GetGUIDLow()))
++        return sObjectMgr.GetCreatureData(targetGuid);
++
++    return NULL;
++}
++
++// returns master's remaining respawn time if any
++time_t Creature::GetLinkedCreatureRespawnTime() const
++{
++    if (!GetGUIDLow()) // only hard-spawned creatures from DB can have a linked master
++        return 0;
++
++    if (uint32 targetGuid = sObjectMgr.GetLinkedRespawnGuid(GetGUIDLow()))
++    {
++        Map* targetMap = NULL;
++        if (const CreatureData* data = sObjectMgr.GetCreatureData(targetGuid))
++        {
++            if (data->mapid == GetMapId())   // look up on the same map
++                targetMap = GetMap();
++            else                            // it shouldn't be instanceable map here
++                targetMap = sMapMgr.FindMap(data->mapid);
++        }
++        if (targetMap)
++            return targetMap->GetPersistentState()->GetCreatureRespawnTime(targetGuid);
++    }
++
++    return 0;
++}
+diff --git a/src/game/Creature.h b/src/game/Creature.h
+index 8ebe2b5..78bc902 100644
+--- a/src/game/Creature.h
++++ b/src/game/Creature.h
+@@ -577,6 +577,10 @@ class MANGOS_DLL_SPEC Creature : public Unit
+         float GetRespawnRadius() const { return m_respawnradius; }
+         void SetRespawnRadius(float dist) { m_respawnradius = dist; }
+ 
++        // Linked Creature Respawning System
++        time_t GetLinkedCreatureRespawnTime() const;
++        const CreatureData* GetLinkedRespawnCreatureData() const;
++
+         // Functions spawn/remove creature with DB guid in all loaded map copies (if point grid loaded in map)
+         static void AddToRemoveListInMaps(uint32 db_guid, CreatureData const* data);
+         static void SpawnInMaps(uint32 db_guid, CreatureData const* data);
+diff --git a/src/game/Level3.cpp b/src/game/Level3.cpp
+index 8ad1dff..f695104 100644
+--- a/src/game/Level3.cpp
++++ b/src/game/Level3.cpp
+@@ -246,6 +246,14 @@ bool ChatHandler::HandleReloadCreatureQuestInvRelationsCommand(char* /*args*/)
+     return true;
+ }
+ 
++bool ChatHandler::HandleReloadCreatureLinkedRespawnCommand(char * /*args*/)
++{
++    sLog.outString("Loading Linked Respawns... (`creature_linked_respawn`)");
++    sObjectMgr.LoadCreatureLinkedRespawn();
++    SendGlobalSysMessage("DB table `creature_linked_respawn` (creature linked respawns) reloaded.");
++    return true;
++}
++
+ bool ChatHandler::HandleReloadGossipMenuCommand(char* /*args*/)
+ {
+     sLog.outString( "Re-Loading `gossip_menu` Table!" );
+diff --git a/src/game/ObjectMgr.cpp b/src/game/ObjectMgr.cpp
+index 81cd9a0..59be78a 100644
+--- a/src/game/ObjectMgr.cpp
++++ b/src/game/ObjectMgr.cpp
+@@ -873,6 +873,87 @@ void ObjectMgr::LoadCreatureModelInfo()
+     sLog.outString();
+ }
+ 
++bool ObjectMgr::CheckCreatureLinkedRespawn(uint32 guid, uint32 linkedGuid) const
++{
++    const CreatureData* const slave = GetCreatureData(guid);
++    const CreatureData* const master = GetCreatureData(linkedGuid);
++
++    if (!slave || !master) // they must have a corresponding entry in db
++    {
++        sLog.outError("LinkedRespawn: Creature '%u' linking to '%u' which doesn't exist", guid, linkedGuid);
++        return false;
++    }
++
++    const MapEntry* const map = sMapStore.LookupEntry(master->mapid);
++
++    if (master->mapid != slave->mapid        // link only to same map
++        && (!map || map->Instanceable()))   // or to unistanced world
++    {
++        sLog.outError("LinkedRespawn: Creature '%u' linking to '%u' on an unpermitted map", guid, linkedGuid);
++        return false;
++    }
++
++    return true;
++}
++
++void ObjectMgr::LoadCreatureLinkedRespawn()
++{
++    mCreatureLinkedRespawnMap.clear();
++    QueryResult* result = WorldDatabase.Query("SELECT guid, linkedGuid FROM creature_linked_respawn ORDER BY guid ASC");
++
++    if (!result)
++    {
++        BarGoLink bar(1);
++
++        bar.step();
++
++        sLog.outString("");
++        sLog.outErrorDb(">> Loaded 0 linked respawns. DB table `creature_linked_respawn` is empty.");
++        return;
++    }
++
++    BarGoLink bar(result->GetRowCount());
++
++    do
++    {
++        Field* fields = result->Fetch();
++        bar.step();
++
++        uint32 guid = fields[0].GetUInt32();
++        uint32 linkedGuid = fields[1].GetUInt32();
++
++        if (CheckCreatureLinkedRespawn(guid, linkedGuid))
++            mCreatureLinkedRespawnMap[guid] = linkedGuid;
++
++    } while (result->NextRow());
++
++    delete result;
++
++    sLog.outString();
++    sLog.outString(">> Loaded %u linked respawns", mCreatureLinkedRespawnMap.size());
++}
++
++bool ObjectMgr::SetCreatureLinkedRespawn(uint32 guid, uint32 linkedGuid)
++{
++    if (!guid)
++        return false;
++
++    if (!linkedGuid) // we're removing the linking
++    {
++        mCreatureLinkedRespawnMap.erase(guid);
++        WorldDatabase.PExecute("DELETE FROM creature_linked_respawn WHERE guid = '%u'",guid);
++        return true;
++    }
++
++    if (CheckCreatureLinkedRespawn(guid,linkedGuid)) // we add/change linking
++    {
++        mCreatureLinkedRespawnMap[guid] = linkedGuid;
++        WorldDatabase.PExecute("REPLACE INTO creature_linked_respawn (guid,linkedGuid) VALUES ('%u','%u')",guid,linkedGuid);
++        return true;
++    }
++    return false;
++}
++
+ void ObjectMgr::LoadCreatures()
+ {
+     uint32 count = 0;
+diff --git a/src/game/ObjectMgr.h b/src/game/ObjectMgr.h
+index 958aee5..711d88a 100644
+--- a/src/game/ObjectMgr.h
++++ b/src/game/ObjectMgr.h
+@@ -100,6 +100,7 @@ struct MangosStringLocale
+     std::vector<std::string> Content;                       // 0 -> default, i -> i-1 locale index
+ };
+ 
++typedef std::map<uint32,uint32> CreatureLinkedRespawnMap;
+ typedef UNORDERED_MAP<uint32,CreatureData> CreatureDataMap;
+ typedef CreatureDataMap::value_type CreatureDataPair;
+ 
+@@ -606,6 +607,9 @@ class ObjectMgr
+         void LoadCreatureLocales();
+         void LoadCreatureTemplates();
+         void LoadCreatures();
++        void LoadCreatureLinkedRespawn();
++        bool CheckCreatureLinkedRespawn(uint32 guid, uint32 linkedGuid) const;
++        bool SetCreatureLinkedRespawn(uint32 guid, uint32 linkedGuid);
+         void LoadCreatureAddons();
+         void LoadCreatureModelInfo();
+         void LoadEquipmentTemplates();
+@@ -743,7 +747,14 @@ class ObjectMgr
+                 if (worker(*itr))
+                     break;
+         }
++        uint32 GetLinkedRespawnGuid(uint32 guid) const
++        {
++            CreatureLinkedRespawnMap::const_iterator itr = mCreatureLinkedRespawnMap.find(guid);
++            if (itr == mCreatureLinkedRespawnMap.end())
++                return 0;
+ 
++            return itr->second;
++        }
+         CreatureLocale const* GetCreatureLocale(uint32 entry) const
+         {
+             CreatureLocaleMap::const_iterator itr = mCreatureLocaleMap.find(entry);
+@@ -1081,6 +1092,7 @@ class ObjectMgr
+ 
+         MapObjectGuids mMapObjectGuids;
+         CreatureDataMap mCreatureDataMap;
++        CreatureLinkedRespawnMap mCreatureLinkedRespawnMap;
+         CreatureLocaleMap mCreatureLocaleMap;
+         GameObjectDataMap mGameObjectDataMap;
+         GameObjectLocaleMap mGameObjectLocaleMap;
+diff --git a/src/game/World.cpp b/src/game/World.cpp
+index 5fa74bb..3744b78 100644
+--- a/src/game/World.cpp
++++ b/src/game/World.cpp
+@@ -962,6 +962,9 @@ void World::SetInitialWorldSettings()
+     sLog.outString( "Loading Creature Data..." );
+     sObjectMgr.LoadCreatures();
+ 
++    sLog.outString("Loading Creature Linked Respawn...");
++    sObjectMgr.LoadCreatureLinkedRespawn();                     // must be after LoadCreatures()
++
+     sLog.outString( "Loading Creature Addon Data..." );
+     sLog.outString();
+     sObjectMgr.LoadCreatureAddons();                        // must be after LoadCreatureTemplates() and LoadCreatures()
+-- 
+1.7.3.1.msysgit.0
+

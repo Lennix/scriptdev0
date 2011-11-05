@@ -1,0 +1,25 @@
+From 8ba19f9643c0b81631332fc5a08556338cd4d03d Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@.(none)>
+Date: Wed, 26 May 2010 18:46:47 +0200
+Subject: [PATCH] Channel announcements deactivated
+
+---
+ src/game/Channel.cpp |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/src/game/Channel.cpp b/src/game/Channel.cpp
+index c4e72d2..863f5bc 100644
+--- a/src/game/Channel.cpp
++++ b/src/game/Channel.cpp
+@@ -23,7 +23,7 @@
+ #include "SocialMgr.h"
+ 
+ Channel::Channel(const std::string& name, uint32 channel_id)
+-: m_announce(true), m_moderate(false), m_name(name), m_flags(0), m_channelId(channel_id)
++: m_announce(false), m_moderate(false), m_name(name), m_flags(0), m_channelId(channel_id)
+ {
+     // set special flags if built-in channel
+     ChatChannelsEntry const* ch = GetChannelEntryFor(channel_id);
+-- 
+1.6.5.1.1367.gcd48
+

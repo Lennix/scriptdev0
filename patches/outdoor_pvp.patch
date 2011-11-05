@@ -1,0 +1,3105 @@
+From 13a13429e15f91149ef92c47b02334d07b6553e1 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@example.com>
+Date: Sun, 19 Jun 2011 11:49:23 +0200
+Subject: [PATCH] Outdoor PvP System (Silithus + Eastern Plaguelands)
+
+---
+ src/game/Creature.cpp          |   20 ++
+ src/game/Creature.h            |    2 +
+ src/game/GameObject.cpp        |   43 +++-
+ src/game/GameObject.h          |   10 +-
+ src/game/Language.h            |   20 ++
+ src/game/MiscHandler.cpp       |    7 +
+ src/game/Object.cpp            |   12 +-
+ src/game/Object.h              |    6 +
+ src/game/ObjectMgr.cpp         |  138 +++++++++
+ src/game/ObjectMgr.h           |    3 +
+ src/game/OutdoorPvP.cpp        |  601 ++++++++++++++++++++++++++++++++++++++++
+ src/game/OutdoorPvP.h          |  255 +++++++++++++++++
+ src/game/OutdoorPvPEP.cpp      |  466 +++++++++++++++++++++++++++++++
+ src/game/OutdoorPvPEP.h        |  182 ++++++++++++
+ src/game/OutdoorPvPMgr.cpp     |  184 ++++++++++++
+ src/game/OutdoorPvPMgr.h       |   83 ++++++
+ src/game/OutdoorPvPSI.cpp      |  181 ++++++++++++
+ src/game/OutdoorPvPSI.h        |   71 +++++
+ src/game/Player.cpp            |   73 +++++-
+ src/game/Player.h              |   10 +
+ src/game/SharedDefines.h       |    7 +
+ src/game/SpellAuras.cpp        |    3 +
+ src/game/World.cpp             |    6 +
+ src/game/ZoneScript.h          |   52 ++++
+ win/VC100/game.vcxproj         |    9 +
+ win/VC100/game.vcxproj.filters |   27 ++
+ win/VC90/game.vcproj           |   40 +++
+ 27 files changed, 2498 insertions(+), 13 deletions(-)
+ create mode 100644 src/game/OutdoorPvP.cpp
+ create mode 100644 src/game/OutdoorPvP.h
+ create mode 100644 src/game/OutdoorPvPEP.cpp
+ create mode 100644 src/game/OutdoorPvPEP.h
+ create mode 100644 src/game/OutdoorPvPMgr.cpp
+ create mode 100644 src/game/OutdoorPvPMgr.h
+ create mode 100644 src/game/OutdoorPvPSI.cpp
+ create mode 100644 src/game/OutdoorPvPSI.h
+ create mode 100644 src/game/ZoneScript.h
+
+diff --git a/src/game/Creature.cpp b/src/game/Creature.cpp
+index a20be71..2a89e6a 100644
+--- a/src/game/Creature.cpp
++++ b/src/game/Creature.cpp
+@@ -41,6 +41,7 @@
+ #include "InstanceData.h"
+ #include "MapPersistentStateMgr.h"
+ #include "BattleGroundMgr.h"
++#include "OutdoorPvPMgr.h"
+ #include "Spell.h"
+ #include "Util.h"
+ #include "GridNotifiers.h"
+@@ -189,7 +190,12 @@ void Creature::AddToWorld()
+ {
+     ///- Register the creature for guid lookup
+     if (!IsInWorld() && GetObjectGuid().GetHigh() == HIGHGUID_UNIT)
++    {
++        if (m_zoneScript)
++            m_zoneScript->OnCreatureCreate(this, true);
++
+         GetMap()->GetObjectsStore().insert<Creature>(GetObjectGuid(), (Creature*)this);
++    }
+ 
+     Unit::AddToWorld();
+ }
+@@ -198,7 +204,12 @@ void Creature::RemoveFromWorld()
+ {
+     ///- Remove the creature from the accessor
+     if (IsInWorld() && GetObjectGuid().GetHigh() == HIGHGUID_UNIT)
++    {
++        if (m_zoneScript)
++            m_zoneScript->OnCreatureCreate(this, false);
++
+         GetMap()->GetObjectsStore().erase<Creature>(GetObjectGuid(), (Creature*)NULL);
++    }
+ 
+     Unit::RemoveFromWorld();
+ }
+@@ -1182,6 +1193,15 @@ float Creature::GetSpellDamageMod(int32 Rank)
+ 
+ bool Creature::CreateFromProto(uint32 guidlow, CreatureInfo const* cinfo, Team team, const CreatureData *data /*=NULL*/, GameEventCreatureData const* eventData /*=NULL*/)
+ {
++    SetZoneScript();
++    if (m_zoneScript && data)
++    {
++        uint32 myEntry = m_zoneScript->GetCreatureEntry(guidlow, data);
++        if (!myEntry)
++            return false;
++        SetEntry(myEntry);
++    }
++
+     m_originalEntry = cinfo->Entry;
+ 
+     Object::_Create(guidlow, cinfo->Entry, cinfo->GetHighGuid());
+diff --git a/src/game/Creature.h b/src/game/Creature.h
+index 81cf3dd..f07ccf6 100644
+--- a/src/game/Creature.h
++++ b/src/game/Creature.h
+@@ -178,6 +178,7 @@ struct EquipmentInfoRaw
+ // from `creature` table
+ struct CreatureData
+ {
++    explicit CreatureData() : dbData(true) {}
+     uint32 id;                                              // entry in creature_template
+     uint16 mapid;
+     uint32 modelid_override;                                // overrides any model defined in creature_template
+@@ -193,6 +194,7 @@ struct CreatureData
+     uint32 curmana;
+     bool  is_dead;
+     uint8 movementType;
++    bool dbData;
+ 
+     // helper function
+     ObjectGuid GetObjectGuid(uint32 lowguid) const { return ObjectGuid(CreatureInfo::GetHighGuid(), id, lowguid); }
+diff --git a/src/game/GameObject.cpp b/src/game/GameObject.cpp
+index 6643603..07b9e32 100644
+--- a/src/game/GameObject.cpp
++++ b/src/game/GameObject.cpp
+@@ -37,6 +37,7 @@
+ #include "MapPersistentStateMgr.h"
+ #include "BattleGround.h"
+ #include "BattleGroundAV.h"
++#include "OutdoorPvPMgr.h"
+ #include "Util.h"
+ #include "ScriptMgr.h"
+ 
+@@ -55,6 +56,7 @@ GameObject::GameObject() : WorldObject(),
+     m_useTimes = 0;
+     m_spellId = 0;
+     m_cooldownTime = 0;
++    m_goData = NULL;
+ }
+ 
+ GameObject::~GameObject()
+@@ -65,7 +67,12 @@ void GameObject::AddToWorld()
+ {
+     ///- Register the gameobject for guid lookup
+     if(!IsInWorld())
++    {
++        if (m_zoneScript)
++            m_zoneScript->OnGameObjectCreate(this, true);
++
+         GetMap()->GetObjectsStore().insert<GameObject>(GetObjectGuid(), (GameObject*)this);
++    }
+ 
+     Object::AddToWorld();
+ }
+@@ -75,6 +82,9 @@ void GameObject::RemoveFromWorld()
+     ///- Remove the gameobject from the accessor
+     if(IsInWorld())
+     {
++        if (m_zoneScript)
++            m_zoneScript->OnGameObjectCreate(this, false);
++
+         // Remove GO from owner
+         if (ObjectGuid owner_guid = GetOwnerGuid())
+         {
+@@ -93,7 +103,7 @@ void GameObject::RemoveFromWorld()
+     Object::RemoveFromWorld();
+ }
+ 
+-bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 animprogress, GOState go_state)
++bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 animprogress, GOState go_state, uint32 artKit)
+ {
+     MANGOS_ASSERT(map);
+     Relocate(x,y,z,ang);
+@@ -147,12 +157,16 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, float x, float
+ 
+     SetGoAnimProgress(animprogress);
+ 
++    SetUInt32Value (GAMEOBJECT_ARTKIT, artKit);
++
+     //Notify the map's instance data.
+     //Only works if you create the object in it, not if it is moves to that map.
+     //Normally non-players do not teleport to other maps.
+     if (InstanceData* iData = map->GetInstanceData())
+         iData->OnObjectCreate(this);
+ 
++    SetZoneScript();
++
+     return true;
+ }
+ 
+@@ -605,6 +619,8 @@ bool GameObject::LoadFromDB(uint32 guid, Map *map)
+         }
+     }
+ 
++    m_goData = data;
++
+     return true;
+ }
+ 
+@@ -683,7 +699,7 @@ Unit* GameObject::GetOwner() const
+ 
+ void GameObject::SaveRespawnTime()
+ {
+-    if(m_respawnTime > time(NULL) && m_spawnedByDefault)
++    if (m_goData && m_goData->dbData && m_respawnTime > time(NULL) && m_spawnedByDefault)
+         GetMap()->GetPersistentState()->SaveGORespawnTime(GetGUIDLow(), m_respawnTime);
+ }
+ 
+@@ -896,6 +912,29 @@ void GameObject::ResetDoorOrButton()
+     m_cooldownTime = 0;
+ }
+ 
++void GameObject::SetGoArtKit(uint8 kit)
++{
++    SetUInt32Value(GAMEOBJECT_ARTKIT, kit);
++    GameObjectData* data = const_cast<GameObjectData*>(sObjectMgr.GetGOData(GetGUIDLow()));
++    if(data)
++        data->artKit = kit;
++}
++
++void GameObject::SetGoArtKit(uint8 artkit, GameObject* go, uint32 lowguid)
++{
++    const GameObjectData* data = NULL;
++    if(go)
++    {
++        go->SetGoArtKit(artkit);
++        data = go->GetGOData();
++    }
++    else if(lowguid)
++        data = sObjectMgr.GetGOData(lowguid);
++
++    if(data)
++        const_cast<GameObjectData*>(data)->artKit = artkit;
++}
++
+ void GameObject::UseDoorOrButton(uint32 time_to_restore, bool alternative /* = false */)
+ {
+     if(m_lootState != GO_READY)
+diff --git a/src/game/GameObject.h b/src/game/GameObject.h
+index 3769059..5b4b7d3 100644
+--- a/src/game/GameObject.h
++++ b/src/game/GameObject.h
+@@ -496,6 +496,7 @@ enum GOState
+ // from `gameobject`
+ struct GameObjectData
+ {
++    explicit GameObjectData() : dbData(true) {}
+     uint32 id;                                              // entry in gamobject_template
+     uint32 mapid;
+     float posX;
+@@ -509,6 +510,8 @@ struct GameObjectData
+     int32  spawntimesecs;
+     uint32 animprogress;
+     GOState go_state;
++    uint8 artKit;
++    bool dbData;
+ };
+ 
+ // For containers:  [GO_NOT_READY]->GO_READY (close)->GO_ACTIVATED (open) ->GO_JUST_DEACTIVATED->GO_READY        -> ...
+@@ -540,9 +543,10 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
+         void AddToWorld();
+         void RemoveFromWorld();
+ 
+-        bool Create(uint32 guidlow, uint32 name_id, Map *map, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 animprogress, GOState go_state);
++        bool Create(uint32 guidlow, uint32 name_id, Map *map, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 animprogress, GOState go_state, uint32 artKit = 0);
+         void Update(uint32 update_diff, uint32 p_time) override;
+         GameObjectInfo const* GetGOInfo() const;
++        GameObjectData const* GetGOData() const { return m_goData; }
+ 
+         bool IsTransport() const;
+ 
+@@ -610,7 +614,8 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
+         GOState GetGoState() const { return GOState(GetUInt32Value(GAMEOBJECT_STATE)); }
+         void SetGoState(GOState state) { SetUInt32Value(GAMEOBJECT_STATE, state); }
+         uint32 GetGoArtKit() const { return GetUInt32Value(GAMEOBJECT_ARTKIT); }
+-        void SetGoArtKit(uint32 artkit) { SetUInt32Value(GAMEOBJECT_ARTKIT, artkit); }
++        void SetGoArtKit(uint8 artkit);
++        static void SetGoArtKit(uint8 artkit, GameObject* go, uint32 lowguid = 0);
+         uint32 GetGoAnimProgress() const { return GetUInt32Value(GAMEOBJECT_ANIMPROGRESS); }
+         void SetGoAnimProgress(uint32 animprogress) { SetUInt32Value(GAMEOBJECT_ANIMPROGRESS, animprogress); }
+         uint32 GetDisplayId() const { return GetUInt32Value(GAMEOBJECT_DISPLAYID); }
+@@ -683,6 +688,7 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
+         GuidsSet m_UniqueUsers;                             // all players who use item, some items activated after specific amount unique uses
+ 
+         GameObjectInfo const* m_goInfo;
++        GameObjectData const* m_goData;
+     private:
+         void SwitchDoorOrButton(bool activate, bool alternative = false);
+ 
+diff --git a/src/game/Language.h b/src/game/Language.h
+index 4aceb49..ce93273 100644
+--- a/src/game/Language.h
++++ b/src/game/Language.h
+@@ -991,6 +991,26 @@ enum MangosStrings
+ 
+     // Use for not-in-offcial-sources patches
+     //                                    10000-10999
++    // opvp ep
++    LANG_OPVP_EP_CAPTURE_NORTHPASS_H    = 10000,
++    LANG_OPVP_EP_CAPTURE_NORTHPASS_A    = 10001,
++    LANG_OPVP_EP_CAPTURE_EASTWALL_H     = 10002,
++    LANG_OPVP_EP_CAPTURE_EASTWALL_A     = 10003,
++    LANG_OPVP_EP_CAPTURE_CROWNGUARD_H   = 10004,
++    LANG_OPVP_EP_CAPTURE_CROWNGUARD_A   = 10005,
++    LANG_OPVP_EP_CAPTURE_PLAGUEWOOD_H   = 10006,
++    LANG_OPVP_EP_CAPTURE_PLAGUEWOOD_A   = 10007,
++    LANG_OPVP_EP_LOOSE_NORTHPASS_H      = 10008,
++    LANG_OPVP_EP_LOOSE_NORTHPASS_A      = 10009,
++    LANG_OPVP_EP_LOOSE_EASTWALL_H       = 10010,
++    LANG_OPVP_EP_LOOSE_EASTWALL_A       = 10011,
++    LANG_OPVP_EP_LOOSE_CROWNGUARD_H     = 10012,
++    LANG_OPVP_EP_LOOSE_CROWNGUARD_A     = 10013,
++    LANG_OPVP_EP_LOOSE_PLAGUEWOOD_H     = 10014,
++    LANG_OPVP_EP_LOOSE_PLAGUEWOOD_A     = 10015,
++    // opvp si
++    LANG_OPVP_SI_CAPTURE_H              = 10016,
++    LANG_OPVP_SI_CAPTURE_A              = 10017,
+ 
+     // Use for custom patches             11000-11999
+ 
+diff --git a/src/game/MiscHandler.cpp b/src/game/MiscHandler.cpp
+index 1d2dce3..e367b4f 100644
+--- a/src/game/MiscHandler.cpp
++++ b/src/game/MiscHandler.cpp
+@@ -39,6 +39,7 @@
+ #include "ObjectAccessor.h"
+ #include "Object.h"
+ #include "BattleGround.h"
++#include "OutdoorPvP.h"
+ #include "Pet.h"
+ #include "SocialMgr.h"
+ 
+@@ -722,6 +723,12 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket & recv_data)
+         return;
+     }
+ 
++    if (OutdoorPvP* pvp = GetPlayer()->GetOutdoorPvP())
++    {
++        if (pvp->HandleAreaTrigger(_player, Trigger_ID))
++            return;
++    }
++
+     // NULL if all values default (non teleport trigger)
+     AreaTrigger const* at = sObjectMgr.GetAreaTrigger(Trigger_ID);
+     if (!at)
+diff --git a/src/game/Object.cpp b/src/game/Object.cpp
+index fc80ca7..11b7131 100644
+--- a/src/game/Object.cpp
++++ b/src/game/Object.cpp
+@@ -43,6 +43,7 @@
+ #include "ObjectPosSelector.h"
+ 
+ #include "TemporarySummon.h"
++#include "OutdoorPvPMgr.h"
+ 
+ Object::Object( )
+ {
+@@ -806,7 +807,7 @@ void Object::MarkForClientUpdate()
+ }
+ 
+ WorldObject::WorldObject()
+-    : m_isActiveObject(false), m_currMap(NULL), m_mapId(0), m_InstanceId(0)
++    : m_zoneScript(NULL), m_isActiveObject(false), m_currMap(NULL), m_mapId(0), m_InstanceId(0)
+ {
+ }
+ 
+@@ -1404,6 +1405,15 @@ void WorldObject::AddObjectToRemoveList()
+     GetMap()->AddObjectToRemoveList(this);
+ }
+ 
++void WorldObject::SetZoneScript()
++{
++    if (Map* map = FindMap())
++    {
++        if (!map->IsBattleGround() && !map->IsDungeon())
++            m_zoneScript = sOutdoorPvPMgr.GetZoneScript(GetZoneId());
++    }
++}
++
+ Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, float ang,TempSummonType spwtype,uint32 despwtime, bool asActiveObject)
+ {
+     CreatureInfo const *cinfo = ObjectMgr::GetCreatureTemplate(id);
+diff --git a/src/game/Object.h b/src/game/Object.h
+index 16fcad9..d4b4d84 100644
+--- a/src/game/Object.h
++++ b/src/game/Object.h
+@@ -65,6 +65,7 @@ class Map;
+ class UpdateMask;
+ class InstanceData;
+ class TerrainInfo;
++class ZoneScript;
+ 
+ typedef UNORDERED_MAP<Player*, UpdateData> UpdateDataMapType;
+ 
+@@ -558,12 +559,16 @@ class MANGOS_DLL_SPEC WorldObject : public Object
+ 
+         void SetMap(Map * map);
+         Map * GetMap() const { MANGOS_ASSERT(m_currMap); return m_currMap; }
++        Map* FindMap() const { return m_currMap; }
+         //used to check all object's GetMap() calls when object is not in world!
+         void ResetMap() { m_currMap = NULL; }
+ 
+         //obtain terrain data for map where this object belong...
+         TerrainInfo const* GetTerrain() const;
+ 
++        void SetZoneScript();
++        ZoneScript* GetZoneScript() const { return m_zoneScript; }
++
+         void AddToClientUpdateList();
+         void RemoveFromClientUpdateList();
+         void BuildUpdateData(UpdateDataMapType &);
+@@ -585,6 +590,7 @@ class MANGOS_DLL_SPEC WorldObject : public Object
+         void SetLocationMapId(uint32 _mapId) { m_mapId = _mapId; }
+         void SetLocationInstanceId(uint32 _instanceId) { m_InstanceId = _instanceId; }
+ 
++        ZoneScript* m_zoneScript;
+         std::string m_name;
+ 
+         bool m_isActiveObject;
+diff --git a/src/game/ObjectMgr.cpp b/src/game/ObjectMgr.cpp
+index 7a9fd6e..4659174 100644
+--- a/src/game/ObjectMgr.cpp
++++ b/src/game/ObjectMgr.cpp
+@@ -1042,6 +1042,97 @@ void ObjectMgr::RemoveCreatureFromGrid(uint32 guid, CreatureData const* data)
+     cell_guids.creatures.erase(guid);
+ }
+ 
++uint32 ObjectMgr::AddGOData(uint32 entry, uint32 mapId, float x, float y, float z, float o, uint32 spawntimedelay, float rotation0, float rotation1, float rotation2, float rotation3)
++{
++    GameObjectInfo const* goinfo = GetGameObjectInfo(entry);
++    Map* map = const_cast<Map*>(sMapMgr.FindMap(mapId));
++
++    if (!goinfo || !map)
++        return 0;
++
++    uint32 guid = map->GenerateLocalLowGuid(HIGHGUID_GAMEOBJECT);
++    GameObjectData& data = NewGOData(guid);
++    data.id             = entry;
++    data.mapid          = mapId;
++    data.posX           = x;
++    data.posY           = y;
++    data.posZ           = z;
++    data.orientation    = o;
++    data.rotation0      = rotation0;
++    data.rotation1      = rotation1;
++    data.rotation2      = rotation2;
++    data.rotation3      = rotation3;
++    data.spawntimesecs  = spawntimedelay;
++    data.animprogress   = 100;
++    data.go_state       = GO_STATE_READY;
++    data.artKit         = goinfo->type == GAMEOBJECT_TYPE_CAPTURE_POINT ? 21 : 0;
++    data.dbData = false;
++
++    AddGameobjectToGrid(guid, &data);
++
++    // Spawn if necessary (loaded grids only)
++    // We use spawn coords to spawn
++    if (!map->Instanceable() && map->IsLoaded(x, y))
++    {
++        GameObject* go = new GameObject;
++        if (!go->LoadFromDB(guid, map))
++        {
++            sLog.outError("AddGOData: cannot add gameobject entry %u to map", entry);
++            delete go;
++            return 0;
++        }
++        map->Add(go);
++    }
++
++    return guid;
++}
++
++uint32 ObjectMgr::AddCreData(uint32 entry, Team team, uint32 mapId, float x, float y, float z, float o, uint32 spawntimedelay)
++{
++    CreatureInfo const* cInfo = GetCreatureTemplate(entry);
++    Map* map = const_cast<Map*>(sMapMgr.FindMap(mapId));
++
++    if (!cInfo || !map)
++        return 0;
++
++    uint32 guid = map->GenerateLocalLowGuid(HIGHGUID_UNIT);
++    CreatureData& data = NewOrExistCreatureData(guid);
++    data.id = entry;
++    data.mapid = mapId;
++    data.modelid_override = 0;
++    data.equipmentId = cInfo->equipmentId;
++    data.posX = x;
++    data.posY = y;
++    data.posZ = z;
++    data.orientation = o;
++    data.spawntimesecs = spawntimedelay;
++    data.spawndist = 0;
++    data.currentwaypoint = 0;
++    data.curhealth = cInfo->maxhealth;
++    data.curmana = cInfo->maxmana;
++    data.is_dead = false;
++    data.movementType = cInfo->MovementType;
++    data.dbData = false;
++
++    AddCreatureToGrid(guid, &data);
++
++    // Spawn if necessary (loaded grids only)
++    // We use spawn coords to spawn
++    if (!map->Instanceable() && !map->IsRemovalGrid(x, y))
++    {
++        Creature* creature = new Creature;
++        if (!creature->LoadFromDB(guid, map))
++        {
++            sLog.outError("AddCreature: cannot add creature entry %u to map", entry);
++            delete creature;
++            return 0;
++        }
++        map->Add(creature);
++    }
++
++    return guid;
++}
++
+ void ObjectMgr::LoadGameobjects()
+ {
+     uint32 count = 0;
+@@ -4826,6 +4917,53 @@ bool ObjectMgr::AddGraveYardLink(uint32 id, uint32 zoneId, Team team, bool inDB)
+     return true;
+ }
+ 
++void ObjectMgr::RemoveGraveYardLink(uint32 id, uint32 zoneId, Team team, bool inDB)
++{
++    GraveYardMap::iterator graveLow  = mGraveYardMap.lower_bound(zoneId);
++    GraveYardMap::iterator graveUp   = mGraveYardMap.upper_bound(zoneId);
++    if (graveLow == graveUp)
++    {
++        //sLog.outErrorDb("Table `game_graveyard_zone` incomplete: Zone %u Team %u does not have a linked graveyard.",zoneId,team);
++        return;
++    }
++
++    bool found = false;
++
++    GraveYardMap::iterator itr;
++
++    for(itr = graveLow; itr != graveUp; ++itr)
++    {
++        GraveYardData & data = itr->second;
++
++        // skip not matching safezone id
++        if (data.safeLocId != id)
++            continue;
++
++        // skip enemy faction graveyard at same map (normal area, city, or battleground)
++        // team == 0 case can be at call from .neargrave
++        if (data.team != TEAM_NONE && team != TEAM_NONE && data.team != team)
++            continue;
++
++        found = true;
++        break;
++    }
++
++    // no match, return
++    if (!found)
++        return;
++
++    // remove from links
++    mGraveYardMap.erase(itr);
++
++    // remove link from DB
++    if (inDB)
++    {
++        WorldDatabase.PExecute("DELETE FROM game_graveyard_zone WHERE id = '%u' AND ghost_zone = '%u' AND faction = '%u'", id, zoneId, uint32(team));
++    }
++
++    return;
++}
++
+ void ObjectMgr::LoadAreaTriggerTeleports()
+ {
+     mAreaTriggers.clear();                                  // need for reload case
+diff --git a/src/game/ObjectMgr.h b/src/game/ObjectMgr.h
+index bb44731..db7bc77 100644
+--- a/src/game/ObjectMgr.h
++++ b/src/game/ObjectMgr.h
+@@ -524,6 +524,7 @@ class ObjectMgr
+ 
+         WorldSafeLocsEntry const *GetClosestGraveYard(float x, float y, float z, uint32 MapId, Team team);
+         bool AddGraveYardLink(uint32 id, uint32 zone, Team team, bool inDB = true);
++        void RemoveGraveYardLink(uint32 id, uint32 zone, Team team, bool inDB = false);
+         void LoadGraveyardZones();
+         GraveYardData const* FindGraveYardData(uint32 id, uint32 zone) const;
+ 
+@@ -847,6 +848,8 @@ class ObjectMgr
+         void RemoveGameobjectFromGrid(uint32 guid, GameObjectData const* data);
+         void AddCorpseCellData(uint32 mapid, uint32 cellid, uint32 player_guid, uint32 instance);
+         void DeleteCorpseCellData(uint32 mapid, uint32 cellid, uint32 player_guid);
++        uint32 AddGOData(uint32 entry, uint32 map, float x, float y, float z, float o, uint32 spawntimedelay = 0, float rotation0 = 0, float rotation1 = 0, float rotation2 = 0, float rotation3 = 0);
++        uint32 AddCreData(uint32 entry, Team team, uint32 map, float x, float y, float z, float o, uint32 spawntimedelay = 0);
+ 
+         // reserved names
+         void LoadReservedPlayersNames();
+diff --git a/src/game/OutdoorPvP.cpp b/src/game/OutdoorPvP.cpp
+new file mode 100644
+index 0000000..8405612
+--- /dev/null
++++ b/src/game/OutdoorPvP.cpp
+@@ -0,0 +1,601 @@
++/*
++ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
++ * Copyright (C) 2009-2010 MaNGOSZero <http://github.com/mangoszero/mangoszero/>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#include "OutdoorPvP.h"
++#include "OutdoorPvPMgr.h"
++#include "ObjectMgr.h"
++#include "Map.h"
++#include "Group.h"
++#include "WorldPacket.h"
++#include "GridNotifiers.h"
++#include "GridNotifiersImpl.h"
++#include "CellImpl.h"
++
++OPvPCapturePoint::OPvPCapturePoint(OutdoorPvP* pvp)
++: m_PvP(pvp), m_value(0), m_maxValue(0), m_team(TEAM_NEUTRAL),
++m_State(OBJECTIVESTATE_NEUTRAL), m_OldState(OBJECTIVESTATE_NEUTRAL), m_capturePointGUID(0), m_neutralValuePct(0),
++m_maxSpeed(0), m_capturePoint(NULL)
++{
++}
++
++bool OPvPCapturePoint::HandlePlayerEnter(Player* plr)
++{
++    if (m_capturePoint)
++    {
++        plr->SendUpdateWorldState(m_capturePoint->GetGOInfo()->capturePoint.worldState1, 1);
++        plr->SendUpdateWorldState(m_capturePoint->GetGOInfo()->capturePoint.worldstate2, (uint32)ceil((m_value + m_maxValue) / (2 * m_maxValue) * 100.0f));
++        plr->SendUpdateWorldState(m_capturePoint->GetGOInfo()->capturePoint.worldstate3, m_neutralValuePct);
++    }
++    return m_activePlayers[plr->GetTeamId()].insert(plr).second;
++}
++
++void OPvPCapturePoint::HandlePlayerLeave(Player* plr)
++{
++    if (m_capturePoint)
++        plr->SendUpdateWorldState(m_capturePoint->GetGOInfo()->capturePoint.worldState1, 0);
++    m_activePlayers[plr->GetTeamId()].erase(plr);
++}
++
++void OPvPCapturePoint::SendChangePhase()
++{
++    if (!m_capturePoint)
++        return;
++
++    // send this too, sometimes the slider disappears, dunno why :(
++    SendUpdateWorldState(m_capturePoint->GetGOInfo()->capturePoint.worldState1, 1);
++    // send these updates to only the ones in this objective
++    SendUpdateWorldState(m_capturePoint->GetGOInfo()->capturePoint.worldstate2, (uint32)ceil((m_value + m_maxValue) / (2 * m_maxValue) * 100.0f));
++    // send this too, sometimes it resets :S
++    SendUpdateWorldState(m_capturePoint->GetGOInfo()->capturePoint.worldstate3, m_neutralValuePct);
++}
++
++void OPvPCapturePoint::AddGO(uint32 type, uint32 guid, uint32 entry)
++{
++    if (!entry)
++    {
++        const GameObjectData* data = sObjectMgr.GetGOData(guid);
++        if(!data)
++            return;
++        entry = data->id;
++    }
++    m_Objects[type] = ObjectGuid(HIGHGUID_GAMEOBJECT, entry, guid);
++    m_ObjectTypes[m_Objects[type]] = type;
++}
++
++void OPvPCapturePoint::AddCre(uint32 type, uint32 guid, uint32 entry)
++{
++    if (!entry)
++    {
++        const CreatureData* data = sObjectMgr.GetCreatureData(guid);
++        if(!data)
++            return;
++        entry = data->id;
++    }
++    m_Creatures[type] = ObjectGuid(HIGHGUID_UNIT, entry, guid);
++    m_CreatureTypes[m_Creatures[type]] = type;
++}
++
++bool OPvPCapturePoint::AddObject(uint32 type, uint32 entry, uint32 map, float x, float y, float z, float o, float rotation0, float rotation1, float rotation2, float rotation3)
++{
++    if (uint32 guid = sObjectMgr.AddGOData(entry, map, x, y, z, o, 0, rotation0, rotation1, rotation2, rotation3))
++    {
++        AddGO(type, guid, entry);
++        return true;
++    }
++
++    return false;
++}
++
++bool OPvPCapturePoint::AddCreature(uint32 type, uint32 entry, Team team, uint32 map, float x, float y, float z, float o, uint32 spawntimedelay)
++{
++    if (uint32 guid = sObjectMgr.AddCreData(entry, team, map, x, y, z, o, spawntimedelay))
++    {
++        AddCre(type, guid, entry);
++        return true;
++    }
++
++    return false;
++}
++
++bool OPvPCapturePoint::SetCapturePointData(uint32 entry, uint32 map, float x, float y, float z, float o, float rotation0, float rotation1, float rotation2, float rotation3)
++{
++    sLog.outDebug("Creating capture point %u", entry);
++
++    // check info existence
++    GameObjectInfo const* goinfo = sObjectMgr.GetGameObjectInfo(entry);
++    if (!goinfo || goinfo->type != GAMEOBJECT_TYPE_CAPTURE_POINT)
++    {
++        sLog.outError("OutdoorPvP: GO %u is not capture point!", entry);
++        return false;
++    }
++
++    m_capturePointGUID = sObjectMgr.AddGOData(entry, map, x, y, z, o, 0, rotation0, rotation1, rotation2, rotation3);
++    if (!m_capturePointGUID)
++        return false;
++
++    // get the needed values from goinfo
++    m_maxValue = goinfo->capturePoint.maxTime;
++    m_maxSpeed = m_maxValue / (goinfo->capturePoint.minTime ? goinfo->capturePoint.minTime : 60);
++    m_neutralValuePct = goinfo->capturePoint.neutralPercent;
++    m_minValue = m_maxValue * goinfo->capturePoint.neutralPercent / 100;
++
++    return true;
++}
++
++bool OPvPCapturePoint::DelCreature(uint32 type)
++{
++    if (m_Creatures[type].IsEmpty())
++    {
++        sLog.outDebug("opvp creature type %u was already deleted", type);
++        return false;
++    }
++
++    if (!m_capturePoint)
++        return false;
++
++    Creature* cr = m_capturePoint->GetMap()->GetCreature(m_Creatures[type]);
++    if(!cr)
++    {
++        // can happen when closing the core
++        m_Creatures.erase(type); //m_Creatures[type] = 0;
++        return false;
++    }
++    sLog.outDebug("deleting opvp creature type %u", type);
++    uint32 guid = cr->GetGUIDLow();
++    // Don't save respawn time
++    cr->SetRespawnTime(0);
++    cr->RemoveCorpse();
++    // explicit removal from map
++    // beats me why this is needed, but with the recent removal "cleanup" some creatures stay in the map if "properly" deleted
++    // so this is a big fat workaround, if AddObjectToRemoveList and DoDelayedMovesAndRemoves worked correctly, this wouldn't be needed
++    //if (Map * map = MapManager::Instance().FindMap(cr->GetMapId()))
++    //    map->Remove(cr,false);
++    // delete respawn time for this creature
++    CharacterDatabase.PExecute("DELETE FROM creature_respawn WHERE guid = '%u'", guid);
++    cr->AddObjectToRemoveList();
++    sObjectMgr.DeleteCreatureData(guid);
++    m_CreatureTypes[m_Creatures[type]] = 0;
++    m_Creatures.erase(type);
++    return true;
++}
++
++bool OPvPCapturePoint::DelObject(uint32 type)
++{
++    if (m_Objects[type].IsEmpty())
++        return false;
++
++    if (!m_capturePoint)
++        return false;
++
++    GameObject* obj = m_capturePoint->GetMap()->GetGameObject(m_Objects[type]);
++    if (!obj)
++    {
++        m_Objects.erase(type); //m_Objects[type] = 0;
++        return false;
++    }
++    uint32 guid = obj->GetGUIDLow();
++    obj->SetRespawnTime(0);                                 // not save respawn time
++    obj->Delete();
++    sObjectMgr.DeleteGOData(guid);
++    m_ObjectTypes[m_Objects[type]] = 0;
++    m_Objects.erase(type);
++    return true;
++}
++
++bool OPvPCapturePoint::DelCapturePoint()
++{
++    sObjectMgr.DeleteGOData(m_capturePointGUID);
++    m_capturePointGUID = 0;
++
++    if (m_capturePoint)
++    {
++        m_capturePoint->SetRespawnTime(0);                                 // not save respawn time
++        m_capturePoint->Delete();
++    }
++
++    return true;
++}
++
++void OPvPCapturePoint::DeleteSpawns()
++{
++    for(std::map<uint32,ObjectGuid>::iterator itr = m_Objects.begin(); itr != m_Objects.end(); ++itr)
++        DelObject(itr->first);
++    for(std::map<uint32,ObjectGuid>::iterator itr = m_Creatures.begin(); itr != m_Creatures.end(); ++itr)
++        DelCreature(itr->first);
++    DelCapturePoint();
++}
++
++void OutdoorPvP::DeleteSpawns()
++{
++    for(OPvPCapturePointMap::iterator itr = m_capturePoints.begin(); itr != m_capturePoints.end(); ++itr)
++    {
++        itr->second->DeleteSpawns();
++        delete itr->second;
++    }
++    m_capturePoints.clear();
++}
++
++OutdoorPvP::OutdoorPvP()
++{
++}
++
++OutdoorPvP::~OutdoorPvP()
++{
++    DeleteSpawns();
++}
++
++void OutdoorPvP::HandlePlayerEnterZone(Player* plr, uint32 zone)
++{
++    m_players[plr->GetTeamId()].insert(plr);
++}
++
++void OutdoorPvP::HandlePlayerLeaveZone(Player* plr, uint32 zone)
++{
++    // inform the objectives of the leaving
++    for(OPvPCapturePointMap::iterator itr = m_capturePoints.begin(); itr != m_capturePoints.end(); ++itr)
++        itr->second->HandlePlayerLeave(plr);
++    // remove the world state information from the player (we can't keep everyone up to date, so leave out those who are not in the concerning zones)
++    if (!plr->GetSession()->PlayerLogout())
++        SendRemoveWorldStates(plr);
++    m_players[plr->GetTeamId()].erase(plr);
++    sLog.outDebug("Player %s left an outdoorpvp zone", plr->GetName());
++}
++
++bool OutdoorPvP::Update(uint32 diff)
++{
++    bool objective_changed = false;
++    for(OPvPCapturePointMap::iterator itr = m_capturePoints.begin(); itr != m_capturePoints.end(); ++itr)
++    {
++        if (itr->second->Update(diff))
++            objective_changed = true;
++    }
++    return objective_changed;
++}
++
++bool OPvPCapturePoint::Update(uint32 diff)
++{
++    if (!m_capturePoint)
++        return false;
++
++    float radius = m_capturePoint->GetGOInfo()->capturePoint.radius;
++
++    for(uint32 team = 0; team < 2; ++team)
++    {
++        for(PlayerSet::iterator itr = m_activePlayers[team].begin(); itr != m_activePlayers[team].end();)
++        {
++            Player* player = *itr;
++            ++itr;
++            if (!m_capturePoint->IsWithinDistInMap(player, radius) || !player->IsOutdoorPvPActive())
++                HandlePlayerLeave(player);
++        }
++    }
++
++    std::list<Player*> players;
++    std::list<Unit*> targets;
++
++    MaNGOS::AnyUnitInObjectRangeCheck u_check(m_capturePoint, radius);
++    MaNGOS::UnitListSearcher<MaNGOS::AnyUnitInObjectRangeCheck> searcher(targets, u_check);
++    Cell::VisitAllObjects(m_capturePoint, searcher, radius);
++
++    for(std::list<Unit *>::iterator itr = targets.begin(); itr != targets.end(); ++itr)
++        if ((*itr)->GetTypeId() == TYPEID_PLAYER)
++            players.push_back((Player*)(*itr));
++
++    for(std::list<Player*>::iterator itr = players.begin(); itr != players.end(); ++itr)
++    {
++        if ((*itr)->IsOutdoorPvPActive())
++        {
++            if (m_activePlayers[(*itr)->GetTeamId()].insert(*itr).second)
++                HandlePlayerEnter(*itr);
++        }
++    }
++
++    // get the difference of numbers
++    float fact_diff = ((float)m_activePlayers[0].size() - (float)m_activePlayers[1].size()) * diff / OUTDOORPVP_OBJECTIVE_UPDATE_INTERVAL;
++    if (!fact_diff)
++        return false;
++
++    uint32 Challenger = 0;
++    float maxDiff = m_maxSpeed * diff;
++
++    if (fact_diff < 0)
++    {
++        // horde is in majority, but it's already horde-controlled -> no change
++        if (m_State == OBJECTIVESTATE_HORDE && m_value <= -m_maxValue)
++            return false;
++
++        if (fact_diff < -maxDiff)
++            fact_diff = -maxDiff;
++
++        Challenger = HORDE;
++    }
++    else
++    {
++        // ally is in majority, but it's already ally-controlled -> no change
++        if (m_State == OBJECTIVESTATE_ALLIANCE && m_value >= m_maxValue)
++            return false;
++
++        if (fact_diff > maxDiff)
++            fact_diff = maxDiff;
++
++        Challenger = ALLIANCE;
++    }
++
++    float oldValue = m_value;
++    TeamId oldTeam = m_team;
++
++    m_OldState = m_State;
++
++    m_value += fact_diff;
++
++    if (m_value < -m_minValue) // red
++    {
++        if (m_value < -m_maxValue)
++            m_value = -m_maxValue;
++        m_State = OBJECTIVESTATE_HORDE;
++        m_team = TEAM_HORDE;
++    }
++    else if (m_value > m_minValue) // blue
++    {
++        if (m_value > m_maxValue)
++            m_value = m_maxValue;
++        m_State = OBJECTIVESTATE_ALLIANCE;
++        m_team = TEAM_ALLIANCE;
++    }
++    else if (oldValue * m_value <= 0) // grey, go through mid point
++    {
++        // if challenger is ally, then n->a challenge
++        if (Challenger == ALLIANCE)
++            m_State = OBJECTIVESTATE_NEUTRAL_ALLIANCE_CHALLENGE;
++        // if challenger is horde, then n->h challenge
++        else if (Challenger == HORDE)
++            m_State = OBJECTIVESTATE_NEUTRAL_HORDE_CHALLENGE;
++        m_team = TEAM_NEUTRAL;
++    }
++    else // grey, did not go through mid point
++    {
++        // old phase and current are on the same side, so one team challenges the other
++        if (Challenger == ALLIANCE && (m_OldState == OBJECTIVESTATE_HORDE || m_OldState == OBJECTIVESTATE_NEUTRAL_HORDE_CHALLENGE))
++            m_State = OBJECTIVESTATE_HORDE_ALLIANCE_CHALLENGE;
++        else if (Challenger == HORDE && (m_OldState == OBJECTIVESTATE_ALLIANCE || m_OldState == OBJECTIVESTATE_NEUTRAL_ALLIANCE_CHALLENGE))
++            m_State = OBJECTIVESTATE_ALLIANCE_HORDE_CHALLENGE;
++        m_team = TEAM_NEUTRAL;
++    }
++
++    if (m_value != oldValue)
++        SendChangePhase();
++
++    if (m_OldState != m_State)
++    {
++        //sLog.outError("%u->%u", m_OldState, m_State);
++        if (oldTeam != m_team)
++            ChangeTeam(oldTeam);
++
++        ChangeState();
++        return true;
++    }
++
++    return false;
++}
++
++void OutdoorPvP::SendUpdateWorldState(uint32 field, uint32 value)
++{
++    for(int i = 0; i < 2; ++i)
++        for(PlayerSet::iterator itr = m_players[i].begin(); itr != m_players[i].end(); ++itr)
++            (*itr)->SendUpdateWorldState(field, value);
++}
++
++void OPvPCapturePoint::SendUpdateWorldState(uint32 field, uint32 value)
++{
++    for(uint32 team = 0; team < 2; ++team)
++    {
++        // send to all players present in the area
++        for(PlayerSet::iterator itr = m_activePlayers[team].begin(); itr != m_activePlayers[team].end(); ++itr)
++            (*itr)->SendUpdateWorldState(field,value);
++    }
++}
++
++void OPvPCapturePoint::SendObjectiveComplete(uint32 id,uint64 guid)
++{
++    uint32 team;
++    switch(m_State)
++    {
++        case OBJECTIVESTATE_ALLIANCE:
++            team = 0;
++            break;
++        case OBJECTIVESTATE_HORDE:
++            team = 1;
++            break;
++        default:
++            return;
++    }
++
++    // send to all players present in the area
++    for(PlayerSet::iterator itr = m_activePlayers[team].begin(); itr != m_activePlayers[team].end(); ++itr)
++        (*itr)->KilledMonsterCredit(id);
++}
++
++void OutdoorPvP::HandleKill(Player* killer, Unit* killed)
++{
++    if (Group* pGroup = killer->GetGroup())
++    {
++        for(GroupReference* itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
++        {
++            Player* pGroupGuy = itr->getSource();
++
++            if (!pGroupGuy)
++                continue;
++
++            // skip if too far away
++            if (!pGroupGuy->IsAtGroupRewardDistance(killed))
++                continue;
++
++            // creature kills must be notified, even if not inside objective / not outdoor pvp active
++            // player kills only count if active and inside objective
++            if ((pGroupGuy->IsOutdoorPvPActive() && IsInsideObjective(pGroupGuy)) || killed->GetTypeId() == TYPEID_UNIT)
++                HandleKillImpl(pGroupGuy, killed);
++        }
++    }
++    else
++    {
++        // creature kills must be notified, even if not inside objective / not outdoor pvp active
++        if (killer && ((killer->IsOutdoorPvPActive() && IsInsideObjective(killer)) || killed->GetTypeId() == TYPEID_UNIT))
++            HandleKillImpl(killer, killed);
++    }
++}
++
++bool OutdoorPvP::IsInsideObjective(Player* plr) const
++{
++    for(OPvPCapturePointMap::const_iterator itr = m_capturePoints.begin(); itr != m_capturePoints.end(); ++itr)
++        if (itr->second->IsInsideObjective(plr))
++            return true;
++
++    return false;
++}
++
++bool OPvPCapturePoint::IsInsideObjective(Player* plr) const
++{
++    return m_activePlayers[plr->GetTeamId()].find(plr) != m_activePlayers[plr->GetTeamId()].end();
++}
++
++bool OutdoorPvP::HandleCustomSpell(Player* plr, uint32 spellId, GameObject* go)
++{
++    for(OPvPCapturePointMap::iterator itr = m_capturePoints.begin(); itr != m_capturePoints.end(); ++itr)
++        if (itr->second->HandleCustomSpell(plr, spellId, go))
++            return true;
++
++    return false;
++}
++
++bool OPvPCapturePoint::HandleCustomSpell(Player* plr, uint32 spellId, GameObject* go)
++{
++    if (!plr->IsOutdoorPvPActive())
++        return false;
++
++    return false;
++}
++
++bool OutdoorPvP::HandleOpenGo(Player* plr, ObjectGuid guid)
++{
++    for(OPvPCapturePointMap::iterator itr = m_capturePoints.begin(); itr != m_capturePoints.end(); ++itr)
++        if (itr->second->HandleOpenGo(plr,guid) >= 0)
++            return true;
++
++    return false;
++}
++
++bool OutdoorPvP::HandleGossipOption(Player* plr, uint64 guid, uint32 id)
++{
++    for(OPvPCapturePointMap::iterator itr = m_capturePoints.begin(); itr != m_capturePoints.end(); ++itr)
++        if (itr->second->HandleGossipOption(plr, guid, id))
++            return true;
++
++    return false;
++}
++
++bool OutdoorPvP::CanTalkTo(Player* plr, Creature* c, GossipMenuItems gso)
++{
++    for(OPvPCapturePointMap::iterator itr = m_capturePoints.begin(); itr != m_capturePoints.end(); ++itr)
++        if (itr->second->CanTalkTo(plr, c, gso))
++            return true;
++
++    return false;
++}
++
++bool OutdoorPvP::HandleDropFlag(Player* plr, uint32 id)
++{
++    for(OPvPCapturePointMap::iterator itr = m_capturePoints.begin(); itr != m_capturePoints.end(); ++itr)
++        if (itr->second->HandleDropFlag(plr, id))
++            return true;
++
++    return false;
++}
++
++bool OPvPCapturePoint::HandleGossipOption(Player* plr, uint64 guid, uint32 id)
++{
++    return false;
++}
++
++bool OPvPCapturePoint::CanTalkTo(Player* plr, Creature* c, GossipMenuItems gso)
++{
++    return false;
++}
++
++bool OPvPCapturePoint::HandleDropFlag(Player* plr, uint32 id)
++{
++    return false;
++}
++
++int32 OPvPCapturePoint::HandleOpenGo(Player* plr, ObjectGuid guid)
++{
++    std::map<ObjectGuid,uint32>::iterator itr = m_ObjectTypes.find(guid);
++    if (itr != m_ObjectTypes.end())
++    {
++        return itr->second;
++    }
++    return -1;
++}
++
++bool OutdoorPvP::HandleAreaTrigger(Player* plr, uint32 trigger)
++{
++    return false;
++}
++
++void OutdoorPvP::BroadcastPacket(WorldPacket &data) const
++{
++    // This is faster than sWorld.SendZoneMessage
++    for(uint32 team = 0; team < 2; ++team)
++        for(PlayerSet::const_iterator itr = m_players[team].begin(); itr != m_players[team].end(); ++itr)
++            (*itr)->GetSession()->SendPacket(&data);
++}
++
++void OutdoorPvP::RegisterZone(uint32 zoneId)
++{
++    sOutdoorPvPMgr.AddZone(zoneId, this);
++}
++
++bool OutdoorPvP::HasPlayer(Player* plr) const
++{
++    return m_players[plr->GetTeamId()].find(plr) != m_players[plr->GetTeamId()].end();
++}
++
++void OutdoorPvP::TeamCastSpell(TeamId team, int32 spellId)
++{
++    if (spellId > 0)
++        for (PlayerSet::iterator itr = m_players[team].begin(); itr != m_players[team].end(); ++itr)
++            (*itr)->CastSpell(*itr, (uint32)spellId, true);
++    else
++        for (PlayerSet::iterator itr = m_players[team].begin(); itr != m_players[team].end(); ++itr)
++            (*itr)->RemoveAurasDueToSpell((uint32)-spellId);
++}
++
++void OutdoorPvP::TeamApplyBuff(TeamId team, uint32 spellId, uint32 spellId2)
++{
++    TeamCastSpell(team, spellId);
++    TeamCastSpell(OTHER_TEAM(team), spellId2 ? -(int32)spellId2 : -(int32)spellId);
++}
++
++void OutdoorPvP::OnGameObjectCreate(GameObject* go, bool add)
++{
++    if (go->GetGoType() != GAMEOBJECT_TYPE_CAPTURE_POINT)
++        return;
++
++    if (OPvPCapturePoint* cp = GetCapturePoint(go->GetGUIDLow()))
++        cp->m_capturePoint = add ? go : NULL;
++}
+diff --git a/src/game/OutdoorPvP.h b/src/game/OutdoorPvP.h
+new file mode 100644
+index 0000000..95fab71
+--- /dev/null
++++ b/src/game/OutdoorPvP.h
+@@ -0,0 +1,255 @@
++/*
++ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
++ * Copyright (C) 2009-2010 MaNGOSZero <http://github.com/mangoszero/mangoszero/>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#ifndef OUTDOOR_PVP_H_
++#define OUTDOOR_PVP_H_
++
++#include "Util.h"
++#include "SharedDefines.h"
++#include "ZoneScript.h"
++
++class GameObject;
++
++enum OutdoorPvPTypes
++{
++    OUTDOOR_PVP_SI = 1,
++    OUTDOOR_PVP_EP,
++};
++
++const uint8 CapturePointArtKit[3] = {2, 1, 21};
++
++enum ObjectiveStates
++{
++    OBJECTIVESTATE_NEUTRAL = 0,
++    OBJECTIVESTATE_ALLIANCE,
++    OBJECTIVESTATE_HORDE,
++    OBJECTIVESTATE_NEUTRAL_ALLIANCE_CHALLENGE,
++    OBJECTIVESTATE_NEUTRAL_HORDE_CHALLENGE,
++    OBJECTIVESTATE_ALLIANCE_HORDE_CHALLENGE,
++    OBJECTIVESTATE_HORDE_ALLIANCE_CHALLENGE,
++};
++
++#define OTHER_TEAM(a) (a == TEAM_ALLIANCE ? TEAM_HORDE : TEAM_ALLIANCE)
++
++// struct for go spawning
++struct go_type
++{
++    uint32 entry;
++    uint32 map;
++    float x;
++    float y;
++    float z;
++    float o;
++    float rot0;
++    float rot1;
++    float rot2;
++    float rot3;
++};
++
++// struct for creature spawning
++struct creature_type
++{
++    uint32 entry;
++    Team teamval;
++    uint32 map;
++    float x;
++    float y;
++    float z;
++    float o;
++};
++
++// some class predefs
++class Player;
++class GameObject;
++class WorldPacket;
++class Creature;
++class Unit;
++struct GossipMenuItems;
++
++typedef std::set<Player*> PlayerSet;
++
++class OutdoorPvP;
++class OPvPCapturePoint
++{
++public:
++    OPvPCapturePoint(OutdoorPvP* pvp);
++
++    virtual void FillInitialWorldStates(WorldPacket & data) {}
++
++    // send world state update to all players present
++    void SendUpdateWorldState(uint32 field, uint32 value);
++    // send kill notify to players in the controlling faction
++    void SendObjectiveComplete(uint32 id, uint64 guid);
++
++    // used when player is activated/inactivated in the area
++    virtual bool HandlePlayerEnter(Player* plr);
++    virtual void HandlePlayerLeave(Player* plr);
++    //virtual void HandlePlayerActivityChanged(Player * plr);
++
++    // checks if player is in range of a capture credit marker
++    bool IsInsideObjective(Player* plr) const;
++
++    virtual bool HandleCustomSpell(Player* plr, uint32 spellId, GameObject* go);
++    virtual int32 HandleOpenGo(Player* plr, ObjectGuid guid);
++
++    // returns true if the state of the objective has changed, in this case, the OutdoorPvP must send a world state ui update.
++    virtual bool Update(uint32 diff);
++    virtual void ChangeState() = 0;
++    virtual void ChangeTeam(TeamId oldTeam) {}
++    virtual void SendChangePhase();
++
++    virtual bool HandleGossipOption(Player* plr, uint64 guid, uint32 gossipid);
++
++    virtual bool CanTalkTo(Player* plr, Creature* c, GossipMenuItems gso);
++
++    virtual bool HandleDropFlag(Player* plr, uint32 spellId);
++
++    virtual void DeleteSpawns();
++
++    uint32 m_capturePointGUID;
++    GameObject* m_capturePoint;
++
++    void AddGO(uint32 type, uint32 guid, uint32 entry = 0);
++    void AddCre(uint32 type, uint32 guid, uint32 entry = 0);
++    bool SetCapturePointData(uint32 entry, uint32 map, float x, float y, float z, float o = 0, float rotation0 = 0, float rotation1 = 0, float rotation2 = 0, float rotation3 = 0);
++
++protected:
++
++    bool AddObject(uint32 type, uint32 entry, uint32 map, float x, float y, float z, float o, float rotation0, float rotation1, float rotation2, float rotation3);
++    bool AddCreature(uint32 type, uint32 entry, Team teamval, uint32 map, float x, float y, float z, float o, uint32 spawntimedelay = 0);
++
++    bool DelCreature(uint32 type);
++    bool DelObject(uint32 type);
++    bool DelCapturePoint();
++
++protected:
++    // active players in the area of the objective, 0 - alliance, 1 - horde
++    PlayerSet m_activePlayers[2];
++    // total shift needed to capture the objective
++    float m_maxValue;
++    float m_minValue;
++    // maximum speed of capture
++    float m_maxSpeed;
++    // the status of the objective
++    float m_value;
++    TeamId m_team;
++    // objective states
++    ObjectiveStates m_OldState;
++    ObjectiveStates m_State;
++    // neutral value on capture bar
++    uint32 m_neutralValuePct;
++
++    // pointer to the OutdoorPvP this objective belongs to
++    OutdoorPvP* m_PvP;
++
++    // map to store the various gameobjects and creatures spawned by the objective
++    //        type , guid
++    std::map<uint32,ObjectGuid> m_Objects;
++    std::map<uint32,ObjectGuid> m_Creatures;
++    std::map<ObjectGuid,uint32> m_ObjectTypes;
++    std::map<ObjectGuid,uint32> m_CreatureTypes;
++};
++
++// base class for specific outdoor pvp handlers
++class OutdoorPvP : public ZoneScript
++{
++    friend class OutdoorPvPMgr;
++public:
++    // ctor
++    OutdoorPvP();
++    // dtor
++    ~OutdoorPvP();
++    // deletes all gos/creatures spawned by the pvp
++    void DeleteSpawns();
++
++    typedef std::map<uint32/*lowguid*/, OPvPCapturePoint*> OPvPCapturePointMap;
++
++    virtual void FillInitialWorldStates(WorldPacket & data) {}
++    // called when a player triggers an areatrigger
++    virtual bool HandleAreaTrigger(Player* plr, uint32 trigger);
++    // called on custom spell
++    virtual bool HandleCustomSpell(Player* plr, uint32 spellId, GameObject* go);
++    // called on go use
++    virtual bool HandleOpenGo(Player* plr, ObjectGuid guid);
++
++    // setup stuff
++    virtual bool SetupOutdoorPvP() {return true;}
++
++    void OnGameObjectCreate(GameObject* go, bool add);
++    void OnCreatureCreate(Creature *, bool add) {}
++
++    // send world state update to all players present
++    void SendUpdateWorldState(uint32 field, uint32 value);
++
++    // called by OutdoorPvPMgr, updates the objectives and if needed, sends new worldstateui information
++    virtual bool Update(uint32 diff);
++
++    // handle npc/player kill
++    virtual void HandleKill(Player* killer, Unit* killed);
++    virtual void HandleKillImpl(Player* killer, Unit* killed) {}
++
++    // checks if player is in range of a capture credit marker
++    bool IsInsideObjective(Player* plr) const;
++
++    // awards rewards for player kill
++    virtual void AwardKillBonus(Player* plr) {}
++
++    uint32 GetTypeId() {return m_TypeId;}
++
++    virtual bool HandleDropFlag(Player* plr, uint32 spellId);
++
++    virtual bool HandleGossipOption(Player* plr, uint64 guid, uint32 gossipid);
++
++    virtual bool CanTalkTo(Player* plr, Creature* c, GossipMenuItems gso);
++
++    void TeamApplyBuff(TeamId team, uint32 spellId, uint32 spellId2 = 0);
++protected:
++    // the map of the objectives belonging to this outdoorpvp
++    OPvPCapturePointMap m_capturePoints;
++
++    PlayerSet m_players[2];
++    uint32 m_TypeId;
++
++    // world state stuff
++    virtual void SendRemoveWorldStates(Player* plr) {}
++
++    void BroadcastPacket(WorldPacket & data) const;
++
++    virtual void HandlePlayerEnterZone(Player* plr, uint32 zone);
++    virtual void HandlePlayerLeaveZone(Player* plr, uint32 zone);
++
++    void AddCapturePoint(OPvPCapturePoint* cp)
++    {
++        m_capturePoints[cp->m_capturePointGUID] = cp;
++    }
++
++    OPvPCapturePoint* GetCapturePoint(uint32 lowguid) const
++    {
++        OutdoorPvP::OPvPCapturePointMap::const_iterator itr = m_capturePoints.find(lowguid);
++        if (itr != m_capturePoints.end())
++            return itr->second;
++        return NULL;
++    }
++
++    void RegisterZone(uint32 zoneid);
++    bool HasPlayer(Player* plr) const;
++    void TeamCastSpell(TeamId team, int32 spellId);
++};
++
++#endif /*OUTDOOR_PVP_H_*/
+diff --git a/src/game/OutdoorPvPEP.cpp b/src/game/OutdoorPvPEP.cpp
+new file mode 100644
+index 0000000..5e87efe
+--- /dev/null
++++ b/src/game/OutdoorPvPEP.cpp
+@@ -0,0 +1,466 @@
++/*
++ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
++ * Copyright (C) 2009-2010 MaNGOSZero <http://github.com/mangoszero/mangoszero/>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#include "OutdoorPvPEP.h"
++#include "OutdoorPvP.h"
++#include "OutdoorPvPMgr.h"
++#include "Player.h"
++#include "WorldPacket.h"
++#include "World.h"
++#include "ObjectMgr.h"
++#include "Language.h"
++
++const uint32 EP_LANG_LOOSE_A[EP_TOWER_NUM] = {LANG_OPVP_EP_LOOSE_CROWNGUARD_A,LANG_OPVP_EP_LOOSE_EASTWALL_A,LANG_OPVP_EP_LOOSE_NORTHPASS_A,LANG_OPVP_EP_LOOSE_PLAGUEWOOD_A};
++
++const uint32 EP_LANG_LOOSE_H[EP_TOWER_NUM] = {LANG_OPVP_EP_LOOSE_CROWNGUARD_H,LANG_OPVP_EP_LOOSE_EASTWALL_H,LANG_OPVP_EP_LOOSE_NORTHPASS_H,LANG_OPVP_EP_LOOSE_PLAGUEWOOD_H};
++
++const uint32 EP_LANG_CAPTURE_A[EP_TOWER_NUM] = {LANG_OPVP_EP_CAPTURE_CROWNGUARD_A,LANG_OPVP_EP_CAPTURE_EASTWALL_A,LANG_OPVP_EP_CAPTURE_NORTHPASS_A,LANG_OPVP_EP_CAPTURE_PLAGUEWOOD_A};
++
++const uint32 EP_LANG_CAPTURE_H[EP_TOWER_NUM] = {LANG_OPVP_EP_CAPTURE_CROWNGUARD_H,LANG_OPVP_EP_CAPTURE_EASTWALL_H,LANG_OPVP_EP_CAPTURE_NORTHPASS_H,LANG_OPVP_EP_CAPTURE_PLAGUEWOOD_H};
++
++OPvPCapturePointEP::OPvPCapturePointEP(OutdoorPvP* pvp,OutdoorPvPEPTowerType type)
++: OPvPCapturePoint(pvp), m_TowerType(type)
++{
++    SetCapturePointData(EPCapturePoints[type].entry,
++        EPCapturePoints[type].map,
++        EPCapturePoints[type].x,
++        EPCapturePoints[type].y,
++        EPCapturePoints[type].z,
++        EPCapturePoints[type].o,
++        EPCapturePoints[type].rot0,
++        EPCapturePoints[type].rot1,
++        EPCapturePoints[type].rot2,
++        EPCapturePoints[type].rot3);
++
++    for (uint8 i = 0; i < 2; i++)
++        AddObject(type+EP_TOWER_NUM*i,
++            EPTowerFlags[type+EP_TOWER_NUM*i].entry,
++            EPTowerFlags[type+EP_TOWER_NUM*i].map,
++            EPTowerFlags[type+EP_TOWER_NUM*i].x,
++            EPTowerFlags[type+EP_TOWER_NUM*i].y,
++            EPTowerFlags[type+EP_TOWER_NUM*i].z,
++            EPTowerFlags[type+EP_TOWER_NUM*i].o,
++            EPTowerFlags[type+EP_TOWER_NUM*i].rot0,
++            EPTowerFlags[type+EP_TOWER_NUM*i].rot1,
++            EPTowerFlags[type+EP_TOWER_NUM*i].rot2,
++            EPTowerFlags[type+EP_TOWER_NUM*i].rot3);
++
++    EP_TOWER_EVENT_TEAM[type] = TEAM_NONE;
++}
++
++OutdoorPvPEP::OutdoorPvPEP()
++{
++    m_TypeId = OUTDOOR_PVP_EP;
++}
++
++bool OutdoorPvPEP::SetupOutdoorPvP()
++{
++    m_AllianceTowersControlled = 0;
++    m_HordeTowersControlled = 0;
++
++    // add the zones affected by the pvp buff
++    for (uint8 i = 0; i < OutdoorPvPEPBuffZonesNum; ++i)
++        RegisterZone(OutdoorPvPEPBuffZones[i]);
++
++    AddCapturePoint(new OPvPCapturePointEP(this, EP_TOWER_CROWNGUARD));
++    AddCapturePoint(new OPvPCapturePointEP(this, EP_TOWER_EASTWALL));
++    AddCapturePoint(new OPvPCapturePointEP(this, EP_TOWER_NORTHPASS));
++    AddCapturePoint(new OPvPCapturePointEP(this, EP_TOWER_PLAGUEWOOD));
++
++    return true;
++}
++
++void OutdoorPvPEP::HandlePlayerEnterZone(Player* plr, uint32 zone)
++{
++    // add buffs
++    if (plr->GetTeam() == ALLIANCE)
++    {
++        if (m_AllianceTowersControlled > 0)
++            plr->CastSpell(plr, EP_AllianceBuffs[m_AllianceTowersControlled-1], true);
++    }
++    else
++    {
++        if (m_HordeTowersControlled > 0)
++            plr->CastSpell(plr, EP_HordeBuffs[m_HordeTowersControlled-1], true);
++    }
++    OutdoorPvP::HandlePlayerEnterZone(plr, zone);
++}
++
++void OutdoorPvPEP::HandlePlayerLeaveZone(Player* plr, uint32 zone)
++{
++    // remove buffs
++    if (plr->GetTeam() == ALLIANCE)
++    {
++        for (uint8 i = 0; i < OutdoorPvPEPTeamsBuffNum; ++i)
++            plr->RemoveAurasDueToSpell(EP_AllianceBuffs[i]);
++    }
++    else
++    {
++        for (uint8 i = 0; i < OutdoorPvPEPTeamsBuffNum; ++i)
++            plr->RemoveAurasDueToSpell(EP_HordeBuffs[i]);
++    }
++    OutdoorPvP::HandlePlayerLeaveZone(plr, zone);
++}
++
++bool OutdoorPvPEP::Update(uint32 diff)
++{
++    bool changed = false;
++    if (changed = OutdoorPvP::Update(diff))
++    {
++        for (uint8 i = 0; i < OutdoorPvPEPTeamsBuffNum; ++i)
++        {
++            TeamCastSpell(TEAM_ALLIANCE, -EP_AllianceBuffs[i]);
++            TeamCastSpell(TEAM_HORDE, -EP_HordeBuffs[i]);
++        }
++
++        uint32 AllianceBuff = m_AllianceTowersControlled > 0 ? EP_AllianceBuffs[m_AllianceTowersControlled-1] : 0;
++        uint32 HordeBuff = m_HordeTowersControlled > 0 ? EP_HordeBuffs[m_HordeTowersControlled-1] : 0;
++        if (m_AllianceTowersControlled > 0)
++            TeamApplyBuff(TEAM_ALLIANCE, AllianceBuff);
++        if (m_HordeTowersControlled > 0)
++            TeamApplyBuff(TEAM_HORDE, HordeBuff);
++
++        SendUpdateWorldState(EP_UI_TOWER_COUNT_A, m_AllianceTowersControlled);
++        SendUpdateWorldState(EP_UI_TOWER_COUNT_H, m_HordeTowersControlled);
++    }
++    return changed;
++}
++
++void OutdoorPvPEP::SendRemoveWorldStates(Player *plr)
++{
++    plr->SendUpdateWorldState(EP_UI_TOWER_COUNT_A,0);
++    plr->SendUpdateWorldState(EP_UI_TOWER_COUNT_H,0);
++    plr->SendUpdateWorldState(EP_UI_TOWER_SLIDER_DISPLAY,0);
++    plr->SendUpdateWorldState(EP_UI_TOWER_SLIDER_POS,0);
++    plr->SendUpdateWorldState(EP_UI_TOWER_SLIDER_N,0);
++
++    for (uint8 i = 0; i < EP_TOWER_NUM; ++i)
++    {
++        plr->SendUpdateWorldState(EP_MAP_N[i],0);
++        plr->SendUpdateWorldState(EP_MAP_A[i],0);
++        plr->SendUpdateWorldState(EP_MAP_H[i],0);
++        plr->SendUpdateWorldState(EP_MAP_N_A[i],0);
++        plr->SendUpdateWorldState(EP_MAP_N_H[i],0);
++    }
++}
++
++void OutdoorPvPEP::FillInitialWorldStates(WorldPacket &data)
++{
++    data << EP_UI_TOWER_COUNT_A << m_AllianceTowersControlled;
++    data << EP_UI_TOWER_COUNT_H << m_HordeTowersControlled;
++    data << EP_UI_TOWER_SLIDER_DISPLAY << uint32(0);
++    data << EP_UI_TOWER_SLIDER_POS << uint32(50);
++    data << EP_UI_TOWER_SLIDER_N << uint32(100);
++    for (OPvPCapturePointMap::iterator itr = m_capturePoints.begin(); itr != m_capturePoints.end(); ++itr)
++    {
++        itr->second->FillInitialWorldStates(data);
++    }
++}
++
++void OPvPCapturePointEP::ChangeState()
++{
++    uint32 field = 0;
++    switch (m_OldState)
++    {
++    case OBJECTIVESTATE_NEUTRAL:
++        field = EP_MAP_N[m_TowerType];
++        break;
++    case OBJECTIVESTATE_ALLIANCE:
++        field = EP_MAP_A[m_TowerType];
++        if (((OutdoorPvPEP*)m_PvP)->m_AllianceTowersControlled)
++            ((OutdoorPvPEP*)m_PvP)->m_AllianceTowersControlled--;
++        sWorld.SendZoneText(OutdoorPvPEPBuffZones[0], sObjectMgr.GetMangosStringForDBCLocale(EP_LANG_LOOSE_A[m_TowerType]));
++        break;
++    case OBJECTIVESTATE_HORDE:
++        field = EP_MAP_H[m_TowerType];
++        if (((OutdoorPvPEP*)m_PvP)->m_HordeTowersControlled)
++            ((OutdoorPvPEP*)m_PvP)->m_HordeTowersControlled--;
++        sWorld.SendZoneText(OutdoorPvPEPBuffZones[0], sObjectMgr.GetMangosStringForDBCLocale(EP_LANG_LOOSE_H[m_TowerType]));
++        break;
++    case OBJECTIVESTATE_NEUTRAL_ALLIANCE_CHALLENGE:
++    case OBJECTIVESTATE_ALLIANCE_HORDE_CHALLENGE:
++        field = EP_MAP_N_A[m_TowerType];
++        break;
++    case OBJECTIVESTATE_NEUTRAL_HORDE_CHALLENGE:
++    case OBJECTIVESTATE_HORDE_ALLIANCE_CHALLENGE:
++        field = EP_MAP_N_H[m_TowerType];
++        break;
++    }
++
++    // send world state update
++    if (field)
++    {
++        m_PvP->SendUpdateWorldState(field, 0);
++        field = 0;
++    }
++
++    uint32 artkit = 21;
++    switch (m_State)
++    {
++        case OBJECTIVESTATE_NEUTRAL:
++            field = EP_MAP_N[m_TowerType];
++            break;
++        case OBJECTIVESTATE_ALLIANCE:
++            field = EP_MAP_A[m_TowerType];
++            artkit = 2;
++            if (((OutdoorPvPEP*)m_PvP)->m_AllianceTowersControlled<4)
++                ((OutdoorPvPEP*)m_PvP)->m_AllianceTowersControlled++;
++            sWorld.SendZoneText(OutdoorPvPEPBuffZones[0], sObjectMgr.GetMangosStringForDBCLocale(EP_LANG_CAPTURE_A[m_TowerType]));
++            break;
++        case OBJECTIVESTATE_HORDE:
++            field = EP_MAP_H[m_TowerType];
++            artkit = 1;
++            if (((OutdoorPvPEP*)m_PvP)->m_HordeTowersControlled<4)
++                ((OutdoorPvPEP*)m_PvP)->m_HordeTowersControlled++;
++            sWorld.SendZoneText(OutdoorPvPEPBuffZones[0], sObjectMgr.GetMangosStringForDBCLocale(EP_LANG_CAPTURE_H[m_TowerType]));
++            break;
++        case OBJECTIVESTATE_NEUTRAL_ALLIANCE_CHALLENGE:
++        case OBJECTIVESTATE_ALLIANCE_HORDE_CHALLENGE:
++            field = EP_MAP_N_A[m_TowerType];
++            break;
++        case OBJECTIVESTATE_NEUTRAL_HORDE_CHALLENGE:
++        case OBJECTIVESTATE_HORDE_ALLIANCE_CHALLENGE:
++            field = EP_MAP_N_H[m_TowerType];
++            break;
++    }
++
++    UpdateTowerEvents();
++
++    if (m_capturePoint)
++    {
++        m_capturePoint->SetGoArtKit(artkit);
++
++        if (GameObject* flag = m_capturePoint->GetMap()->GetGameObject(m_Objects[m_TowerType]))
++            flag->SetGoArtKit(artkit);
++
++        if (GameObject* flag2 = m_capturePoint->GetMap()->GetGameObject(m_Objects[m_TowerType+EP_TOWER_NUM]))
++            flag2->SetGoArtKit(artkit);
++    }
++
++    // send world state update
++    if (field)
++        m_PvP->SendUpdateWorldState(field, 1);
++
++    // complete quest objective
++    if (m_State == OBJECTIVESTATE_ALLIANCE || m_State == OBJECTIVESTATE_HORDE)
++        SendObjectiveComplete(EP_CREDITMARKER[m_TowerType], 0);
++}
++
++void OPvPCapturePointEP::SendChangePhase()
++{
++    SendUpdateWorldState(EP_UI_TOWER_SLIDER_N, m_neutralValuePct);
++    // send these updates to only the ones in this objective
++    uint32 phase = (uint32)ceil((m_value + m_maxValue) / (2 * m_maxValue) * 100.0f);
++    SendUpdateWorldState(EP_UI_TOWER_SLIDER_POS, phase);
++    SendUpdateWorldState(EP_UI_TOWER_SLIDER_DISPLAY, 1);
++}
++
++void OPvPCapturePointEP::FillInitialWorldStates(WorldPacket &data)
++{
++    switch (m_State)
++    {
++        case OBJECTIVESTATE_ALLIANCE:
++            data << uint32(EP_MAP_N[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_A[m_TowerType]) << uint32(1);
++            data << uint32(EP_MAP_H[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_N_A[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_N_H[m_TowerType]) << uint32(0);
++            break;
++        case OBJECTIVESTATE_HORDE:
++            data << uint32(EP_MAP_N[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_A[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_H[m_TowerType]) << uint32(1);
++            data << uint32(EP_MAP_N_A[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_N_H[m_TowerType]) << uint32(0);
++            break;
++        case OBJECTIVESTATE_NEUTRAL_ALLIANCE_CHALLENGE:
++        case OBJECTIVESTATE_ALLIANCE_HORDE_CHALLENGE:
++            data << uint32(EP_MAP_N[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_A[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_H[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_N_A[m_TowerType]) << uint32(1);
++            data << uint32(EP_MAP_N_H[m_TowerType]) << uint32(0);
++            break;
++        case OBJECTIVESTATE_NEUTRAL_HORDE_CHALLENGE:
++        case OBJECTIVESTATE_HORDE_ALLIANCE_CHALLENGE:
++            data << uint32(EP_MAP_N[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_A[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_H[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_N_A[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_N_H[m_TowerType]) << uint32(1);
++            break;
++        case OBJECTIVESTATE_NEUTRAL:
++        default:
++            data << uint32(EP_MAP_N[m_TowerType]) << uint32(1);
++            data << uint32(EP_MAP_A[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_H[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_N_A[m_TowerType]) << uint32(0);
++            data << uint32(EP_MAP_N_H[m_TowerType]) << uint32(0);
++            break;
++    }
++}
++
++bool OPvPCapturePointEP::HandlePlayerEnter(Player* plr)
++{
++    if (OPvPCapturePoint::HandlePlayerEnter(plr))
++    {
++        plr->SendUpdateWorldState(EP_UI_TOWER_SLIDER_DISPLAY, 1);
++        uint32 phase = (uint32)ceil((m_value + m_maxValue) / (2 * m_maxValue) * 100.0f);
++        plr->SendUpdateWorldState(EP_UI_TOWER_SLIDER_POS, phase);
++        plr->SendUpdateWorldState(EP_UI_TOWER_SLIDER_N, m_neutralValuePct);
++        return true;
++    }
++    return false;
++}
++
++void OPvPCapturePointEP::HandlePlayerLeave(Player* plr)
++{
++    plr->SendUpdateWorldState(EP_UI_TOWER_SLIDER_DISPLAY, 0);
++    OPvPCapturePoint::HandlePlayerLeave(plr);
++}
++
++// Tower specific events
++void OPvPCapturePointEP::UpdateTowerEvents()
++{
++    if (m_State == OBJECTIVESTATE_ALLIANCE || m_State == OBJECTIVESTATE_HORDE)
++    {
++        Team team = (m_State == OBJECTIVESTATE_ALLIANCE) ? ALLIANCE : HORDE;
++        switch (m_TowerType)
++        {
++            case EP_TOWER_CROWNGUARD:
++                LinkGraveYard(team);
++                break;
++            case EP_TOWER_EASTWALL:
++                SummonSupportUnits(team);
++                break;
++            case EP_TOWER_NORTHPASS:
++                SummonShrine(team);
++                break;
++            case EP_TOWER_PLAGUEWOOD:
++                SummonFlightMaster(team);
++                break;
++        }
++    }
++    else if (m_OldState == OBJECTIVESTATE_ALLIANCE || m_OldState == OBJECTIVESTATE_HORDE)
++    {
++        switch (m_TowerType)
++        {
++            case EP_TOWER_CROWNGUARD:
++                UnlinkGraveYard();
++                break;
++            case EP_TOWER_EASTWALL:
++                UnsummonSupportUnits();
++                break;
++            case EP_TOWER_NORTHPASS:
++                UnsummonShrine();
++                break;
++            case EP_TOWER_PLAGUEWOOD:
++                UnsummonFlightMaster();
++                break;
++        }
++    }
++}
++
++void OPvPCapturePointEP::LinkGraveYard(Team team)
++{
++    if (EP_TOWER_EVENT_TEAM[EP_TOWER_CROWNGUARD] != team)
++    {
++        EP_TOWER_EVENT_TEAM[EP_TOWER_CROWNGUARD] = team;
++        sObjectMgr.RemoveGraveYardLink(EP_GraveYardId, EP_GraveYardZone, team, false);
++        sObjectMgr.AddGraveYardLink(EP_GraveYardId, EP_GraveYardZone, team, false);
++    }
++}
++
++void OPvPCapturePointEP::UnlinkGraveYard()
++{
++    sObjectMgr.RemoveGraveYardLink(EP_GraveYardId, EP_GraveYardZone, EP_TOWER_EVENT_TEAM[EP_TOWER_CROWNGUARD], false);
++    EP_TOWER_EVENT_TEAM[EP_TOWER_CROWNGUARD] = TEAM_NONE;
++}
++
++void OPvPCapturePointEP::SummonSupportUnits(Team team)
++{
++    if (EP_TOWER_EVENT_TEAM[EP_TOWER_EASTWALL] != team)
++    {
++        EP_TOWER_EVENT_TEAM[EP_TOWER_EASTWALL] = team;
++        const creature_type * ct = NULL;
++        if (team == ALLIANCE)
++            ct=EP_EWT_Summons_A;
++        else
++            ct=EP_EWT_Summons_H;
++
++        for (uint8 i = 0; i < EP_EWT_NUM_CREATURES; ++i)
++        {
++            DelCreature(i);
++            AddCreature(i,ct[i].entry,ct[i].teamval,ct[i].map,ct[i].x,ct[i].y,ct[i].z,ct[i].o,1000000);
++            if (Creature* c = m_capturePoint->GetMap()->GetCreature(m_Creatures[i]))
++                c->UpdateEntry(c->GetEntry(), team);
++        }
++    }
++}
++
++void OPvPCapturePointEP::UnsummonSupportUnits()
++{
++    for (uint8 i = 0; i < EP_EWT_NUM_CREATURES; ++i)
++        DelCreature(i);
++    EP_TOWER_EVENT_TEAM[EP_TOWER_EASTWALL] = TEAM_NONE;
++}
++
++void OPvPCapturePointEP::SummonShrine(Team team)
++{
++    if (EP_TOWER_EVENT_TEAM[EP_TOWER_NORTHPASS] != team)
++    {
++        EP_TOWER_EVENT_TEAM[EP_TOWER_NORTHPASS] = team;
++        DelObject(EP_NPT_SHRINE);
++        AddObject(EP_NPT_SHRINE,EP_NPT_LordaeronShrine.entry,EP_NPT_LordaeronShrine.map,EP_NPT_LordaeronShrine.x,EP_NPT_LordaeronShrine.y,EP_NPT_LordaeronShrine.z,EP_NPT_LordaeronShrine.o,EP_NPT_LordaeronShrine.rot0,EP_NPT_LordaeronShrine.rot1,EP_NPT_LordaeronShrine.rot2,EP_NPT_LordaeronShrine.rot3);
++        if (m_capturePoint)
++            if (GameObject* go = m_capturePoint->GetMap()->GetGameObject((m_Objects[EP_NPT_SHRINE])))
++                go->SetUInt32Value(GAMEOBJECT_FACTION, (team == ALLIANCE ? 84 : 83));
++
++        DelObject(EP_NPT_SHRINE_AURA);
++        uint32 shrineEntry = (team == ALLIANCE ? EP_NPT_LordaeronShrineAura.entry : EP_NPT_LordaeronShrineAura.entry + 1);
++        AddObject(EP_NPT_SHRINE_AURA,shrineEntry,EP_NPT_LordaeronShrineAura.map,EP_NPT_LordaeronShrineAura.x,EP_NPT_LordaeronShrineAura.y,EP_NPT_LordaeronShrineAura.z,EP_NPT_LordaeronShrineAura.o,EP_NPT_LordaeronShrineAura.rot0,EP_NPT_LordaeronShrineAura.rot1,EP_NPT_LordaeronShrineAura.rot2,EP_NPT_LordaeronShrineAura.rot3);
++
++    }
++}
++
++void OPvPCapturePointEP::UnsummonShrine()
++{
++    DelObject(EP_NPT_SHRINE);
++    DelObject(EP_NPT_SHRINE_AURA);
++    EP_TOWER_EVENT_TEAM[EP_TOWER_NORTHPASS] = TEAM_NONE;
++}
++
++void OPvPCapturePointEP::SummonFlightMaster(Team team)
++{
++    if (EP_TOWER_EVENT_TEAM[EP_TOWER_PLAGUEWOOD] != team)
++    {
++        EP_TOWER_EVENT_TEAM[EP_TOWER_PLAGUEWOOD] = team;
++        DelCreature(EP_PWT_FLIGHTMASTER);
++        AddCreature(EP_PWT_FLIGHTMASTER,EP_PWT_FlightMaster.entry,team,EP_PWT_FlightMaster.map,EP_PWT_FlightMaster.x,EP_PWT_FlightMaster.y,EP_PWT_FlightMaster.z,EP_PWT_FlightMaster.o);
++        if (m_capturePoint)
++            if (Creature* c = m_capturePoint->GetMap()->GetCreature(m_Creatures[EP_PWT_FLIGHTMASTER]))
++                c->UpdateEntry(c->GetEntry(), team);
++    }
++}
++
++void OPvPCapturePointEP::UnsummonFlightMaster()
++{
++    DelCreature(EP_PWT_FLIGHTMASTER);
++    EP_TOWER_EVENT_TEAM[EP_TOWER_PLAGUEWOOD] = TEAM_NONE;
++}
+diff --git a/src/game/OutdoorPvPEP.h b/src/game/OutdoorPvPEP.h
+new file mode 100644
+index 0000000..dc24e1a
+--- /dev/null
++++ b/src/game/OutdoorPvPEP.h
+@@ -0,0 +1,182 @@
++/*
++ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
++ * Copyright (C) 2009-2010 MaNGOSZero <http://github.com/mangoszero/mangoszero/>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#ifndef OUTDOOR_PVP_EP_
++#define OUTDOOR_PVP_EP_
++
++#include "OutdoorPvP.h"
++
++#define OutdoorPvPEPBuffZonesNum 3
++#define OutdoorPvPEPTeamsBuffNum 4
++                                                         //  Eastern Plaguelands, Stratholme and Scholomance
++const uint32 OutdoorPvPEPBuffZones[OutdoorPvPEPBuffZonesNum] = {139, 2017, 2057};
++
++const int EP_AllianceBuffs[OutdoorPvPEPTeamsBuffNum] = {11413, 11414, 11415, 1386};
++const int EP_HordeBuffs[OutdoorPvPEPTeamsBuffNum] = {30880, 30683, 30682, 29520};
++
++const uint32 EP_GraveYardZone = 139;
++const uint32 EP_GraveYardId = 927;
++
++enum OutdoorPvPEPTowerType
++{
++    EP_TOWER_CROWNGUARD = 0,
++    EP_TOWER_EASTWALL,
++    EP_TOWER_NORTHPASS,
++    EP_TOWER_PLAGUEWOOD,
++    EP_TOWER_NUM
++};
++
++const uint32 EP_CREDITMARKER[EP_TOWER_NUM] = {17689,17690,17696,17698};
++
++const uint32 EP_MAP_N[EP_TOWER_NUM] = {2355,2361,2352,2353};
++const uint32 EP_MAP_A[EP_TOWER_NUM] = {2378,2354,2372,2370};
++const uint32 EP_MAP_H[EP_TOWER_NUM] = {2379,2356,2373,2371};
++const uint32 EP_MAP_N_A[EP_TOWER_NUM] = {2374,2359,2362,2366};
++const uint32 EP_MAP_N_H[EP_TOWER_NUM] = {2375,2360,2363,2353}; // plaguewood tower has incorrect display value (2353 as well as logical 2367 is wrong)
++
++const uint32 EP_TAXI_NODE[EP_TOWER_NUM] = {84,85,86,87};
++
++enum OutdoorPvPEPWorldStates
++{
++    EP_UI_TOWER_SLIDER_DISPLAY = 2426,
++    EP_UI_TOWER_SLIDER_POS = 2427,
++    EP_UI_TOWER_SLIDER_N = 2428,
++
++    EP_UI_TOWER_COUNT_A = 2327,
++    EP_UI_TOWER_COUNT_H = 2328
++};
++
++enum EP_Summons
++{
++    EP_EWT_COMMANDER = 0,
++    EP_EWT_SOLDIER1,
++    EP_EWT_SOLDIER2,
++    EP_EWT_SOLDIER3,
++    EP_EWT_SOLDIER4,
++    EP_PWT_FLIGHTMASTER,
++};
++
++enum EP_GoSummons
++{
++    EP_NPT_SHRINE = EP_TOWER_NUM,
++    EP_NPT_SHRINE_AURA,
++};
++
++const go_type EPCapturePoints[EP_TOWER_NUM] =
++{
++    {182096,0,1860.85f,-3731.23f,196.716f,-2.53214f,0.033967f,-0.131914f,0.944741f,-0.298177f},
++    {182097,0,2574.51f,-4794.89f,144.704f,-1.45003f,-0.097056f,0.095578f,-0.656229f,0.742165f},
++    {181899,0,3181.08f,-4379.36f,174.123f,-2.03472f,-0.065392f,0.119494f,-0.842275f,0.521553f},
++    {182098,0,2962.71f,-3042.31f,154.789f,2.08426f,-0.074807f,-0.113837f,0.855928f,0.49883f}
++};
++
++const go_type EPTowerFlags[EP_TOWER_NUM*2] =
++{
++    {182106,0,1877.6f,-3716.76f,167.188f,1.74533f,0,0,0.766044f,0.642788f}, // flags left side
++    {182106,0,2569.6f,-4772.93f,115.399f,2.72271f,0,0,0.978148f,0.207912f},
++    {182106,0,3188.76f,-4358.5f,144.555f,1.97222f,0,0,0.833886f,0.551937f},
++    {182106,0,2975.5f,-3060.36f,125.108f,-1.0472f,0,0,0.5f,-0.866025f},
++    {182106,0,1838.42f,-3703.56f,167.713f,0.890118f,0,0,0.430511f,0.902585f}, // flags right side
++    {182106,0,2539.61f,-4801.55f,115.766f,2.00713f,0,0,0.843391f,0.5373f},
++    {182106,0,3148.17f,-4365.51f,145.029f,1.53589f,0,0,0.694658f,0.71934f},
++    {182106,0,2992.63f,-3022.95f,125.593f,3.03687f,0,0,0.99863f,0.052336f}
++};
++
++const uint32 EPTowerPlayerEnterEvents[EP_TOWER_NUM] = {10705,10691,10699,10701};
++const uint32 EPTowerPlayerLeaveEvents[EP_TOWER_NUM] = {10704,10692,10698,10700};
++
++const uint32 EP_NUM_CREATURES = 6;
++const uint32 EP_EWT_NUM_CREATURES = 5;
++
++// one lordaeron commander, 4 soldiers
++// should be spawned at EWT and follow a path, but trans-grid pathing isn't safe, so summon them directly at NPT
++const creature_type EP_EWT_Summons_A[EP_EWT_NUM_CREATURES] =
++{
++    {17635,ALLIANCE,0, 3167.61f,-4352.09f,138.20f,4.5811f},
++    {17647,ALLIANCE,0, 3172.74f,-4352.99f,139.14f,4.9873f},
++    {17647,ALLIANCE,0, 3165.89f,-4354.46f,138.67f,3.7244f},
++    {17647,ALLIANCE,0, 3164.65f,-4350.26f,138.22f,2.4794f},
++    {17647,ALLIANCE,0, 3169.91f,-4349.68f,138.37f,0.7444f}
++};
++
++const creature_type EP_EWT_Summons_H[EP_EWT_NUM_CREATURES] =
++{
++    {17995,HORDE,0, 3167.61f,-4352.09f,138.20f,4.5811f},
++    {17996,HORDE,0, 3172.74f,-4352.99f,139.14f,4.9873f},
++    {17996,HORDE,0, 3165.89f,-4354.46f,138.67f,3.7244f},
++    {17996,HORDE,0, 3164.65f,-4350.26f,138.22f,2.4794f},
++    {17996,HORDE,0, 3169.91f,-4349.68f,138.37f,0.7444f}
++};
++
++enum EP_TowerStates
++{
++    EP_TS_N = 1,
++    EP_TS_A = 32,
++    EP_TS_H = 64
++};
++
++const creature_type EP_PWT_FlightMaster = {17209,TEAM_NONE,0,2987.5f,-3049.11f,120.126f,5.75959f};
++
++const go_type EP_NPT_LordaeronShrine = {181682,0,3167.72f,-4355.91f,138.785f,1.69297f,0,0,0.748956f,0.66262f};
++const go_type EP_NPT_LordaeronShrineAura = {180100,0,3167.72f,-4355.91f,138.785f,1.69297f,0,0,0.748956f,0.66262f};
++
++class OPvPCapturePointEP : public OPvPCapturePoint
++{
++public:
++    OPvPCapturePointEP(OutdoorPvP* pvp, OutdoorPvPEPTowerType type);
++    void ChangeState();
++    void SendChangePhase();
++    void FillInitialWorldStates(WorldPacket & data);
++    // used when player is activated/inactivated in the area
++    bool HandlePlayerEnter(Player* plr);
++    void HandlePlayerLeave(Player* plr);
++protected:
++    void UpdateTowerEvents();
++    void LinkGraveYard(Team team);
++    void SummonShrine(Team team);
++    void SummonSupportUnits(Team team);
++    void SummonFlightMaster(Team team);
++    void UnlinkGraveYard();
++    void UnsummonShrine();
++    void UnsummonSupportUnits();
++    void UnsummonFlightMaster();
++
++    Team EP_TOWER_EVENT_TEAM[EP_TOWER_NUM];
++private:
++    OutdoorPvPEPTowerType m_TowerType;
++};
++
++class OutdoorPvPEP : public OutdoorPvP
++{
++friend class OPvPCapturePointEP;
++public:
++    OutdoorPvPEP();
++    bool SetupOutdoorPvP();
++    void HandlePlayerEnterZone(Player* plr, uint32 zone);
++    void HandlePlayerLeaveZone(Player* plr, uint32 zone);
++    bool Update(uint32 diff);
++    void FillInitialWorldStates(WorldPacket &data);
++    void SendRemoveWorldStates(Player* plr);
++private:
++    // how many towers are controlled
++    uint32 m_AllianceTowersControlled;
++    uint32 m_HordeTowersControlled;
++};
++
++#endif
+diff --git a/src/game/OutdoorPvPMgr.cpp b/src/game/OutdoorPvPMgr.cpp
+new file mode 100644
+index 0000000..85242d5
+--- /dev/null
++++ b/src/game/OutdoorPvPMgr.cpp
+@@ -0,0 +1,184 @@
++/*
++ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
++ * Copyright (C) 2009-2010 MaNGOSZero <http://github.com/mangoszero/mangoszero/>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#include "OutdoorPvPMgr.h"
++#include "OutdoorPvPSI.h"
++#include "OutdoorPvPEP.h"
++#include "ObjectMgr.h"
++#include "Player.h"
++#include "Policies/SingletonImp.h"
++
++INSTANTIATE_SINGLETON_1(OutdoorPvPMgr);
++
++OutdoorPvPMgr::OutdoorPvPMgr()
++{
++    m_UpdateTimer = 0;
++    //sLog.outDebug("Instantiating OutdoorPvPMgr");
++}
++
++OutdoorPvPMgr::~OutdoorPvPMgr()
++{
++    //sLog.outDebug("Deleting OutdoorPvPMgr");
++    for(OutdoorPvPSet::iterator itr = m_OutdoorPvPSet.begin(); itr != m_OutdoorPvPSet.end(); ++itr)
++        delete *itr;
++}
++
++void OutdoorPvPMgr::InitOutdoorPvP()
++{
++    // create new opvp
++    OutdoorPvP * pOP = new OutdoorPvPSI;
++    // respawn, init variables
++    if (!pOP->SetupOutdoorPvP())
++    {
++        sLog.outDebug("OutdoorPvP : SI init failed.");
++        delete pOP;
++    }
++    else
++    {
++        m_OutdoorPvPSet.push_back(pOP);
++        sLog.outString();
++        sLog.outString("OutdoorPvP : SI successfully initiated.");
++    }
++
++    pOP = new OutdoorPvPEP;
++    // respawn, init variables
++    if (!pOP->SetupOutdoorPvP())
++    {
++        sLog.outDebug("OutdoorPvP : EP init failed.");
++        delete pOP;
++    }
++    else
++    {
++        m_OutdoorPvPSet.push_back(pOP);
++        sLog.outString();
++        sLog.outString("OutdoorPvP : EP successfully initiated.");
++        sLog.outString();
++    }
++}
++
++void OutdoorPvPMgr::AddZone(uint32 zoneid, OutdoorPvP* handle)
++{
++    m_OutdoorPvPMap[zoneid] = handle;
++}
++
++void OutdoorPvPMgr::HandlePlayerEnterZone(Player* plr, uint32 zoneid)
++{
++    OutdoorPvPMap::iterator itr = m_OutdoorPvPMap.find(zoneid);
++    if (itr == m_OutdoorPvPMap.end())
++        return;
++
++    if (itr->second->HasPlayer(plr))
++        return;
++
++    itr->second->HandlePlayerEnterZone(plr, zoneid);
++    sLog.outDebug("Player %u entered outdoorpvp id %u", plr->GetGUIDLow(), itr->second->GetTypeId());
++}
++
++void OutdoorPvPMgr::HandlePlayerLeaveZone(Player* plr, uint32 zoneid)
++{
++    OutdoorPvPMap::iterator itr = m_OutdoorPvPMap.find(zoneid);
++    if (itr == m_OutdoorPvPMap.end())
++        return;
++
++    // teleport: remove once in removefromworld, once in updatezone
++    if (!itr->second->HasPlayer(plr))
++        return;
++
++    itr->second->HandlePlayerLeaveZone(plr, zoneid);
++    sLog.outDebug("Player %u left outdoorpvp id %u",plr->GetGUIDLow(), itr->second->GetTypeId());
++}
++
++OutdoorPvP* OutdoorPvPMgr::GetOutdoorPvPToZoneId(uint32 zoneid)
++{
++    OutdoorPvPMap::iterator itr = m_OutdoorPvPMap.find(zoneid);
++    if (itr == m_OutdoorPvPMap.end())
++    {
++        // no handle for this zone, return
++        return NULL;
++    }
++    return itr->second;
++}
++
++void OutdoorPvPMgr::Update(uint32 diff)
++{
++    m_UpdateTimer += diff;
++    if (m_UpdateTimer > OUTDOORPVP_OBJECTIVE_UPDATE_INTERVAL)
++    {
++        for(OutdoorPvPSet::iterator itr = m_OutdoorPvPSet.begin(); itr != m_OutdoorPvPSet.end(); ++itr)
++            (*itr)->Update(m_UpdateTimer);
++        m_UpdateTimer = 0;
++    }
++}
++
++bool OutdoorPvPMgr::HandleCustomSpell(Player* plr, uint32 spellId, GameObject* go)
++{
++    for(OutdoorPvPSet::iterator itr = m_OutdoorPvPSet.begin(); itr != m_OutdoorPvPSet.end(); ++itr)
++    {
++        if ((*itr)->HandleCustomSpell(plr, spellId, go))
++            return true;
++    }
++    return false;
++}
++
++ZoneScript* OutdoorPvPMgr::GetZoneScript(uint32 zoneId)
++{
++    OutdoorPvPMap::iterator itr = m_OutdoorPvPMap.find(zoneId);
++    if (itr != m_OutdoorPvPMap.end())
++        return itr->second;
++    else
++        return NULL;
++}
++
++bool OutdoorPvPMgr::HandleOpenGo(Player* plr, ObjectGuid guid)
++{
++    for(OutdoorPvPSet::iterator itr = m_OutdoorPvPSet.begin(); itr != m_OutdoorPvPSet.end(); ++itr)
++    {
++        if ((*itr)->HandleOpenGo(plr,guid))
++            return true;
++    }
++    return false;
++}
++
++void OutdoorPvPMgr::HandleGossipOption(Player* plr, uint64 guid, uint32 gossipid)
++{
++    for(OutdoorPvPSet::iterator itr = m_OutdoorPvPSet.begin(); itr != m_OutdoorPvPSet.end(); ++itr)
++    {
++        if ((*itr)->HandleGossipOption(plr, guid, gossipid))
++            return;
++    }
++}
++
++bool OutdoorPvPMgr::CanTalkTo(Player* plr, Creature* c, GossipMenuItems gso)
++{
++    for(OutdoorPvPSet::iterator itr = m_OutdoorPvPSet.begin(); itr != m_OutdoorPvPSet.end(); ++itr)
++    {
++        if ((*itr)->CanTalkTo(plr, c, gso))
++            return true;
++    }
++    return false;
++}
++
++void OutdoorPvPMgr::HandleDropFlag(Player* plr, uint32 spellId)
++{
++    for(OutdoorPvPSet::iterator itr = m_OutdoorPvPSet.begin(); itr != m_OutdoorPvPSet.end(); ++itr)
++    {
++        if ((*itr)->HandleDropFlag(plr, spellId))
++            return;
++    }
++}
+diff --git a/src/game/OutdoorPvPMgr.h b/src/game/OutdoorPvPMgr.h
+new file mode 100644
+index 0000000..43f9ad8
+--- /dev/null
++++ b/src/game/OutdoorPvPMgr.h
+@@ -0,0 +1,83 @@
++/*
++ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
++ * Copyright (C) 2009-2010 MaNGOSZero <http://github.com/mangoszero/mangoszero/>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#ifndef OUTDOOR_PVP_MGR_H_
++#define OUTDOOR_PVP_MGR_H_
++
++#define OUTDOORPVP_OBJECTIVE_UPDATE_INTERVAL 1000
++
++#include "OutdoorPvP.h"
++#include "Policies/Singleton.h"
++
++class Player;
++class GameObject;
++class Creature;
++class ZoneScript;
++struct GossipMenuItems;
++
++// class to handle player enter / leave / areatrigger / GO use events
++class OutdoorPvPMgr
++{
++public:
++    // ctor
++    OutdoorPvPMgr();
++    // dtor
++    ~OutdoorPvPMgr();
++
++    // create outdoor pvp events
++    void InitOutdoorPvP();
++    // called when a player enters an outdoor pvp area
++    void HandlePlayerEnterZone(Player* plr, uint32 areaflag);
++    // called when player leaves an outdoor pvp area
++    void HandlePlayerLeaveZone(Player* plr, uint32 areaflag);
++    // return assigned outdoor pvp
++    OutdoorPvP* GetOutdoorPvPToZoneId(uint32 zoneid);
++    // handle custom (non-exist in dbc) spell if registered
++    bool HandleCustomSpell(Player* plr, uint32 spellId, GameObject* go);
++    // handle custom go if registered
++    bool HandleOpenGo(Player* plr, ObjectGuid guid);
++
++    ZoneScript* GetZoneScript(uint32 zoneId);
++
++    void AddZone(uint32 zoneid, OutdoorPvP* handle);
++
++    void Update(uint32 diff);
++
++    void HandleGossipOption(Player* player, uint64 guid, uint32 gossipid);
++
++    bool CanTalkTo(Player* player, Creature* creature, GossipMenuItems gso);
++
++    void HandleDropFlag(Player* plr, uint32 spellId);
++
++    typedef std::vector<OutdoorPvP*> OutdoorPvPSet;
++    typedef std::map<uint32 /* zoneid */, OutdoorPvP*> OutdoorPvPMap;
++private:
++    // contains all initiated outdoor pvp events
++    // used when initing / cleaning up
++    OutdoorPvPSet  m_OutdoorPvPSet;
++    // maps the zone ids to an outdoor pvp event
++    // used in player event handling
++    OutdoorPvPMap   m_OutdoorPvPMap;
++    // update interval
++    uint32 m_UpdateTimer;
++};
++
++#define sOutdoorPvPMgr MaNGOS::Singleton<OutdoorPvPMgr>::Instance()
++
++#endif /*OUTDOOR_PVP_MGR_H_*/
+diff --git a/src/game/OutdoorPvPSI.cpp b/src/game/OutdoorPvPSI.cpp
+new file mode 100644
+index 0000000..1b29650
+--- /dev/null
++++ b/src/game/OutdoorPvPSI.cpp
+@@ -0,0 +1,181 @@
++/*
++ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
++ * Copyright (C) 2009-2010 MaNGOSZero <http://github.com/mangoszero/mangoszero/>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#include "OutdoorPvPSI.h"
++#include "WorldPacket.h"
++#include "Player.h"
++#include "GameObject.h"
++#include "OutdoorPvPMgr.h"
++#include "Language.h"
++#include "ObjectMgr.h"
++#include "World.h"
++
++OutdoorPvPSI::OutdoorPvPSI()
++{
++    m_TypeId = OUTDOOR_PVP_SI;
++    m_Gathered_A = 0;
++    m_Gathered_H = 0;
++    m_LastController = 0;
++
++    LoadWorldState();
++}
++
++void OutdoorPvPSI::FillInitialWorldStates(WorldPacket &data)
++{
++    data << SI_GATHERED_A << m_Gathered_A;
++    data << SI_GATHERED_H << m_Gathered_H;
++    data << SI_SILITHYST_MAX << SI_MAX_RESOURCES;
++}
++
++void OutdoorPvPSI::SendRemoveWorldStates(Player* plr)
++{
++    plr->SendUpdateWorldState(SI_GATHERED_A, 0);
++    plr->SendUpdateWorldState(SI_GATHERED_H, 0);
++    plr->SendUpdateWorldState(SI_SILITHYST_MAX, 0);
++}
++
++void OutdoorPvPSI::UpdateWorldState()
++{
++    SendUpdateWorldState(SI_GATHERED_A, m_Gathered_A);
++    SendUpdateWorldState(SI_GATHERED_H, m_Gathered_H);
++    SendUpdateWorldState(SI_SILITHYST_MAX, SI_MAX_RESOURCES);
++}
++
++void OutdoorPvPSI::LoadWorldState()
++{
++    QueryResult* result = CharacterDatabase.PQuery("SELECT data0, data1, data2 FROM outdoor_pvp WHERE id = '%u' LIMIT 1", m_TypeId);
++
++    if (result)
++    {
++        Field* fields = result->Fetch();
++        m_Gathered_A = fields[0].GetUInt32();
++        m_Gathered_H = fields[1].GetUInt32();
++        m_LastController = fields[2].GetUInt32();
++
++        delete result;
++
++        sLog.outString();
++        sLog.outString("OutdoorPvP : SI >> World state has been loaded");
++    }
++    else
++    {
++        CharacterDatabase.PQuery("INSERT INTO outdoor_pvp (id, data0, data1, data2) VALUES ('%u', '%u', '%u', '%u')", m_TypeId, m_Gathered_A, m_Gathered_H, m_LastController);
++
++        sLog.outString();
++        sLog.outString("OutdoorPvP : SI >> Default world state has been loaded");
++    }
++}
++
++void OutdoorPvPSI::SaveWorldState()
++{
++    CharacterDatabase.PQuery("UPDATE outdoor_pvp SET data0 = '%u', data1 = '%u', data2 = '%u' WHERE id = '%u'", m_Gathered_A, m_Gathered_H, m_LastController, m_TypeId);
++}
++
++bool OutdoorPvPSI::SetupOutdoorPvP()
++{
++    for (int i = 0; i < OutdoorPvPSIBuffZonesNum; ++i)
++        RegisterZone(OutdoorPvPSIBuffZones[i]);
++    return true;
++}
++
++bool OutdoorPvPSI::Update(uint32 diff)
++{
++    return false;
++}
++
++void OutdoorPvPSI::HandlePlayerEnterZone(Player* plr, uint32 zone)
++{
++    if (plr->HasAura(SI_CENARION_FAVOR, EFFECT_INDEX_0))
++        plr->RemoveAurasDueToSpell(SI_CENARION_FAVOR);
++
++    if (plr->GetTeam() == m_LastController)
++        plr->CastSpell(plr, SI_CENARION_FAVOR, true);
++
++    OutdoorPvP::HandlePlayerEnterZone(plr, zone);
++}
++
++void OutdoorPvPSI::HandlePlayerLeaveZone(Player* plr, uint32 zone)
++{
++    // remove buffs
++    plr->RemoveAurasDueToSpell(SI_CENARION_FAVOR);
++    OutdoorPvP::HandlePlayerLeaveZone(plr, zone);
++}
++
++bool OutdoorPvPSI::HandleAreaTrigger(Player* plr, uint32 trigger)
++{
++    switch(trigger)
++    {
++        case SI_AREATRIGGER_A:
++            if (plr->GetTeam() == ALLIANCE && plr->HasAura(SI_SILITHYST_FLAG, EFFECT_INDEX_0))
++            {
++                plr->RemoveAurasDueToSpell(SI_SILITHYST_FLAG);
++                plr->CastSpell(plr, SI_TRACES_OF_SILITHYST, true);
++
++                ++m_Gathered_A;
++                if (m_Gathered_A >= SI_MAX_RESOURCES)
++                {
++                    TeamApplyBuff(TEAM_ALLIANCE, SI_CENARION_FAVOR);
++                    sWorld.SendZoneText(OutdoorPvPSIBuffZones[0], sObjectMgr.GetMangosStringForDBCLocale(LANG_OPVP_SI_CAPTURE_A));
++                    m_LastController = ALLIANCE;
++                    m_Gathered_A = 0;
++                    m_Gathered_H = 0;
++                }
++                UpdateWorldState();
++                SaveWorldState();
++            }
++            return true;
++        case SI_AREATRIGGER_H:
++            if (plr->GetTeam() == HORDE && plr->HasAura(SI_SILITHYST_FLAG, EFFECT_INDEX_0))
++            {
++                plr->RemoveAurasDueToSpell(SI_SILITHYST_FLAG);
++                plr->CastSpell(plr, SI_TRACES_OF_SILITHYST, true);
++
++                ++m_Gathered_H;
++                if (m_Gathered_H >= SI_MAX_RESOURCES)
++                {
++                    TeamApplyBuff(TEAM_HORDE, SI_CENARION_FAVOR);
++                    sWorld.SendZoneText(OutdoorPvPSIBuffZones[0], sObjectMgr.GetMangosStringForDBCLocale(LANG_OPVP_SI_CAPTURE_H));
++                    m_LastController = HORDE;
++                    m_Gathered_A = 0;
++                    m_Gathered_H = 0;
++                }
++                UpdateWorldState();
++                SaveWorldState();
++            }
++            return true;
++    }
++    return false;
++}
++
++bool OutdoorPvPSI::HandleDropFlag(Player* plr, uint32 spellId)
++{
++    if (spellId == SI_SILITHYST_FLAG)
++    {
++        // if it was dropped away from the player's turn-in point, then create a silithyst mound, if it was dropped near the areatrigger, then it was dispelled by the outdoorpvp, so do nothing
++        AreaTriggerEntry const* atEntry = sAreaTriggerStore.LookupEntry(plr->GetTeam() == HORDE ? SI_AREATRIGGER_H : SI_AREATRIGGER_A);
++
++        // if distance is > 5.0f -> summon mound
++        if (atEntry && plr->GetDistance(atEntry->x,atEntry->y,atEntry->z) > 5.0f + atEntry->radius)
++            plr->CastSpell(plr, SI_SUMMON_SILITHYST_MOND, true);
++
++        plr->UpdateSpeed(MOVE_RUN, true);
++        return true;
++    }
++    return false;
++}
+diff --git a/src/game/OutdoorPvPSI.h b/src/game/OutdoorPvPSI.h
+new file mode 100644
+index 0000000..3837932
+--- /dev/null
++++ b/src/game/OutdoorPvPSI.h
+@@ -0,0 +1,71 @@
++/*
++ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
++ * Copyright (C) 2009-2010 MaNGOSZero <http://github.com/mangoszero/mangoszero/>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#ifndef OUTDOOR_PVP_SI_
++#define OUTDOOR_PVP_SI_
++
++#include "OutdoorPvP.h"
++
++enum SI_Data
++{
++    SI_MAX_RESOURCES                = 200,
++
++    SI_AREATRIGGER_A                = 4162,
++    SI_AREATRIGGER_H                = 4168,
++
++    SI_SILITHYST_FLAG               = 29519,
++    SI_SUMMON_SILITHYST_MOND        = 29533,
++    SI_TRACES_OF_SILITHYST          = 29534,
++    SI_CENARION_FAVOR               = 30754
++};
++
++enum SI_WorldStates
++{
++    SI_GATHERED_A       = 2313,
++    SI_GATHERED_H       = 2314,
++    SI_SILITHYST_MAX    = 2317
++};
++
++const uint32 OutdoorPvPSIBuffZonesNum = 3;
++
++const uint32 OutdoorPvPSIBuffZones[OutdoorPvPSIBuffZonesNum] = {1377, 3428, 3429};
++
++class OutdoorPvPSI : public OutdoorPvP
++{
++public:
++    OutdoorPvPSI();
++    bool SetupOutdoorPvP();
++    void HandlePlayerEnterZone(Player* plr, uint32 zone);
++    void HandlePlayerLeaveZone(Player* plr, uint32 zone);
++    bool Update(uint32 diff);
++    void FillInitialWorldStates(WorldPacket &data);
++    void SendRemoveWorldStates(Player* plr);
++    bool HandleAreaTrigger(Player* plr, uint32 trigger);
++    bool HandleDropFlag(Player* plr, uint32 spellId);
++    void UpdateWorldState();
++
++    void LoadWorldState();
++    void SaveWorldState();
++private:
++    uint32 m_Gathered_A;
++    uint32 m_Gathered_H;
++    uint32 m_LastController;
++};
++
++#endif
+diff --git a/src/game/Player.cpp b/src/game/Player.cpp
+index 8ed4688..8d6e3a1 100644
+--- a/src/game/Player.cpp
++++ b/src/game/Player.cpp
+@@ -53,6 +53,8 @@
+ #include "BattleGround.h"
+ #include "BattleGroundAV.h"
+ #include "BattleGroundMgr.h"
++#include "OutdoorPvP.h"
++#include "OutdoorPvPMgr.h"
+ #include "Chat.h"
+ #include "Database/DatabaseImpl.h"
+ #include "Spell.h"
+@@ -1829,6 +1831,7 @@ void Player::RemoveFromWorld()
+         ///- Release charmed creatures, unsummon totems and remove pets/guardians
+         UnsummonAllTotems();
+         RemoveMiniPet();
++        sOutdoorPvPMgr.HandlePlayerLeaveZone(this, m_zoneUpdateId);
+     }
+ 
+     for(int i = PLAYER_SLOT_START; i < PLAYER_SLOT_END; ++i)
+@@ -6151,6 +6154,8 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea)
+ 
+     if(m_zoneUpdateId != newZone)
+     {
++        sOutdoorPvPMgr.HandlePlayerLeaveZone(this, m_zoneUpdateId);
++        sOutdoorPvPMgr.HandlePlayerEnterZone(this, newZone);
+         SendInitWorldStates(newZone);                       // only if really enters to new zone, not just area change, works strange...
+ 
+         if (sWorld.getConfig(CONFIG_BOOL_WEATHER))
+@@ -6262,6 +6267,16 @@ void Player::CheckDuelDistance(time_t currTime)
+     }
+ }
+ 
++OutdoorPvP* Player::GetOutdoorPvP() const
++{
++    return sOutdoorPvPMgr.GetOutdoorPvPToZoneId(GetZoneId());
++}
++
++bool Player::IsOutdoorPvPActive()
++{
++    return isAlive() && !HasInvisibilityAura() && !HasStealthAura() && (IsPvP() || sWorld.IsPvPRealm()) && !HasMovementFlag(MOVEFLAG_FLYING) && !IsTaxiFlying();
++}
++
+ void Player::DuelComplete(DuelCompleteType type)
+ {
+     // duel not requested
+@@ -7611,7 +7626,9 @@ void Player::SendInitWorldStates(uint32 zoneid)
+ {
+     // data depends on zoneid/mapid...
+     BattleGround* bg = GetBattleGround();
++    uint16 NumberOfFields = 0;
+     uint32 mapid = GetMapId();
++    OutdoorPvP* pvp = sOutdoorPvPMgr.GetOutdoorPvPToZoneId(zoneid);
+ 
+     DEBUG_LOG("Sending SMSG_INIT_WORLD_STATES to Map:%u, Zone: %u", mapid, zoneid);
+ 
+@@ -7648,6 +7665,25 @@ void Player::SendInitWorldStates(uint32 zoneid)
+             break;
+     }
+ 
++    switch(zoneid)
++    {
++        case 139:
++            NumberOfFields = 39;
++            break;
++        case 1377:
++            NumberOfFields = 13;
++            break;
++        case 3277:
++            NumberOfFields = 14;
++            break;
++        case 3358:
++            NumberOfFields = 38;
++            break;
++        default:
++            NumberOfFields = 1;
++            break;
++    }
++
+     uint32 count = 0;                                       // count of world states in packet
+ 
+     if (defZone)
+@@ -7663,11 +7699,11 @@ void Player::SendInitWorldStates(uint32 zoneid)
+     }
+     else
+     {
+-        WorldPacket data(SMSG_INIT_WORLD_STATES, (4+4+2+6));
++        WorldPacket data(SMSG_INIT_WORLD_STATES, (4+4+2+(NumberOfFields*8)));
+         data << uint32(mapid);                              // mapid
+         data << uint32(zoneid);                             // zone id
+         size_t count_pos = data.wpos();
+-        data << uint16(0);                                  // count of uint32 blocks, placeholder
++        data << uint16(NumberOfFields);                     // count of uint32 blocks, placeholder
+         // common fields
+         FillInitialWorldState(data, count, 0x8d8, 0x0);     // 2264 1
+         FillInitialWorldState(data, count, 0x8d7, 0x0);     // 2263 2
+@@ -7688,12 +7724,33 @@ void Player::SendInitWorldStates(uint32 zoneid)
+             case 1537:
+             case 2257:
+                 break;
+-            case 139:                                           // EPL
+-                FillInitialWorldState(data,count, EPL_world_states);
+-                break;
+-            case 1377:                                          // Silithus
+-                FillInitialWorldState(data,count, SIL_world_states);
+-                break;
++            case 139: // EPL
++            {
++                if (pvp && pvp->GetTypeId() == OUTDOOR_PVP_EP)
++                    pvp->FillInitialWorldStates(data);
++                else
++                    FillInitialWorldState(data,count, EPL_world_states);
++            }
++            break;
++            case 1377: // Silithus
++            {
++                if (pvp && pvp->GetTypeId() == OUTDOOR_PVP_SI)
++                    pvp->FillInitialWorldStates(data);
++                else
++                {
++                    // states are always shown
++                    data << uint32(2313) << uint32(0x0); // 7 ally silityst gathered
++                    data << uint32(2314) << uint32(0x0); // 8 horde silityst gathered
++                    data << uint32(2317) << uint32(0x0); // 9 max silithyst
++                }
++
++                // dunno about these... aq opening event maybe?
++                data << uint32(2322) << uint32(0x0); // 10 sandworm N
++                data << uint32(2323) << uint32(0x0); // 11 sandworm S
++                data << uint32(2324) << uint32(0x0); // 12 sandworm SW
++                data << uint32(2325) << uint32(0x0); // 13 sandworm E
++            }
++            break;
+             case 2597:                                          // AV
+                 if (bg && bg->GetTypeID() == BATTLEGROUND_AV)
+                     bg->FillInitialWorldStates(data, count);
+diff --git a/src/game/Player.h b/src/game/Player.h
+index 2563c23..ff227c5 100644
+--- a/src/game/Player.h
++++ b/src/game/Player.h
+@@ -54,6 +54,7 @@ class PlayerSocial;
+ class DungeonPersistentState;
+ class Spell;
+ class Item;
++class OutdoorPvP;
+ 
+ typedef std::deque<Mail*> PlayerMails;
+ 
+@@ -1629,6 +1630,7 @@ class MANGOS_DLL_SPEC Player : public Unit
+ 
+         static Team TeamForRace(uint8 race);
+         Team GetTeam() const { return m_team; }
++        TeamId GetTeamId() const { return m_team == ALLIANCE ? TEAM_ALLIANCE : TEAM_HORDE; }
+         static uint32 getFactionForRace(uint8 race);
+         void setFactionForRace(uint8 race);
+ 
+@@ -1872,6 +1874,14 @@ class MANGOS_DLL_SPEC Player : public Unit
+         bool CanCaptureTowerPoint();
+ 
+         /*********************************************************/
++        /***               OUTDOOR PVP SYSTEM                  ***/
++        /*********************************************************/
++
++        OutdoorPvP* GetOutdoorPvP() const;
++        // returns true if the player is in active state for outdoor pvp objective capturing, false otherwise
++        bool IsOutdoorPvPActive();
++
++        /*********************************************************/
+         /***                    REST SYSTEM                    ***/
+         /*********************************************************/
+ 
+diff --git a/src/game/SharedDefines.h b/src/game/SharedDefines.h
+index b1d52ee..26ffc06 100644
+--- a/src/game/SharedDefines.h
++++ b/src/game/SharedDefines.h
+@@ -451,6 +451,13 @@ enum Language
+ 
+ #define LANGUAGES_COUNT   15
+ 
++enum TeamId
++{
++    TEAM_ALLIANCE = 0,
++    TEAM_HORDE,
++    TEAM_NEUTRAL,
++};
++
+ // In fact !=0 values is alliance/horde root faction ids
+ enum Team
+ {
+diff --git a/src/game/SpellAuras.cpp b/src/game/SpellAuras.cpp
+index 800ba93..0cec4fc 100644
+--- a/src/game/SpellAuras.cpp
++++ b/src/game/SpellAuras.cpp
+@@ -39,6 +39,7 @@
+ #include "Creature.h"
+ #include "Formulas.h"
+ #include "BattleGround.h"
++#include "OutdoorPvPMgr.h"
+ #include "CreatureAI.h"
+ #include "ScriptMgr.h"
+ #include "Util.h"
+@@ -3072,6 +3073,8 @@ void Aura::HandleAuraModEffectImmunity(bool apply, bool /*Real*/)
+     {
+         if( BattleGround *bg = ((Player*)target)->GetBattleGround() )
+             bg->EventPlayerDroppedFlag(((Player*)target));
++        else
++            sOutdoorPvPMgr.HandleDropFlag((Player*)target, GetSpellProto()->Id);
+     }
+ 
+     target->ApplySpellImmune(GetId(), IMMUNITY_EFFECT, m_modifier.m_miscvalue, apply);
+diff --git a/src/game/World.cpp b/src/game/World.cpp
+index e291ebc..42b1bd9 100644
+--- a/src/game/World.cpp
++++ b/src/game/World.cpp
+@@ -50,6 +50,7 @@
+ #include "CreatureAIRegistry.h"
+ #include "Policies/SingletonImp.h"
+ #include "BattleGroundMgr.h"
++#include "OutdoorPvPMgr.h"
+ #include "TemporarySummon.h"
+ #include "VMapFactory.h"
+ #include "GameEventMgr.h"
+@@ -1247,6 +1248,10 @@ void World::SetInitialWorldSettings()
+     sLog.outString( "Loading Transports..." );
+     sMapMgr.LoadTransports();
+ 
++    ///- Initialize outdoor pvp
++    sLog.outString( "Starting Outdoor PvP System" );
++    sOutdoorPvPMgr.InitOutdoorPvP();
++
+     sLog.outString("Deleting expired bans..." );
+     LoginDatabase.Execute("DELETE FROM ip_banned WHERE unbandate<=UNIX_TIMESTAMP() AND unbandate<>bandate");
+ 
+@@ -1386,6 +1391,7 @@ void World::Update(uint32 diff)
+     ///- Update objects (maps, transport, creatures,...)
+     sMapMgr.Update(diff);
+     sBattleGroundMgr.Update(diff);
++    sOutdoorPvPMgr.Update(diff);
+ 
+     ///- Delete all characters which have been deleted X days before
+     if (m_timers[WUPDATE_DELETECHARS].Passed())
+diff --git a/src/game/ZoneScript.h b/src/game/ZoneScript.h
+new file mode 100644
+index 0000000..8d75b24
+--- /dev/null
++++ b/src/game/ZoneScript.h
+@@ -0,0 +1,52 @@
++/*
++ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
++ * Copyright (C) 2009-2010 MaNGOSZero <http://github.com/mangoszero/mangoszero/>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#ifndef ZONE_SCRIPT_H_
++#define ZONE_SCRIPT_H_
++
++#include "Common.h"
++#include "Creature.h"
++
++//struct CreatureData;
++class Creature;
++class GameObject;
++
++class ZoneScript
++{
++    public:
++        explicit ZoneScript() {}
++
++        virtual uint32 GetCreatureEntry(uint32 guidlow, const CreatureData *data) { return data->id; }
++        virtual uint32 GetGameObjectEntry(uint32 guidlow, uint32 entry) { return entry; }
++
++        virtual void OnCreatureCreate(Creature *, bool add) {}
++        virtual void OnGameObjectCreate(GameObject *go, bool add) {}
++
++        //All-purpose data storage 64 bit
++        virtual uint64 GetData64(uint32 /*DataId*/) { return 0; }
++        virtual void SetData64(uint32 /*DataId*/, uint64 /*Value*/) {}
++
++        //All-purpose data storage 32 bit
++        virtual uint32 GetData(uint32 /*DataId*/) { return 0; }
++        virtual void SetData(uint32 /*DataId*/, uint32 /*Value*/) {}
++
++        virtual void ProcessEvent(GameObject *obj, uint32 eventId) {}
++};
++
++#endif
+\ No newline at end of file
+diff --git a/win/VC100/game.vcxproj b/win/VC100/game.vcxproj
+index 20f9c06..95f7ac8 100644
+--- a/win/VC100/game.vcxproj
++++ b/win/VC100/game.vcxproj
+@@ -437,6 +437,10 @@
+     <ClCompile Include="..\..\src\game\ObjectGuid.cpp" />
+     <ClCompile Include="..\..\src\game\ObjectPosSelector.cpp" />
+     <ClCompile Include="..\..\src\game\Opcodes.cpp" />
++    <ClCompile Include="..\..\src\game\OutdoorPvP.cpp" />
++    <ClCompile Include="..\..\src\game\OutdoorPvPEP.cpp" />
++    <ClCompile Include="..\..\src\game\OutdoorPvPMgr.cpp" />
++    <ClCompile Include="..\..\src\game\OutdoorPvPSI.cpp" />
+     <ClCompile Include="..\..\src\game\pchdef.cpp">
+       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">pchdef.h</PrecompiledHeaderFile>
+@@ -581,6 +585,10 @@
+     <ClInclude Include="..\..\src\game\ObjectMgr.h" />
+     <ClInclude Include="..\..\src\game\ObjectPosSelector.h" />
+     <ClInclude Include="..\..\src\game\Opcodes.h" />
++    <ClInclude Include="..\..\src\game\OutdoorPvP.h" />
++    <ClInclude Include="..\..\src\game\OutdoorPvPEP.h" />
++    <ClInclude Include="..\..\src\game\OutdoorPvPMgr.h" />
++    <ClInclude Include="..\..\src\game\OutdoorPvPSI.h" />
+     <ClInclude Include="..\..\src\game\Path.h" />
+     <ClInclude Include="..\..\src\game\pchdef.h" />
+     <ClInclude Include="..\..\src\game\Pet.h" />
+@@ -622,6 +630,7 @@
+     <ClInclude Include="..\..\src\game\WorldSession.h" />
+     <ClInclude Include="..\..\src\game\WorldSocket.h" />
+     <ClInclude Include="..\..\src\game\WorldSocketMgr.h" />
++    <ClInclude Include="..\..\src\game\ZoneScript.h" />
+     <ClInclude Include="..\..\src\game\vmap\BIH.h" />
+     <ClInclude Include="..\..\src\game\vmap\IVMapManager.h" />
+     <ClInclude Include="..\..\src\game\vmap\MapTree.h" />
+diff --git a/win/VC100/game.vcxproj.filters b/win/VC100/game.vcxproj.filters
+index 1226297..2e1b484 100644
+--- a/win/VC100/game.vcxproj.filters
++++ b/win/VC100/game.vcxproj.filters
+@@ -315,6 +315,18 @@
+     <ClCompile Include="..\..\src\game\ObjectPosSelector.cpp">
+       <Filter>Object</Filter>
+     </ClCompile>
++    <ClCompile Include="..\..\src\game\OutdoorPvP.cpp">
++      <Filter>Object</Filter>
++    </ClCompile>
++    <ClCompile Include="..\..\src\game\OutdoorPvPEP.cpp">
++      <Filter>Object</Filter>
++    </ClCompile>
++    <ClCompile Include="..\..\src\game\OutdoorPvPMgr.cpp">
++      <Filter>Object</Filter>
++    </ClCompile>
++    <ClCompile Include="..\..\src\game\OutdoorPvPSI.cpp">
++      <Filter>Object</Filter>
++    </ClCompile>
+     <ClCompile Include="..\..\src\game\Pet.cpp">
+       <Filter>Object</Filter>
+     </ClCompile>
+@@ -687,6 +699,18 @@
+     <ClInclude Include="..\..\src\game\ObjectPosSelector.h">
+       <Filter>Object</Filter>
+     </ClInclude>
++    <ClInclude Include="..\..\src\game\OutdoorPvP.h">
++      <Filter>Object</Filter>
++    </ClInclude>
++    <ClInclude Include="..\..\src\game\OutdoorPvPEP.h">
++      <Filter>Object</Filter>
++    </ClInclude>
++    <ClInclude Include="..\..\src\game\OutdoorPvPMgr.h">
++      <Filter>Object</Filter>
++    </ClInclude>
++    <ClInclude Include="..\..\src\game\OutdoorPvPSI.h">
++      <Filter>Object</Filter>
++    </ClInclude>
+     <ClInclude Include="..\..\src\game\Pet.h">
+       <Filter>Object</Filter>
+     </ClInclude>
+@@ -729,6 +753,9 @@
+     <ClInclude Include="..\..\src\game\UpdateMask.h">
+       <Filter>Object</Filter>
+     </ClInclude>
++    <ClInclude Include="..\..\src\game\ZoneScript.h">
++      <Filter>Object</Filter>
++    </ClInclude>
+     <ClInclude Include="..\..\src\game\DBCEnums.h">
+       <Filter>Server</Filter>
+     </ClInclude>
+diff --git a/win/VC90/game.vcproj b/win/VC90/game.vcproj
+index ba87306..b973d22 100644
+--- a/win/VC90/game.vcproj
++++ b/win/VC90/game.vcproj
+@@ -1615,6 +1615,46 @@
+ 				>
+ 			</File>
+ 		</Filter>
++		<Filter
++			Name="OutdoorPvP"
++			>
++			<File
++				RelativePath="..\..\src\game\OutdoorPvP.cpp"
++				>
++			</File>
++			<File
++				RelativePath="..\..\src\game\OutdoorPvP.h"
++				>
++			</File>
++			<File
++				RelativePath="..\..\src\game\OutdoorPvPEP.cpp"
++				>
++			</File>
++			<File
++				RelativePath="..\..\src\game\OutdoorPvPEP.h"
++				>
++			</File>
++			<File
++				RelativePath="..\..\src\game\OutdoorPvPMgr.cpp"
++				>
++			</File>
++			<File
++				RelativePath="..\..\src\game\OutdoorPvPMgr.h"
++				>
++			</File>
++			<File
++				RelativePath="..\..\src\game\OutdoorPvPSI.cpp"
++				>
++			</File>
++			<File
++				RelativePath="..\..\src\game\OutdoorPvPSI.h"
++				>
++			</File>
++			<File
++				RelativePath="..\..\src\game\ZoneScript.h"
++				>
++			</File>
++		</Filter>
+ 		<File
+ 			RelativePath="..\..\src\game\pchdef.cpp"
+ 			>
+-- 
+1.7.4.msysgit.0
+

@@ -1,0 +1,180 @@
+From db82a390f6c347ea50706367185af11b6f8c39e6 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@none.com>
+Date: Thu, 8 Sep 2011 22:00:01 +0200
+Subject: [PATCH] Shield block, Summon Req check, mana regen, maxlvl Q, shaman
+ TH req, Rage formula
+
+---
+ src/game/Player.cpp |   84 ++++++++++++++++++++++++++-------------------------
+ src/game/QuestDef.h |    4 +-
+ 2 files changed, 45 insertions(+), 43 deletions(-)
+
+diff --git a/src/game/Player.cpp b/src/game/Player.cpp
+index 2541702..f15422a 100644
+--- a/src/game/Player.cpp
++++ b/src/game/Player.cpp
+@@ -1855,7 +1855,7 @@ void Player::RewardRage( uint32 damage, uint32 weaponSpeedHitFactor, bool attack
+ 
+     if(attacker)
+     {
+-        addRage = ((damage/rageconversion*7.5f + weaponSpeedHitFactor)/2.0f);
++        addRage = (damage/rageconversion)*7.5f;
+     }
+     else
+     {
+@@ -4593,7 +4593,7 @@ float Player::GetTotalBaseModValue(BaseModGroup modGroup) const
+ 
+ uint32 Player::GetShieldBlockValue() const
+ {
+-    float value = (m_auraBaseMod[SHIELD_BLOCK_VALUE][FLAT_MOD] + GetStat(STAT_STRENGTH)/20 - 1)*m_auraBaseMod[SHIELD_BLOCK_VALUE][PCT_MOD];
++    float value = (m_auraBaseMod[SHIELD_BLOCK_VALUE][FLAT_MOD] + GetStat(STAT_STRENGTH)/2 - 1)*m_auraBaseMod[SHIELD_BLOCK_VALUE][PCT_MOD];
+ 
+     value = (value < 0) ? 0 : value;
+ 
+@@ -4772,7 +4772,7 @@ float Player::OCTRegenMPPerSpirit()
+         case CLASS_WARLOCK: addvalue = (Spirit/5 + 15);   break;
+     }
+ 
+-    return addvalue;
++    return addvalue/2;
+ }
+ 
+ void Player::SetRegularAttackTime()
+@@ -6725,22 +6725,7 @@ void Player::CastItemCombatSpell(Unit* Target, WeaponAttackType attType)
+         {
+             uint32 proc_spell_id = pEnchant->spellid[s];
+ 
+-            // Flametongue Weapon (Passive), Ranks (used not existed equip spell id in pre-3.x spell.dbc)
+-            if (pEnchant->type[s] == ITEM_ENCHANTMENT_TYPE_EQUIP_SPELL)
+-            {
+-                switch (proc_spell_id)
+-                {
+-                    case 10400: proc_spell_id =  8026; break; // Rank 1
+-                    case 15567: proc_spell_id =  8028; break; // Rank 2
+-                    case 15568: proc_spell_id =  8029; break; // Rank 3
+-                    case 15569: proc_spell_id = 10445; break; // Rank 4
+-                    case 16311: proc_spell_id = 16343; break; // Rank 5
+-                    case 16312: proc_spell_id = 16344; break; // Rank 6
+-                    default:
+-                        continue;
+-                }
+-            }
+-            else if (pEnchant->type[s] != ITEM_ENCHANTMENT_TYPE_COMBAT_SPELL)
++            if (pEnchant->type[s] != ITEM_ENCHANTMENT_TYPE_COMBAT_SPELL)
+                 continue;
+ 
+             SpellEntry const *spellInfo = sSpellStore.LookupEntry(proc_spell_id);
+@@ -11141,27 +11126,6 @@ void Player::ApplyEnchantment(Item *item, EnchantmentSlot slot, bool apply, bool
+                     break;
+                 case ITEM_ENCHANTMENT_TYPE_EQUIP_SPELL:
+                 {
+-
+-                    // Flametongue Weapon (Passive), Ranks (used not existed equip spell id in pre-3.x spell.dbc)
+-                    // See Player::CastItemCombatSpell for workaround implementation
+-                    if (enchant_spell_id && apply)
+-                    {
+-                        switch (enchant_spell_id)
+-                        {
+-                            case 10400:                     // Rank 1
+-                            case 15567:                     // Rank 2
+-                            case 15568:                     // Rank 3
+-                            case 15569:                     // Rank 4
+-                            case 16311:                     // Rank 5
+-                            case 16312:                     // Rank 6
+-                            case 16313:                     // Rank 7
+-                                enchant_spell_id = 0;
+-                                break;
+-                            default:
+-                                break;
+-                        }
+-                    }
+-
+                     if (enchant_spell_id)
+                     {
+                         if (apply)
+@@ -12444,7 +12408,8 @@ bool Player::SatisfyQuestSkill(Quest const* qInfo, bool msg) const
+ 
+ bool Player::SatisfyQuestLevel(Quest const* qInfo, bool msg) const
+ {
+-    if (getLevel() < qInfo->GetMinLevel())
++    if (getLevel() < qInfo->GetMinLevel() ||
++        (qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAG_MAX_LEVEL_LIMIT) && getLevel() > qInfo->GetQuestLevel()))
+     {
+         if (msg)
+             SendCanTakeQuestResponse(INVALIDREASON_DONT_HAVE_REQ);
+@@ -17829,6 +17794,10 @@ bool Player::IsSpellFitByClassAndRace(uint32 spell_id, uint32* pReqlevel /*= NUL
+     uint32 racemask  = getRaceMask();
+     uint32 classmask = getClassMask();
+ 
++    // exception to filter out TH axes/maces for shaman
++    if (!isGameMaster() && getClass() == CLASS_SHAMAN && (spell_id == 197 || spell_id == 199))
++        return false;
++
+     SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBounds(spell_id);
+     if (bounds.first==bounds.second)
+         return true;
+@@ -17943,6 +17912,39 @@ void Player::SummonIfPossible(bool agree)
+     if(m_summon_expire < time(NULL))
+         return;
+ 
++    // We should have check requirements for instance enter
++    if (AreaTrigger const* pAt = sObjectMgr.GetMapEntranceTrigger(m_summon_mapid))
++    {
++        uint32 missingLevel = 0;
++        if (getLevel() < pAt->requiredLevel && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL))
++            missingLevel = pAt->requiredLevel;
++
++        uint32 missingItem = 0;
++        if (pAt->requiredItem)
++        {
++            if (!HasItemCount(pAt->requiredItem, 1) &&
++                (!pAt->requiredItem2 || !HasItemCount(pAt->requiredItem2, 1)))
++                missingItem = pAt->requiredItem;
++        }
++        else if (pAt->requiredItem2 && !HasItemCount(pAt->requiredItem2, 1))
++            missingItem = pAt->requiredItem2;
++
++        uint32 missingQuest = 0;
++        if (pAt->requiredQuest && !GetQuestRewardStatus(pAt->requiredQuest))
++            missingQuest = pAt->requiredQuest;
++
++        if (missingLevel || missingItem || missingQuest)
++        {
++            if (missingItem)
++                GetSession()->SendAreaTriggerMessage(GetSession()->GetMangosString(LANG_LEVEL_MINREQUIRED_AND_ITEM), pAt->requiredLevel, sObjectMgr.GetItemPrototype(missingItem)->Name1);
++            else if (missingQuest)
++                GetSession()->SendAreaTriggerMessage("%s", pAt->requiredFailedText.c_str());
++            else if (missingLevel)
++                GetSession()->SendAreaTriggerMessage(GetSession()->GetMangosString(LANG_LEVEL_MINREQUIRED), missingLevel);
++            return;
++        }
++    }
++
+     // stop taxi flight at summon
+     if(IsTaxiFlying())
+     {
+diff --git a/src/game/QuestDef.h b/src/game/QuestDef.h
+index 96830a4..083954f 100644
+--- a/src/game/QuestDef.h
++++ b/src/game/QuestDef.h
+@@ -147,7 +147,7 @@ enum QuestSpecialFlags
+     // Mangos flags for set SpecialFlags in DB if required but used only at server
+     QUEST_SPECIAL_FLAG_REPEATABLE           = 0x001,        // |1 in SpecialFlags from DB
+     QUEST_SPECIAL_FLAG_EXPLORATION_OR_EVENT = 0x002,        // |2 in SpecialFlags from DB (if required area explore, spell SPELL_EFFECT_QUEST_COMPLETE casting, table `*_script` command SCRIPT_COMMAND_QUEST_EXPLORED use, set from script DLL)
+-    // reserved for future versions           0x004,        // |4 in SpecialFlags.
++    QUEST_SPECIAL_FLAG_MAX_LEVEL_LIMIT      = 0x004,        // |4 in SpecialFlags from DB
+ 
+     // Mangos flags for internal use only
+     QUEST_SPECIAL_FLAG_DELIVER              = 0x008,        // Internal flag computed only
+@@ -156,7 +156,7 @@ enum QuestSpecialFlags
+     QUEST_SPECIAL_FLAG_TIMED                = 0x040,        // Internal flag computed only
+ };
+ 
+-#define QUEST_SPECIAL_FLAG_DB_ALLOWED (QUEST_SPECIAL_FLAG_REPEATABLE | QUEST_SPECIAL_FLAG_EXPLORATION_OR_EVENT)
++#define QUEST_SPECIAL_FLAG_DB_ALLOWED (QUEST_SPECIAL_FLAG_REPEATABLE | QUEST_SPECIAL_FLAG_EXPLORATION_OR_EVENT | QUEST_SPECIAL_FLAG_MAX_LEVEL_LIMIT)
+ 
+ struct QuestLocale
+ {
+-- 
+1.7.6.msysgit.0
+

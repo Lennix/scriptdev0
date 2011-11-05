@@ -1,0 +1,26 @@
+From ab11e4f3c43244f900e632f2aec00ab26d89e34b Mon Sep 17 00:00:00 2001
+From: jursky <asdasd>
+Date: Thu, 16 Jun 2011 00:06:42 +0200
+Subject: [PATCH] Gameobjects, Disable Meeting Stones
+
+---
+ src/game/GameObject.cpp |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/src/game/GameObject.cpp b/src/game/GameObject.cpp
+index bd21bb6..a1b563b 100644
+--- a/src/game/GameObject.cpp
++++ b/src/game/GameObject.cpp
+@@ -1422,6 +1422,9 @@ void GameObject::Use(Unit* user)
+         }
+         case GAMEOBJECT_TYPE_MEETINGSTONE:                  //23
+         {
++            // Meeting Stones should not work at patch 1.12.1
++            return;
++
+             GameObjectInfo const* info = GetGOInfo();
+ 
+             if (user->GetTypeId() != TYPEID_PLAYER)
+-- 
+1.7.4.msysgit.0
+

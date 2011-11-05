@@ -1,0 +1,25 @@
+From de5e19e3a426538b2dc81895b832d5634eda7a01 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@.(none)>
+Date: Tue, 11 Jan 2011 21:53:29 +0100
+Subject: [PATCH] Pet unlearn talents fix
+
+---
+ src/game/PetHandler.cpp |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/src/game/PetHandler.cpp b/src/game/PetHandler.cpp
+index 3044773..a8b6891 100644
+--- a/src/game/PetHandler.cpp
++++ b/src/game/PetHandler.cpp
+@@ -532,7 +532,7 @@ void WorldSession::HandlePetUnlearnOpcode(WorldPacket& recvPacket)
+         return;
+     }
+ 
+-    if (pet->getPetType() != HUNTER_PET || pet->m_spells.size())
++    if (pet->getPetType() != HUNTER_PET || !pet->m_spells.size())
+         return;
+ 
+     CharmInfo* charmInfo = pet->GetCharmInfo();
+-- 
+1.7.3.1.msysgit.0
+

@@ -1,0 +1,623 @@
+From 6079ae872bbf326fde9e92d77db601ac645e7da9 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@.(none)>
+Date: Sun, 20 Mar 2011 14:04:25 +0100
+Subject: [PATCH] Creature formations
+
+---
+ src/game/Creature.cpp          |   26 ++++-
+ src/game/Creature.h            |    8 ++
+ src/game/CreatureGroups.cpp    |  264 ++++++++++++++++++++++++++++++++++++++++
+ src/game/CreatureGroups.h      |   77 ++++++++++++
+ src/game/Map.h                 |    5 +
+ src/game/Unit.cpp              |    4 +
+ src/game/World.cpp             |    4 +
+ win/VC100/game.vcxproj         |    2 +
+ win/VC100/game.vcxproj.filters |    6 +
+ win/VC90/game.vcproj           |    8 ++
+ 10 files changed, 403 insertions(+), 1 deletions(-)
+ create mode 100644 src/game/CreatureGroups.cpp
+ create mode 100644 src/game/CreatureGroups.h
+
+diff --git a/src/game/Creature.cpp b/src/game/Creature.cpp
+index 91e9288..875acd4 100644
+--- a/src/game/Creature.cpp
++++ b/src/game/Creature.cpp
+@@ -47,6 +47,7 @@
+ #include "GridNotifiers.h"
+ #include "GridNotifiersImpl.h"
+ #include "CellImpl.h"
++#include "CreatureGroups.h"
+ 
+ // apply implementation of the singletons
+ #include "Policies/SingletonImp.h"
+@@ -162,7 +162,7 @@ m_subtype(subtype), m_defaultMovementType(IDLE_MOTION_TYPE), m_equipmentId(0),
+ m_AlreadyCallAssistance(false), m_AlreadySearchedAssistance(false),
+ m_regenHealth(true), m_AI_locked(false), m_isDeadByDefault(false),
+ m_meleeDamageSchoolMask(SPELL_SCHOOL_MASK_NORMAL), m_originalEntry(0), m_temporaryFactionFlags(TEMPFACTION_NONE),
+-m_creatureInfo(NULL), m_splineFlags(SPLINEFLAG_WALKMODE)
++m_creatureInfo(NULL), m_splineFlags(SPLINEFLAG_WALKMODE), m_formation(NULL)
+ {
+     m_regenTimer = 200;
+     m_valuesCount = UNIT_END;
+@@ -193,6 +194,8 @@ void Creature::AddToWorld()
+         if (m_zoneScript)
+             m_zoneScript->OnCreatureCreate(this, true);
+ 
++        SearchFormation();
++
+         GetMap()->GetObjectsStore().insert<Creature>(GetObjectGuid(), (Creature*)this);
+     }
+ 
+@@ -207,12 +210,29 @@ void Creature::RemoveFromWorld()
+         if (m_zoneScript)
+             m_zoneScript->OnCreatureCreate(this, false);
+ 
++        if (m_formation)
++            sFormationMgr.RemoveCreatureFromGroup(m_formation, this);
++
+         GetMap()->GetObjectsStore().erase<Creature>(GetObjectGuid(), (Creature*)NULL);
+     }
+ 
+     Unit::RemoveFromWorld();
+ }
+ 
++void Creature::SearchFormation()
++{
++    if (IsTemporarySummon())
++        return;
++
++    uint32 lowguid = GetGUIDLow();
++    if (!lowguid)
++        return;
++
++    CreatureGroupInfoType::iterator frmdata = CreatureGroupMap.find(lowguid);
++    if (frmdata != CreatureGroupMap.end())
++        sFormationMgr.AddCreatureToGroup(frmdata->second->leaderGUID, this);
++}
++
+ void Creature::RemoveCorpse()
+ {
+     if ((getDeathState() != CORPSE && !m_isDeadByDefault) || (getDeathState() != ALIVE && m_isDeadByDefault))
+@@ -1434,6 +1454,10 @@ void Creature::SetDeathState(DeathState s)
+         m_corpseDecayTimer = m_corpseDelay*IN_MILLISECONDS; // the max/default time for corpse decay (before creature is looted/AllLootRemovedFromCorpse() is called)
+         m_respawnTime = time(NULL) + m_respawnDelay;        // respawn delay (spawntimesecs)
+ 
++        // Dismiss group if is leader
++        if (m_formation && m_formation->getLeader() == this)
++            m_formation->FormationReset(true);
++
+         // always save boss respawn time at death to prevent crash cheating
+         if (sWorld.getConfig(CONFIG_BOOL_SAVE_RESPAWN_TIME_IMMEDIATELY) || IsWorldBoss())
+             SaveRespawnTime();
+diff --git a/src/game/Creature.h b/src/game/Creature.h
+index 98a1759..c5a0deb 100644
+--- a/src/game/Creature.h
++++ b/src/game/Creature.h
+@@ -39,6 +39,7 @@ class Group;
+ class Quest;
+ class Player;
+ class WorldSession;
++class CreatureGroup;
+ 
+ struct GameEventCreatureData;
+ 
+@@ -701,6 +701,10 @@ class MANGOS_DLL_SPEC Creature : public Unit
+ 
+         void SetVirtualItem(VirtualItemSlot slot, uint32 item_id);
+         void SetVirtualItemRaw(VirtualItemSlot slot, uint32 display_id, uint32 info0, uint32 info1);
++
++        void SearchFormation();
++        CreatureGroup* GetFormation() {return m_formation;}
++        void SetFormation(CreatureGroup* formation) {m_formation = formation;}
+     protected:
+         bool CreateFromProto(uint32 guidlow, CreatureInfo const* cinfo, Team team, const CreatureData *data = NULL, GameEventCreatureData const* eventData =NULL);
+         bool InitEntry(uint32 entry, Team team=ALLIANCE, const CreatureData* data = NULL, GameEventCreatureData const* eventData = NULL);
+@@ -737,6 +742,9 @@ class MANGOS_DLL_SPEC Creature : public Unit
+         GridReference<Creature> m_gridRef;
+         CreatureInfo const* m_creatureInfo;
+         SplineFlags m_splineFlags;
++
++        // Formation var
++        CreatureGroup* m_formation;
+ };
+ 
+ class AssistDelayEvent : public BasicEvent
+diff --git a/src/game/CreatureGroups.cpp b/src/game/CreatureGroups.cpp
+new file mode 100644
+index 0000000..17ad399
+--- /dev/null
++++ b/src/game/CreatureGroups.cpp
+@@ -0,0 +1,270 @@
++/*
++ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
++ * Copyright (C) 2009-2010 MaNGOSZero <http://github.com/mangoszero/mangoszero/>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#include "Creature.h"
++#include "CreatureGroups.h"
++#include "ObjectMgr.h"
++#include "ProgressBar.h"
++
++#include "CreatureAI.h"
++
++#define MAX_DESYNC 5.0f
++
++INSTANTIATE_SINGLETON_1(CreatureGroupManager);
++
++CreatureGroupInfoType   CreatureGroupMap;
++
++void CreatureGroupManager::AddCreatureToGroup(uint32 groupId, Creature* member)
++{
++    Map *map = member->FindMap();
++    if (!map)
++        return;
++
++    CreatureGroupHolderType::iterator itr = map->CreatureGroupHolder.find(groupId);
++
++    // Add member to an existing group
++    if (itr != map->CreatureGroupHolder.end())
++    {
++        sLog.outDebug("Group found: %u, inserting creature GUID: %u, Group InstanceID %u", groupId, member->GetGUIDLow(), member->GetInstanceId());
++        itr->second->AddMember(member);
++    }
++    // Create new group
++    else
++    {
++        sLog.outDebug("Group not found: %u. Creating new group.", groupId);
++        CreatureGroup* group = new CreatureGroup(groupId);
++        map->CreatureGroupHolder[groupId] = group;
++        group->AddMember(member);
++    }
++}
++
++void CreatureGroupManager::RemoveCreatureFromGroup(CreatureGroup* group, Creature* member)
++{
++    sLog.outDebug("Deleting member pointer to GUID: %u from group %u", group->GetId(), member->GetGUIDLow());
++    group->RemoveMember(member);
++
++    if (group->isEmpty())
++    {
++        Map* map = member->FindMap();
++        if (!map)
++            return;
++
++        sLog.outDebug("Deleting group with InstanceID %u", member->GetInstanceId());
++        map->CreatureGroupHolder.erase(group->GetId());
++        delete group;
++    }
++}
++
++void CreatureGroupManager::LoadCreatureFormations()
++{
++    // Clear existing map
++    CreatureGroupMap.clear();
++
++    // Check Integrity of the table
++    QueryResult* result = WorldDatabase.Query("SELECT MAX(leaderGUID) FROM creature_formations");
++
++    if (!result)
++    {
++        sLog.outErrorDb(" ...an error occured while loading the table creature_formations (maybe it doesn't exist ?)\n");
++        return;
++    }
++
++    // Get group data
++    result = WorldDatabase.Query("SELECT leaderGUID, memberGUID, dist, angle, groupAI FROM creature_formations ORDER BY leaderGUID");
++
++    if (!result)
++    {
++        BarGoLink bar(1);
++
++        bar.step();
++
++        sLog.outString();
++        sLog.outErrorDb(">> Loaded `creature_formations`, table is empty!");
++        return;
++    }
++
++    uint32 total_records = result->GetRowCount();
++    BarGoLink bar(total_records);
++    Field* fields;
++
++    FormationInfo* group_member;
++    // Loading data...
++    do
++    {
++        fields = result->Fetch();
++
++        bar.step();
++        // Load group member data
++        group_member                        = new FormationInfo;
++        group_member->leaderGUID            = fields[0].GetUInt32();
++        uint32 memberGUID = fields[1].GetUInt32();
++        group_member->groupAI                = fields[4].GetUInt8();
++        // If creature is group leader we may skip loading of dist/angle
++        if (group_member->leaderGUID != memberGUID)
++        {
++            group_member->follow_dist       = fields[2].GetFloat();
++            group_member->follow_angle      = fields[3].GetFloat() * M_PI / 180;
++        }
++        else
++        {
++            group_member->follow_dist       = 0;
++            group_member->follow_angle      = 0;
++        }
++
++        // check data correctness
++        {
++            QueryResult* result1 = WorldDatabase.PQuery("SELECT guid FROM creature WHERE guid = %u", group_member->leaderGUID);
++            if (!result1)
++            {
++                sLog.outErrorDb("creature_formations table leader guid %u incorrect (not exist)", group_member->leaderGUID);
++                delete group_member;
++                continue;
++            }
++
++            result1 = WorldDatabase.PQuery("SELECT guid FROM creature WHERE guid = %u", memberGUID);
++            if (!result1)
++            {
++                sLog.outErrorDb("creature_formations table member guid %u incorrect (not exist)", memberGUID);
++                delete group_member;
++                continue;
++            }
++
++            delete result1;
++        }
++
++        CreatureGroupMap[memberGUID] = group_member;
++    }
++    while (result->NextRow());
++
++    delete result;
++
++    sLog.outString(">> Loaded %u creatures in formations", total_records);
++    sLog.outString();
++}
++
++void CreatureGroup::AddMember(Creature* member)
++{
++    sLog.outDebug("CreatureGroup::AddMember: Adding unit GUID: %u.", member->GetGUIDLow());
++
++    // Check if it is a leader
++    if (member->GetGUIDLow() == m_groupID)
++    {
++        sLog.outDebug("Unit GUID: %u is formation leader. Adding group.", member->GetGUIDLow());
++        m_leader = member;
++    }
++
++    m_members[member] = CreatureGroupMap.find(member->GetGUIDLow())->second;
++    member->SetFormation(this);
++}
++
++void CreatureGroup::RemoveMember(Creature *member)
++{
++    if (m_leader == member)
++        m_leader = NULL;
++
++    m_members.erase(member);
++    member->SetFormation(NULL);
++}
++
++void CreatureGroup::MemberAttackStart(Creature* member, Unit* target)
++{
++    if (!member || !target)
++    {
++        sLog.outDebug("GROUP ATTACK: variable \"member\" or \"target\" seems to be zero, skipping..");
++        return;
++    }
++
++    uint8 groupAI = CreatureGroupMap[member->GetGUIDLow()]->groupAI;
++    if (!groupAI)
++        return;
++
++    if (groupAI == 1 && member != m_leader)
++        return;
++
++    for (CreatureGroupMemberType::iterator itr = m_members.begin(); itr != m_members.end(); ++itr)
++    {
++        if (m_leader) // avoid crash if leader was killed and reset.
++            sLog.outDebug("GROUP ATTACK: group instance id %u calls member instid %u", m_leader->GetInstanceId(), member->GetInstanceId());
++
++        // Skip one check
++        if (itr->first == member)
++            continue;
++
++        if (!itr->first->isAlive())
++            continue;
++
++        if (itr->first->getVictim())
++            continue;
++
++        if (itr->first->IsHostileTo(target) && itr->first->AI())
++            itr->first->AI()->AttackStart(target);
++    }
++}
++
++void CreatureGroup::FormationReset(bool dismiss)
++{
++    for (CreatureGroupMemberType::iterator itr = m_members.begin(); itr != m_members.end(); ++itr)
++    {
++        if (itr->first != m_leader && itr->first->isAlive())
++        {
++            if (dismiss)
++                itr->first->GetMotionMaster()->Initialize();
++            else
++                itr->first->GetMotionMaster()->MoveIdle();
++            sLog.outDebug("Set %s movement for member GUID: %u", dismiss ? "default" : "idle", itr->first->GetGUIDLow());
++        }
++    }
++    m_Formed = !dismiss;
++}
++
++void CreatureGroup::LeaderMoveTo(float x, float y, float z)
++{
++    if (!m_leader)
++        return;
++
++    float pathangle    = atan2(m_leader->GetPositionY() - y, m_leader->GetPositionX() - x);
++
++    for (CreatureGroupMemberType::iterator itr = m_members.begin(); itr != m_members.end(); ++itr)
++    {
++        Creature* member = itr->first;
++        if (member == m_leader || !member->isAlive() || member->getVictim())
++            continue;
++
++        float angle = itr->second->follow_angle;
++        float dist = itr->second->follow_dist;
++
++        float dx = x + cos(angle + pathangle) * dist;
++        float dy = y + sin(angle + pathangle) * dist;
++        float dz = z;
++
++        MaNGOS::NormalizeMapCoord(dx);
++        MaNGOS::NormalizeMapCoord(dy);
++
++        member->UpdateGroundPositionZ(dx, dy, dz);
++
++        if (member->IsWithinDist(m_leader, dist + MAX_DESYNC))
++            member->SetSplineFlags(m_leader->GetSplineFlags());
++        else
++            member->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
++
++        member->GetMotionMaster()->MovePoint(0, dx, dy, dz);
++        CreatureCreatePos pos(member->GetMap(), dx, dy, dz, member->GetOrientation());
++        member->SetSummonPoint(pos);
++    }
++}
+diff --git a/src/game/CreatureGroups.h b/src/game/CreatureGroups.h
+new file mode 100644
+index 0000000..b2c24db
+--- /dev/null
++++ b/src/game/CreatureGroups.h
+@@ -0,0 +1,77 @@
++/*
++ * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
++ * Copyright (C) 2009-2010 MaNGOSZero <http://github.com/mangoszero/mangoszero/>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#ifndef _FORMATIONS_H
++#define _FORMATIONS_H
++
++#include "Common.h"
++
++class CreatureGroup;
++
++struct FormationInfo
++{
++    uint32 leaderGUID;
++    float follow_dist;
++    float follow_angle;
++    uint8 groupAI;
++};
++
++class CreatureGroupManager
++{
++    public:
++        void AddCreatureToGroup(uint32 group_id, Creature* creature);
++        void RemoveCreatureFromGroup(CreatureGroup* group, Creature* creature);
++        void LoadCreatureFormations();
++};
++
++typedef UNORDERED_MAP<uint32/*memberDBGUID*/, FormationInfo*>   CreatureGroupInfoType;
++
++extern CreatureGroupInfoType    CreatureGroupMap;
++
++class CreatureGroup
++{
++    private:
++        Creature* m_leader; // Important do not forget sometimes to work with pointers instead synonims :D:D
++        typedef std::map<Creature*, FormationInfo*>  CreatureGroupMemberType;
++        CreatureGroupMemberType m_members;
++
++        uint32 m_groupID;
++        bool m_Formed;
++
++    public:
++        // Group cannot be created empty
++        explicit CreatureGroup(uint32 id) : m_groupID(id), m_leader(NULL), m_Formed(false) {}
++        ~CreatureGroup() { sLog.outDebug("Destroying group"); }
++
++        Creature* getLeader() const { return m_leader; }
++        uint32 GetId() const { return m_groupID; }
++        bool isEmpty() const { return m_members.empty(); }
++        bool isFormed() const { return m_Formed; }
++
++        void AddMember(Creature* member);
++        void RemoveMember(Creature* member);
++        void FormationReset(bool dismiss);
++
++        void LeaderMoveTo(float x, float y, float z);
++        void MemberAttackStart(Creature* member, Unit* target);
++};
++
++#define sFormationMgr MaNGOS::Singleton<CreatureGroupManager>::Instance()
++
++#endif
+diff --git a/src/game/Map.h b/src/game/Map.h
+index 2f1f167..38c2965 100644
+--- a/src/game/Map.h
++++ b/src/game/Map.h
+@@ -52,6 +52,7 @@ class DungeonPersistentState;
+ class BattleGroundPersistentState;
+ struct ScriptInfo;
+ class BattleGround;
++class CreatureGroup;
+ class GridMap;
+ 
+ // GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some platform
+@@ -82,6 +83,8 @@ struct WorldTemplate
+     uint32 script_id;
+ };
+ 
++typedef std::map<uint32/*leaderDBGUID*/, CreatureGroup*>        CreatureGroupHolderType;
++
+ #if defined( __GNUC__ )
+ #pragma pack()
+ #else
+@@ -239,6 +242,8 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
+         void MonsterYellToMap(CreatureInfo const* cinfo, int32 textId, uint32 language, Unit* target, uint32 senderLowGuid = 0);
+         void PlayDirectSoundToMap(uint32 soundId);
+ 
++        CreatureGroupHolderType CreatureGroupHolder;
++
+     private:
+         void LoadMapAndVMap(int gx, int gy);
+ 
+diff --git a/src/game/Unit.cpp b/src/game/Unit.cpp
+index fc7fe1c..11eb5b6 100644
+--- a/src/game/Unit.cpp
++++ b/src/game/Unit.cpp
+@@ -50,6 +50,7 @@
+ #include "DBCStores.h"
+ #include "VMapFactory.h"
+ #include "MovementGenerator.h"
++#include "CreatureGroups.h"
+ #include "extras/Mod.h"
+ 
+ #include <math.h>
+@@ -7156,6 +7157,9 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
+         if (GetMap()->IsDungeon() && (pCreature->GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_AGGRO_ZONE) && enemy && enemy->IsControlledByPlayer())
+             pCreature->SetInCombatWithZone();
+ 
++        if (pCreature->GetFormation())
++            pCreature->GetFormation()->MemberAttackStart(pCreature, enemy);
++
+         if (InstanceData* mapInstance = GetInstanceData())
+             mapInstance->OnCreatureEnterCombat(pCreature);
+     }
+diff --git a/src/game/World.cpp b/src/game/World.cpp
+index de66dd0..0fbd821 100644
+--- a/src/game/World.cpp
++++ b/src/game/World.cpp
+@@ -62,6 +62,7 @@
+ #include "GMTicketMgr.h"
+ #include "Util.h"
+ #include "CharacterDatabaseCleaner.h"
++#include "CreatureGroups.h"
+ #include "extras/Mod.h"
+ 
+ INSTANTIATE_SINGLETON_1( World );
+@@ -1096,6 +1097,9 @@ void World::SetInitialWorldSettings()
+     sLog.outString();
+     sWaypointMgr.Load();
+ 
++    sLog.outString( "Loading Creature Formations..." );
++    sFormationMgr.LoadCreatureFormations();
++
+     ///- Loading localization data
+     sLog.outString( "Loading Localization strings..." );
+     sObjectMgr.LoadCreatureLocales();                       // must be after CreatureInfo loading
+diff --git a/win/VC100/game.vcxproj b/win/VC100/game.vcxproj
+index 5797813..9703615 100644
+--- a/win/VC100/game.vcxproj
++++ b/win/VC100/game.vcxproj
+@@ -382,6 +382,7 @@
+     <ClCompile Include="..\..\src\game\CreatureAISelector.cpp" />
+     <ClCompile Include="..\..\src\game\CreatureEventAI.cpp" />
+     <ClCompile Include="..\..\src\game\CreatureEventAIMgr.cpp" />
++    <ClCompile Include="..\..\src\game\CreatureGroups.cpp" />
+     <ClCompile Include="..\..\src\game\DBCStores.cpp" />
+     <ClCompile Include="..\..\src\game\debugcmds.cpp" />
+     <ClCompile Include="..\..\src\game\DestinationHolder.cpp" />
+@@ -528,6 +529,7 @@
+     <ClInclude Include="..\..\src\game\CreatureAISelector.h" />
+     <ClInclude Include="..\..\src\game\CreatureEventAI.h" />
+     <ClInclude Include="..\..\src\game\CreatureEventAIMgr.h" />
++    <ClInclude Include="..\..\src\game\CreatureGroups.h" />
+     <ClInclude Include="..\..\src\game\DBCEnums.h" />
+     <ClInclude Include="..\..\src\game\DBCfmt.h" />
+     <ClInclude Include="..\..\src\game\DBCStores.h" />
+diff --git a/win/VC100/game.vcxproj.filters b/win/VC100/game.vcxproj.filters
+index 01a7929..5d95175 100644
+--- a/win/VC100/game.vcxproj.filters
++++ b/win/VC100/game.vcxproj.filters
+@@ -267,6 +267,9 @@
+     <ClCompile Include="..\..\src\game\CreatureEventAIMgr.cpp">
+       <Filter>Object</Filter>
+     </ClCompile>
++    <ClCompile Include="..\..\src\game\CreatureGroups.cpp">
++      <Filter>Object</Filter>
++    </ClCompile>
+     <ClCompile Include="..\..\src\game\DynamicObject.cpp">
+       <Filter>Object</Filter>
+     </ClCompile>
+@@ -639,6 +642,9 @@
+     <ClInclude Include="..\..\src\game\CreatureEventAIMgr.h">
+       <Filter>Object</Filter>
+     </ClInclude>
++    <ClInclude Include="..\..\src\game\CreatureGroups.h">
++      <Filter>Object</Filter>
++    </ClInclude>
+     <ClInclude Include="..\..\src\game\DynamicObject.h">
+       <Filter>Object</Filter>
+     </ClInclude>
+diff --git a/win/VC90/game.vcproj b/win/VC90/game.vcproj
+index 637219b..688f4fa 100644
+--- a/win/VC90/game.vcproj
++++ b/win/VC90/game.vcproj
+@@ -1118,6 +1118,14 @@
+ 				RelativePath="..\..\src\game\CreatureEventAIMgr.h"
+ 				>
+ 			</File>
++            <File
++				RelativePath="..\..\src\game\CreatureGroups.cpp"
++				>
++			</File>
++            <File
++				RelativePath="..\..\src\game\CreatureGroups.h"
++				>
++			</File>
+ 			<File
+ 				RelativePath="..\..\src\game\DynamicObject.cpp"
+ 				>
+-- 
+1.7.3.1.msysgit.0
+

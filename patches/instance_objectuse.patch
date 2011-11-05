@@ -1,0 +1,41 @@
+From dc0564a1b6d31d409ea1ed88eb16b1498e41ce30 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@.(none)>
+Date: Mon, 27 Dec 2010 18:02:00 +0100
+Subject: [PATCH] OnObjectUse() for instance scripting
+
+---
+ src/game/GameObject.cpp |    3 +++
+ src/game/InstanceData.h |    3 +++
+ 2 files changed, 6 insertions(+), 0 deletions(-)
+
+diff --git a/src/game/GameObject.cpp b/src/game/GameObject.cpp
+index 6f3e253..de1f93f 100644
+--- a/src/game/GameObject.cpp
++++ b/src/game/GameObject.cpp
+@@ -911,6 +911,9 @@ void GameObject::Use(Unit* user)
+     uint32 spellId = 0;
+     bool triggered = false;
+ 
++    if (InstanceData* mapInstance = GetInstanceData())
++        mapInstance->OnObjectUse(this);
++
+     if (user->GetTypeId() == TYPEID_PLAYER && sScriptMgr.OnGameObjectUse((Player*)user, this))
+         return;
+ 
+diff --git a/src/game/InstanceData.h b/src/game/InstanceData.h
+index 7dcfa24..d33248a 100644
+--- a/src/game/InstanceData.h
++++ b/src/game/InstanceData.h
+@@ -67,6 +67,9 @@ class MANGOS_DLL_SPEC InstanceData
+         //Called when a gameobject is created
+         virtual void OnObjectCreate(GameObject *) {}
+ 
++        // Call when gameobject is used
++        virtual void OnObjectUse(GameObject*) {}
++
+         //called on creature creation
+         virtual void OnCreatureCreate(Creature * /*creature*/) {}
+ 
+-- 
+1.7.3.1.msysgit.0
+

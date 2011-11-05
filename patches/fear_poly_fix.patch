@@ -1,0 +1,52 @@
+From f62b4432d381ec70a8682f732a186d7093093773 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@.(none)>
+Date: Mon, 10 Jan 2011 22:41:54 +0100
+Subject: [PATCH] Fear & Poly fix by Zataron
+
+---
+ src/game/MotionMaster.cpp |    4 ++++
+ src/game/Unit.cpp         |    6 +++++-
+ 2 files changed, 9 insertions(+), 1 deletions(-)
+
+diff --git a/src/game/MotionMaster.cpp b/src/game/MotionMaster.cpp
+index ff6cd87..37146b0 100644
+--- a/src/game/MotionMaster.cpp
++++ b/src/game/MotionMaster.cpp
+@@ -270,6 +270,10 @@ void MotionMaster::MoveChase(Unit* target, float dist, float angle)
+     if (!target)
+         return;
+ 
++    // cannot chase if polymorphed or feared
++    if (m_owner->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED) || m_owner->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING))
++        return;
++
+     DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s chase to %s", m_owner->GetGuidStr().c_str(), target->GetGuidStr().c_str());
+ 
+     if (m_owner->GetTypeId() == TYPEID_PLAYER)
+diff --git a/src/game/Unit.cpp b/src/game/Unit.cpp
+index f9cc0a1..7674da5 100644
+--- a/src/game/Unit.cpp
++++ b/src/game/Unit.cpp
+@@ -5662,6 +5662,10 @@ bool Unit::Attack(Unit *victim, bool meleeAttack)
+     if(GetTypeId()==TYPEID_PLAYER && IsMounted())
+         return false;
+ 
++    // Units cannot attack when polymorphed or feared
++    if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED) || HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING))
++        return false;
++
+     // nobody can attack GM in GM-mode
+     if(victim->GetTypeId()==TYPEID_PLAYER)
+     {
+@@ -7999,7 +8003,7 @@ bool Unit::SelectHostileTarget()
+ 
+     if (target)
+     {
+-        if (!hasUnitState(UNIT_STAT_STUNNED | UNIT_STAT_DIED))
++        if (!hasUnitState(UNIT_STAT_STUNNED | UNIT_STAT_DIED) && !HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED) && !HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING))
+         {
+             SetInFront(target);
+             ((Creature*)this)->AI()->AttackStart(target);
+-- 
+1.7.3.1.msysgit.0
+

@@ -1,0 +1,60 @@
+From bb16f467982ac19cb3d21562f367f9ea9f5ff846 Mon Sep 17 00:00:00 2001
+From: Craig <hippouss@none.com>
+Date: Sun, 11 Sep 2011 17:15:50 +0200
+Subject: [PATCH] Devices core fix
+
+---
+ src/game/Spell.cpp        |   13 +++++++++++++
+ src/game/SpellEffects.cpp |    5 ++++-
+ 2 files changed, 17 insertions(+), 1 deletions(-)
+
+diff --git a/src/game/Spell.cpp b/src/game/Spell.cpp
+index e4d3a0e..e350243 100644
+--- a/src/game/Spell.cpp
++++ b/src/game/Spell.cpp
+@@ -5014,6 +5014,15 @@ SpellCastResult Spell::CheckRange(bool strict)
+             return SPELL_FAILED_UNIT_NOT_INFRONT;
+     }
+ 
++    // Range check for spells that target game objects
++    if (!target && m_targets.getGOTarget())
++    {
++        float dist = m_caster->GetDistance(m_targets.getGOTarget());
++
++        if (dist > max_range)
++            return SPELL_FAILED_OUT_OF_RANGE;
++    }
++
+     // TODO verify that such spells really use bounding radius
+     if(m_targets.m_targetMask == TARGET_FLAG_DEST_LOCATION && m_targets.m_destX != 0 && m_targets.m_destY != 0 && m_targets.m_destZ != 0)
+     {
+@@ -5663,6 +5672,10 @@ bool Spell::CheckTarget( Unit* target, SpellEffectIndex eff )
+             return false;
+     }
+ 
++    // Make spell 22247 used by Suppression Devices in BWL not hit stealthed targets and limit range
++    if (m_spellInfo->Id == 22247 && (target->HasStealthAura() || m_caster->GetDistance(target) > 15.0f))
++        return false;
++
+     // Check targets for LOS visibility (except spells without range limitations )
+     switch(m_spellInfo->Effect[eff])
+     {
+diff --git a/src/game/SpellEffects.cpp b/src/game/SpellEffects.cpp
+index 50c8045..536a22e 100644
+--- a/src/game/SpellEffects.cpp
++++ b/src/game/SpellEffects.cpp
+@@ -1863,7 +1863,10 @@ void Spell::SendLoot(ObjectGuid guid, LootType loottype, LockType lockType)
+             case GAMEOBJECT_TYPE_TRAP:
+                 if (lockType == LOCKTYPE_DISARM_TRAP)
+                 {
+-                    gameObjTarget->SetLootState(GO_JUST_DEACTIVATED);
++                    if (gameObjTarget->GetEntry() == 179784)      // Exception for Suppression Devices in BWL
++                        gameObjTarget->SetGoState(GO_STATE_ACTIVE);
++                    else
++                        gameObjTarget->SetLootState(GO_JUST_DEACTIVATED);
+                     return;
+                 }
+                 sLog.outError("Spell::SendLoot unhandled locktype %u for GameObject trap (entry %u) for spell %u.", lockType, gameObjTarget->GetEntry(), m_spellInfo->Id);
+-- 
+1.7.6.msysgit.0
+
