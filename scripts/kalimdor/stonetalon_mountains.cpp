@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -74,15 +71,15 @@ bool GossipSelect_npc_braug_dimspirit(Player* pPlayer, Creature* pCreature, uint
 
 enum
 {
-    NPC_GRIMTOTEM_RUFFIAN    = 11910,
-    NPC_GRIMTOTEM_BRUTE      = 11912,
-    NPC_GRIMTOTEM_SORCERER   = 11913,
+    NPC_GRIMTOTEM_RUFFIAN       = 11910,
+    NPC_GRIMTOTEM_BRUTE         = 11912,
+    NPC_GRIMTOTEM_SORCERER      = 11913,
 
-    SAY_START                = -1000357,
-    SAY_AMBUSH               = -1000358,
-    SAY_END                  = -1000359,
+    SAY_START                   = -1000357,
+    SAY_AMBUSH                  = -1000358,
+    SAY_END                     = -1000359,
 
-    QUEST_PROTECT_KAYA       = 6523
+    QUEST_PROTECT_KAYA          = 6523
 };
 
 struct MANGOS_DLL_DECL npc_kayaAI : public npc_escortAI
@@ -107,7 +104,7 @@ struct MANGOS_DLL_DECL npc_kayaAI : public npc_escortAI
                 //we simplify this, and make say when the ambush actually start.
                 DoScriptText(SAY_AMBUSH, m_creature);
                 m_creature->SummonCreature(NPC_GRIMTOTEM_RUFFIAN, -50.75f, -500.77f, -46.13f, 0.4f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
-                m_creature->SummonCreature(NPC_GRIMTOTEM_BRUTE, -40.05f, -510.89f, -46.05f, 1.7f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
+                m_creature->SummonCreature(NPC_GRIMTOTEM_BRUTE, -40.05f, -510.89f,- 46.05f, 1.7f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
                 m_creature->SummonCreature(NPC_GRIMTOTEM_SORCERER, -32.21f, -499.20f, -45.35f, 2.8f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
                 break;
             // Award quest credit
@@ -142,22 +139,191 @@ bool QuestAccept_npc_kaya(Player* pPlayer, Creature* pCreature, Quest const* pQu
 }
 
 /*######
+## npc_piznik
+######*/
+
+enum ePiznik
+{
+	QUEST_GERENZOS_ORDERS   = 1090,
+
+	NPC_WINDSHEAR_DIGGER    = 3999,
+	NPC_WINDSHEAR_GEOMANCER = 4003,
+};
+
+#define SPAWN_X 942.10f
+#define SPAWN_Y -254.33f
+#define SPAWN_Z -2.35f
+
+struct MANGOS_DLL_DECL npc_piznikAI : public npc_escortAI
+{
+	npc_piznikAI(Creature* pCreature) : npc_escortAI(pCreature)
+	{
+		Reset();
+	}
+
+	Creature* WindshearKobold[12];
+	uint32 WindshearKoboldCounter;
+	uint32 EventPhase;
+	uint32 EventTimer;
+	bool CanWalk;
+
+	void Reset()
+	{
+		if (HasEscortState(STATE_ESCORT_ESCORTING))
+			return;
+
+		for(uint8 i = 0; i < 12; ++i)
+			WindshearKobold[i] = 0;
+
+		WindshearKoboldCounter = 0;
+		EventPhase = 0;
+		EventTimer = 0;
+
+		CanWalk = true;
+	}
+
+	void WaypointReached(uint32 uiPoint)
+	{
+		Player* pPlayer = GetPlayerForEscort();
+		if (!pPlayer)
+			return;
+
+		switch(uiPoint)
+		{
+			case 0:
+				EventTimer = 1;
+				EventPhase = 1;
+				CanWalk = false;
+				break;
+		}
+	}
+
+	void JustSummoned(Creature* pSummon)
+	{
+		if (pSummon)
+			pSummon->AI()->AttackStart(m_creature);
+	}
+
+	void SummonWindshearKobold()
+	{
+		switch(urand(1,2))
+		{
+			case 1: WindshearKobold[++WindshearKoboldCounter] = m_creature->SummonCreature(NPC_WINDSHEAR_DIGGER, SPAWN_X, SPAWN_Y, SPAWN_Z, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000); break;
+			case 2: WindshearKobold[++WindshearKoboldCounter] = m_creature->SummonCreature(NPC_WINDSHEAR_GEOMANCER, SPAWN_X, SPAWN_Y, SPAWN_Z, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000); break;
+		}
+	}
+
+	bool CanCompletePiznikQuest()
+	{
+		if (WindshearKobold[9] && WindshearKobold[9]->isAlive() && !WindshearKobold[9]->isDead())
+			return false;
+		if (WindshearKobold[10] && WindshearKobold[10]->isAlive() && !WindshearKobold[10]->isDead())
+			return false;
+		if (WindshearKobold[11] && WindshearKobold[11]->isAlive() && !WindshearKobold[11]->isDead())
+			return false;
+
+		return true;
+	}
+
+	void UpdateAI(const uint32 uiDiff)
+	{
+		Player* pPlayer = GetPlayerForEscort();
+
+		if (EventTimer && pPlayer && m_creature->isAlive())
+		{
+			if (EventTimer <= uiDiff)
+			{
+				switch(EventPhase)
+				{
+					case 1:
+						SummonWindshearKobold();
+						SummonWindshearKobold();
+						SummonWindshearKobold();
+						EventTimer = 30000;
+						break;
+					case 2:
+						SummonWindshearKobold();
+						SummonWindshearKobold();
+						SummonWindshearKobold();
+						EventTimer = 30000;
+						break;
+					case 3:
+						SummonWindshearKobold();
+						SummonWindshearKobold();
+						SummonWindshearKobold();
+						EventTimer = 30000;
+						break;
+					case 4:
+						SummonWindshearKobold();
+						SummonWindshearKobold();
+						SummonWindshearKobold();
+						EventTimer = 1;
+						break;
+					case 5:
+						if (CanCompletePiznikQuest())
+						{
+							m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP + UNIT_NPC_FLAG_QUESTGIVER);
+							pPlayer->AreaExploredOrEventHappens(QUEST_GERENZOS_ORDERS);
+							EventTimer = 0; // event done
+							CanWalk = true;
+						}
+						else
+						{
+							EventPhase = 4; // repeat this phase
+							EventTimer = 1; // holding event repeat
+						}
+						break;
+				}
+				++EventPhase;
+			}
+				else EventTimer -= uiDiff;
+		}
+
+		if (CanWalk)
+			npc_escortAI::UpdateAI(uiDiff);
+
+		if (m_creature->SelectHostileTarget() || m_creature->getVictim())
+			DoMeleeAttackIfReady();
+	}
+};
+CreatureAI* GetAI_npc_piznik(Creature* pCreature)
+{
+    return new npc_piznikAI (pCreature);
+}
+
+bool QuestAccept_npc_piznik(Player* pPlayer, Creature* pCreature, Quest const* pQuest)
+{
+    if (pQuest->GetQuestId() == QUEST_GERENZOS_ORDERS)
+    {
+        if (npc_piznikAI* pEscortAI = dynamic_cast<npc_piznikAI*>(pCreature->AI()))
+            pEscortAI->Start(false, pPlayer, pQuest, true, false);
+    }
+    return true;
+}
+
+/*######
 ## AddSC
 ######*/
 
 void AddSC_stonetalon_mountains()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_braug_dimspirit";
-    pNewScript->pGossipHello = &GossipHello_npc_braug_dimspirit;
-    pNewScript->pGossipSelect = &GossipSelect_npc_braug_dimspirit;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_braug_dimspirit";
+    pNewscript->pGossipHello = &GossipHello_npc_braug_dimspirit;
+    pNewscript->pGossipSelect = &GossipSelect_npc_braug_dimspirit;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_kaya";
-    pNewScript->GetAI = &GetAI_npc_kaya;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_kaya;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_kaya";
+    pNewscript->GetAI = &GetAI_npc_kaya;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_kaya;
+    pNewscript->RegisterSelf();
+
+    pNewscript = new Script;
+    pNewscript->Name = "npc_piznik";
+    pNewscript->GetAI = &GetAI_npc_piznik;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_piznik;
+    pNewscript->RegisterSelf();
 }

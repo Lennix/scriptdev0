@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -21,7 +18,7 @@
 SDName: Swamp_of_Sorrows
 SD%Complete: 100
 SDComment: Quest support: 1393
-SDCategory: Swap of Sorrows
+SDCategory: Swamp of Sorrows
 EndScriptData */
 
 /* ContentData
@@ -37,28 +34,27 @@ EndContentData */
 
 enum Galen
 {
-    QUEST_GALENS_ESCAPE   = 1393,
+    QUEST_GALENS_ESCAPE     = 1393,
 
-    GO_GALENS_CAGE        = 37118,
+    GO_GALENS_CAGE          = 37118,
 
-    SAY_PERIODIC          = -1000588,
-    SAY_QUEST_ACCEPTED    = -1000587,
-    SAY_ATTACKED_1        = -1000586,
-    SAY_ATTACKED_2        = -1000585,
-    SAY_QUEST_COMPLETE    = -1000584,
-    EMOTE_WHISPER         = -1000583,
-    EMOTE_DISAPPEAR       = -1000582
+    SAY_PERIODIC            = -1000160,
+    SAY_QUEST_ACCEPTED      = -1000161,
+    SAY_ATTACKED_1          = -1000162,
+    SAY_ATTACKED_2          = -1000163,
+    SAY_QUEST_COMPLETE      = -1000164,
+    EMOTE_WHISPER           = -1000165,
+    EMOTE_DISAPPEAR         = -1000166
 };
 
 struct MANGOS_DLL_DECL npc_galen_goodwardAI : public npc_escortAI
 {
     npc_galen_goodwardAI(Creature* pCreature) : npc_escortAI(pCreature)
     {
-        m_uiGalensCageGUID = 0;
         Reset();
     }
 
-    uint64 m_uiGalensCageGUID;
+    ObjectGuid m_uiGalensCageGUID;
     uint32 m_uiPeriodicSay;
 
     void Reset()
@@ -77,19 +73,19 @@ struct MANGOS_DLL_DECL npc_galen_goodwardAI : public npc_escortAI
         switch (uiPointId)
         {
             case 0:
+            {
+                GameObject* pCage = NULL;
+                if (m_uiGalensCageGUID)
+                    pCage = m_creature->GetMap()->GetGameObject(m_uiGalensCageGUID);
+                else
+                    pCage = GetClosestGameObjectWithEntry(m_creature, GO_GALENS_CAGE, INTERACTION_DISTANCE);
+                if (pCage)
                 {
-                    GameObject* pCage = NULL;
-                    if (m_uiGalensCageGUID)
-                        pCage = m_creature->GetMap()->GetGameObject(m_uiGalensCageGUID);
-                    else
-                        pCage = GetClosestGameObjectWithEntry(m_creature, GO_GALENS_CAGE, INTERACTION_DISTANCE);
-                    if (pCage)
-                    {
-                        pCage->UseDoorOrButton();
-                        m_uiGalensCageGUID = pCage->GetObjectGuid();
-                    }
-                    break;
+                    pCage->UseDoorOrButton();
+					m_uiGalensCageGUID = pCage->GetObjectGuid();
                 }
+                break;
+            }
             case 21:
                 DoScriptText(EMOTE_DISAPPEAR, m_creature);
                 break;
@@ -140,7 +136,6 @@ bool QuestAccept_npc_galen_goodward(Player* pPlayer, Creature* pCreature, const 
 {
     if (pQuest->GetQuestId() == QUEST_GALENS_ESCAPE)
     {
-
         if (npc_galen_goodwardAI* pEscortAI = dynamic_cast<npc_galen_goodwardAI*>(pCreature->AI()))
         {
             pEscortAI->Start(false, pPlayer, pQuest);
@@ -158,11 +153,11 @@ CreatureAI* GetAI_npc_galen_goodward(Creature* pCreature)
 
 void AddSC_swamp_of_sorrows()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_galen_goodward";
-    pNewScript->GetAI = &GetAI_npc_galen_goodward;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_galen_goodward;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_galen_goodward";
+    pNewscript->GetAI = &GetAI_npc_galen_goodward;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_galen_goodward;
+    pNewscript->RegisterSelf();
 }

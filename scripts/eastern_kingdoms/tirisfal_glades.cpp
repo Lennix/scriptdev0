@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -39,10 +36,10 @@ EndContentData */
 
 enum
 {
-    QUEST_ULAG   = 1819,
-    NPC_ULAG     = 6390,
-    GO_TRIGGER   = 104593,
-    GO_DOOR      = 176594
+    QUEST_ULAG      = 1819,
+    NPC_ULAG        = 6390,
+    GO_TRIGGER      = 104593,
+    GO_DOOR         = 176594
 };
 
 bool GOUse_go_mausoleum_door(Player* pPlayer, GameObject* pGo)
@@ -81,10 +78,10 @@ bool GOUse_go_mausoleum_trigger(Player* pPlayer, GameObject* pGo)
 
 enum
 {
-    SAY_COMPLETE      = -1000356,
-    SPELL_DRINK       = 2639, // possibly not correct spell (but iconId is correct)
-    QUEST_590         = 590,
-    FACTION_HOSTILE   = 168
+    SAY_COMPLETE        = -1000356,
+    SPELL_DRINK         = 2639,                             // possibly not correct spell (but iconId is correct)
+    QUEST_590           = 590,
+    FACTION_HOSTILE     = 168
 };
 
 struct MANGOS_DLL_DECL npc_calvin_montagueAI : public ScriptedAI
@@ -98,13 +95,13 @@ struct MANGOS_DLL_DECL npc_calvin_montagueAI : public ScriptedAI
     uint32 m_uiNormFaction;
     uint32 m_uiPhase;
     uint32 m_uiPhaseTimer;
-    uint64 m_uiPlayerGUID;
+    ObjectGuid m_uiPlayerGUID;
 
     void Reset()
     {
         m_uiPhase = 0;
         m_uiPhaseTimer = 5000;
-        m_uiPlayerGUID = 0;
+		m_uiPlayerGUID.Clear();
 
         if (m_creature->getFaction() != m_uiNormFaction)
             m_creature->setFaction(m_uiNormFaction);
@@ -130,7 +127,7 @@ struct MANGOS_DLL_DECL npc_calvin_montagueAI : public ScriptedAI
             m_uiPhase = 1;
 
             if (pDoneBy->GetTypeId() == TYPEID_PLAYER)
-                m_uiPlayerGUID = pDoneBy->GetObjectGuid();
+				m_uiPlayerGUID = pDoneBy->GetObjectGuid();
         }
     }
 
@@ -153,8 +150,8 @@ struct MANGOS_DLL_DECL npc_calvin_montagueAI : public ScriptedAI
                     ++m_uiPhase;
                     break;
                 case 2:
-                    if (Unit* pUnit = m_creature->GetMap()->GetUnit(m_uiPlayerGUID))
-                        ((Player*)pUnit)->AreaExploredOrEventHappens(QUEST_590);
+                    if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_uiPlayerGUID))
+                        pPlayer->AreaExploredOrEventHappens(QUEST_590);
 
                     m_creature->CastSpell(m_creature,SPELL_DRINK,true);
                     ++m_uiPhase;
@@ -191,21 +188,21 @@ bool QuestAccept_npc_calvin_montague(Player* pPlayer, Creature* pCreature, const
 
 void AddSC_tirisfal_glades()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "go_mausoleum_door";
-    pNewScript->pGOUse = &GOUse_go_mausoleum_door;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "go_mausoleum_door";
+    pNewscript->pGOUse = &GOUse_go_mausoleum_door;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "go_mausoleum_trigger";
-    pNewScript->pGOUse = &GOUse_go_mausoleum_trigger;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "go_mausoleum_trigger";
+    pNewscript->pGOUse = &GOUse_go_mausoleum_trigger;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_calvin_montague";
-    pNewScript->GetAI = &GetAI_npc_calvin_montague;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_calvin_montague;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_calvin_montague";
+    pNewscript->GetAI = &GetAI_npc_calvin_montague;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_calvin_montague;
+    pNewscript->RegisterSelf();
 }

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -68,19 +65,19 @@ enum
 
 static float m_afFirstNagaCoord[3][3]=
 {
-    {3603.504150f, 1122.631104f, 1.635f},                   // rider
-    {3589.293945f, 1148.664063f, 5.565f},                   // sorceress
-    {3609.925537f, 1168.759521f, -1.168f}                   // razortail
+    {3603.504150f, 1122.631104f, 1.635f},                      // rider
+    {3589.293945f, 1148.664063f, 5.565f},                      // sorceress
+    {3609.925537f, 1168.759521f, -1.168f}                      // razortail
 };
 
 static float m_afSecondNagaCoord[3][3]=
 {
-    {3609.925537f, 1168.759521f, -1.168f},                  // witch
-    {3645.652100f, 1139.425415f, 1.322f},                   // priest
-    {3583.602051f, 1128.405762f, 2.347f}                    // myrmidon
+    {3609.925537f, 1168.759521f, -1.168f},                     // witch
+    {3645.652100f, 1139.425415f, 1.322f},                      // priest
+    {3583.602051f, 1128.405762f, 2.347f}                       // myrmidon
 };
 
-static float m_fVorshaCoord[] = {3633.056885f, 1172.924072f, -5.388f};
+static float m_fVorshaCoord[]={3633.056885f, 1172.924072f, -5.388f};
 
 struct MANGOS_DLL_DECL npc_muglashAI : public npc_escortAI
 {
@@ -107,7 +104,7 @@ struct MANGOS_DLL_DECL npc_muglashAI : public npc_escortAI
         }
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/)
     {
         if (HasEscortState(STATE_ESCORT_PAUSED))
         {
@@ -358,9 +355,9 @@ struct MANGOS_DLL_DECL npc_torekAI : public npc_escortAI
                 break;
             case 19:
                 //TODO: verify location and creatures amount.
-                m_creature->SummonCreature(NPC_DURIEL, 1776.73f, -2049.06f, 109.83f, 1.54f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT,25000);
-                m_creature->SummonCreature(NPC_SILVERWING_SENTINEL, 1774.64f, -2049.41f, 109.83f, 1.40f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT,25000);
-                m_creature->SummonCreature(NPC_SILVERWING_WARRIOR, 1778.73f, -2049.50f, 109.83f, 1.67f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT,25000);
+                m_creature->SummonCreature(NPC_DURIEL,1776.73f,-2049.06f,109.83f,1.54f,TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT,25000);
+                m_creature->SummonCreature(NPC_SILVERWING_SENTINEL,1774.64f,-2049.41f,109.83f,1.40f,TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT,25000);
+                m_creature->SummonCreature(NPC_SILVERWING_WARRIOR,1778.73f,-2049.50f,109.83f,1.67f,TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT,25000);
                 break;
             case 20:
                 DoScriptText(SAY_WIN, m_creature, pPlayer);
@@ -423,28 +420,28 @@ CreatureAI* GetAI_npc_torek(Creature* pCreature)
 
 void AddSC_ashenvale()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_muglash";
-    pNewScript->GetAI = &GetAI_npc_muglash;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_muglash;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_muglash";
+    pNewscript->GetAI = &GetAI_npc_muglash;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_muglash;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "go_naga_brazier";
-    pNewScript->pGOUse = &GOUse_go_naga_brazier;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "go_naga_brazier";
+    pNewscript->pGOUse = &GOUse_go_naga_brazier;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_ruul_snowhoof";
-    pNewScript->GetAI = &GetAI_npc_ruul_snowhoofAI;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_ruul_snowhoof;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_ruul_snowhoof";
+    pNewscript->GetAI = &GetAI_npc_ruul_snowhoofAI;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_ruul_snowhoof;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_torek";
-    pNewScript->GetAI = &GetAI_npc_torek;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_torek;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_torek";
+    pNewscript->GetAI = &GetAI_npc_torek;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_torek;
+    pNewscript->RegisterSelf();
 }

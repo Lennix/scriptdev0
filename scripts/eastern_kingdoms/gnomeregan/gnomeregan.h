@@ -1,69 +1,81 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This program is free software licensed under GPL version 2
+ * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_GNOMEREGAN_H
 #define DEF_GNOMEREGAN_H
 
-enum
+enum Data
 {
-    MAX_ENCOUNTER               = 2,                        // Only Grubbis and Thermaplugg need treatment
-    MAX_GNOME_FACES             = 6,
-    MAX_EXPLOSIVES_PER_SIDE     = 2,
-
-    TYPE_GRUBBIS                = 1,
-    TYPE_THERMAPLUGG            = 2,
-    TYPE_EXPLOSIVE_CHARGE       = 3,
-
-    DATA_EXPLOSIVE_CHARGE_1     = 1,
-    DATA_EXPLOSIVE_CHARGE_2     = 2,
-    DATA_EXPLOSIVE_CHARGE_3     = 3,
-    DATA_EXPLOSIVE_CHARGE_4     = 4,
-    DATA_EXPLOSIVE_CHARGE_USE   = 5,
-
-    NPC_BLASTMASTER_SHORTFUSE   = 7998,
-
-    GO_RED_ROCKET               = 103820,
-    GO_CAVE_IN_NORTH            = 146085,
-    GO_CAVE_IN_SOUTH            = 146086,
-    GO_EXPLOSIVE_CHARGE         = 144065,
-    GO_THE_FINAL_CHAMBER        = 142207,
-
-    GO_GNOME_FACE_1             = 142211,
-    GO_GNOME_FACE_2             = 142210,
-    GO_GNOME_FACE_3             = 142209,
-    GO_GNOME_FACE_4             = 142208,
-    GO_GNOME_FACE_5             = 142213,
-    GO_GNOME_FACE_6             = 142212,
-
-    GO_BUTTON_1                 = 142214,
-    GO_BUTTON_2                 = 142215,
-    GO_BUTTON_3                 = 142216,
-    GO_BUTTON_4                 = 142217,
-    GO_BUTTON_5                 = 142218,
-    GO_BUTTON_6                 = 142219
+    TYPE_EMI,
+    TYPE_THERMAPLUG,
+    
+    TYPE_GNOME_FACE_01,
+    TYPE_GNOME_FACE_02,
+    TYPE_GNOME_FACE_03,
+    TYPE_GNOME_FACE_04,
+    TYPE_GNOME_FACE_05,
+    TYPE_GNOME_FACE_06,
 };
 
-struct sBombFace
+enum Data64
 {
-    ObjectGuid m_gnomeFaceGuid;
-    bool m_bActivated;
-    uint32 m_uiBombTimer;
+    DATA_THERMAPLUG,
+    DATA_KERNOBEE,
+
+    DATA_GO_CAVE_IN_1,
+    DATA_GO_CAVE_IN_2,
+};
+
+enum Creatures
+{
+    NPC_MEKGINEER_THERMAPLUG = 7800,
+    NPC_WALKING_BOMB         = 7915,
+    NPC_KERNOBEE             = 7850,
+};
+
+enum GameObjects
+{
+    GO_CAVE_IN_1             = 146086,
+    GO_CAVE_IN_2             = 146085,
+    GO_WEEGLIS_BARREL        = 141612,
+
+    GO_THE_FINAL_CHAMBER     = 142207,
+
+    GO_BUTTON_01             = 142214,
+    GO_BUTTON_02             = 142215,
+    GO_BUTTON_03             = 142216,
+    GO_BUTTON_04             = 142217,
+    GO_BUTTON_05             = 142218,
+    GO_BUTTON_06             = 142219,
+
+    GO_GNOME_FACE_01         = 142211,
+    GO_GNOME_FACE_02         = 142210,
+    GO_GNOME_FACE_03         = 142209,
+    GO_GNOME_FACE_04         = 142208,
+    GO_GNOME_FACE_05         = 142213,
+    GO_GNOME_FACE_06         = 142212,
+};
+
+enum Misc
+{
+    MAX_ENCOUNTER = 2,
+
+    // Mekgineer Thermaplug yells
+    YELL_AGGRO                = -1090000,
+    YELL_COMBAT               = -1090001,
+    YELL_BOMB_SUMMON          = -1090002,
+    YELL_KILL                 = -1090003,
+};
+
+static float SpawnLocations[6][3]=
+{
+    {-551.55f, 697.81f, -327.25f},
+    {-522.39f, 702.70f, -327.23f},
+    {-500.29f, 683.80f, -327.23f},
+    {-500.92f, 654.92f, -327.24f},
+    {-524.92f, 637.73f, -327.22f},
+    {-552.42f, 644.81f, -327.22f}
 };
 
 class MANGOS_DLL_DECL instance_gnomeregan : public ScriptedInstance
@@ -75,28 +87,34 @@ class MANGOS_DLL_DECL instance_gnomeregan : public ScriptedInstance
         void Initialize();
 
         void OnCreatureCreate(Creature* pCreature);
-        void OnObjectCreate(GameObject* pGo);
+		void OnObjectCreate(GameObject* pGo);
 
         void SetData(uint32 uiType, uint32 uiData);
         uint32 GetData(uint32 uiType);
 
-        sBombFace* GetBombFaces();
-        void DoActivateBombFace(uint8 uiIndex);
-        void DoDeactivateBombFace(uint8 uiIndex);
+		void Update(uint32 uiDiff);
 
-        const char* Save() { return m_strInstData.c_str(); }
+        const char* Save() { return strInstData.c_str(); }
         void Load(const char* chrIn);
 
+		void ActivateGnomeFace(uint8 no_gnome_face, bool activate = true);
+		void ResetWalkingBombs(GUIDList m_uiList);
     protected:
         uint32 m_auiEncounter[MAX_ENCOUNTER];
-        std::string m_strInstData;
+        std::string strInstData;
 
-        sBombFace m_asBombFaces[MAX_GNOME_FACES];
-        ObjectGuid m_aExplosiveSortedGuids[2][MAX_EXPLOSIVES_PER_SIDE];
+		uint32 m_uiSummonWalkingBombTimer;
+		uint32 m_uiActivateNewGnomeFaceTimer;
 
-        GUIDList m_luiExplosiveChargeGUIDs;
-        GUIDList m_luiSpawnedExplosiveChargeGUIDs;
-        GUIDList m_lRedRocketGUIDs;
+		ObjectGuid m_uiGnomeFaceGUID[6];
+
+		GUIDList lExplosiveBarrels;
+		GUIDList lGnomeFace1BombsGUID;
+		GUIDList lGnomeFace2BombsGUID;
+		GUIDList lGnomeFace3BombsGUID;
+		GUIDList lGnomeFace4BombsGUID;
+		GUIDList lGnomeFace5BombsGUID;
+		GUIDList lGnomeFace6BombsGUID;
 };
 
 #endif

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,36 +17,37 @@
 /* ScriptData
 SDName: Boss_Mother_Smolderweb
 SD%Complete: 100
-SDComment: Uncertain how often mother's milk is casted
+SDComment:
 SDCategory: Blackrock Spire
 EndScriptData */
 
 #include "precompiled.h"
+#include "blackrock_spire.h"
 
-enum
+enum Spells
 {
-    SPELL_CRYSTALIZE              = 16104,
-    SPELL_MOTHERSMILK             = 16468,
-    SPELL_SUMMON_SPIRE_SPIDERLING = 16103
+    SPELL_CRYSTALLIZE               = 16104,
+    SPELL_MOTHERS_MILK              = 16468,
+    SPELL_SUMMON_SPIRE_SPIDERLING   = 16103
 };
 
-struct MANGOS_DLL_DECL boss_mothersmolderwebAI : public ScriptedAI
+struct MANGOS_DLL_DECL boss_mother_smolderwebAI : public ScriptedAI
 {
-    boss_mothersmolderwebAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    boss_mother_smolderwebAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 m_uiCrystalizeTimer;
+    uint32 m_uiCrystallizeTimer;
     uint32 m_uiMothersMilkTimer;
 
     void Reset()
     {
-        m_uiCrystalizeTimer  = 20000;
-        m_uiMothersMilkTimer = 10000;
+        m_uiCrystallizeTimer = urand(5000,10000);
+        m_uiMothersMilkTimer = urand(10000,15000);
     }
 
-    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
+    void JustDied(Unit* /*pKiller*/)
     {
-        if (m_creature->GetHealth() <= uiDamage)
-            DoCastSpellIfCan(m_creature, SPELL_SUMMON_SPIRE_SPIDERLING, CAST_TRIGGERED);
+        for(uint32 i = 0; i < 4; ++i)
+            DoSpawnCreature(NPC_SPIRE_SPIDERLING, irand(-5,5), irand(-5,5), 0, 0, TEMPSUMMON_DEAD_DESPAWN, 5000);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -58,20 +56,20 @@ struct MANGOS_DLL_DECL boss_mothersmolderwebAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        // Crystalize
-        if (m_uiCrystalizeTimer < uiDiff)
+        // Crystallize
+        if (m_uiCrystallizeTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature, SPELL_CRYSTALIZE);
-            m_uiCrystalizeTimer = 15000;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_CRYSTALLIZE);
+            m_uiCrystallizeTimer = urand(10000,15000);
         }
         else
-            m_uiCrystalizeTimer -= uiDiff;
+            m_uiCrystallizeTimer -= uiDiff;
 
         // Mothers Milk
-        if (m_uiMothersMilkTimer < uiDiff)
+        if (m_uiMothersMilkTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature, SPELL_MOTHERSMILK);
-            m_uiMothersMilkTimer = urand(5000, 12500);
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_MOTHERS_MILK);
+            m_uiMothersMilkTimer = urand(5000,15000);
         }
         else
             m_uiMothersMilkTimer -= uiDiff;
@@ -79,17 +77,17 @@ struct MANGOS_DLL_DECL boss_mothersmolderwebAI : public ScriptedAI
         DoMeleeAttackIfReady();
     }
 };
-
-CreatureAI* GetAI_boss_mothersmolderweb(Creature* pCreature)
+CreatureAI* GetAI_boss_mother_smolderweb(Creature* pCreature)
 {
-    return new boss_mothersmolderwebAI(pCreature);
+    return new boss_mother_smolderwebAI(pCreature);
 }
 
-void AddSC_boss_mothersmolderweb()
+void AddSC_boss_mother_smolderweb()
 {
-    Script* newscript;
-    newscript = new Script;
-    newscript->Name = "boss_mother_smolderweb";
-    newscript->GetAI = &GetAI_boss_mothersmolderweb;
-    newscript->RegisterSelf();
+    Script* pNewscript;
+
+    pNewscript = new Script;
+    pNewscript->Name = "boss_mother_smolderweb";
+    pNewscript->GetAI = &GetAI_boss_mother_smolderweb;
+    pNewscript->RegisterSelf();
 }

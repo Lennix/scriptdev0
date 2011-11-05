@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,16 +17,115 @@
 /* ScriptData
 SDName: Uldaman
 SD%Complete: 100
-SDComment: Quest support: 2278
+SDComment: Quest support: 2240, 2278 + 1 trash mob
 SDCategory: Uldaman
 EndScriptData */
 
 /* ContentData
+at_map_chamber
+go_keystone_chamber
+go_shadowforge_cache
+mob_jadespine_basilisk
 npc_lore_keeper_of_norgannon
 EndContentData */
 
 #include "precompiled.h"
 #include "uldaman.h"
+
+/*######
+## at_map_chamber
+######*/
+
+#define QUEST_HIDDEN_CHAMBER 2240
+
+bool AT_map_chamber(Player* pPlayer, AreaTriggerEntry const* pAt)
+{
+    if (pPlayer && ((Player*)pPlayer)->GetQuestStatus(QUEST_HIDDEN_CHAMBER) == QUEST_STATUS_INCOMPLETE)
+        pPlayer->AreaExploredOrEventHappens(QUEST_HIDDEN_CHAMBER);
+
+    return true;
+}
+
+/*######
+## go_keystone_chamber
+######*/
+
+bool GOUse_go_keystone_chamber(Player *pPlayer, GameObject* pGo)
+{
+    if (ScriptedInstance* m_pInstance = (ScriptedInstance*)pGo->GetInstanceData())
+        m_pInstance->SetData(TYPE_IRONAYA, IN_PROGRESS); //door animation and save state.
+
+    return false;
+}
+
+/*######
+## go_shadowforge_cache
+######*/
+
+bool GOUse_go_shadowforge_cache(Player* pPlayer, GameObject* pGo)
+{
+    if (pGo->GetUseCount() == 0)
+    {
+        pGo->AddUse();
+        float x,y,z;
+        pGo->GetPosition(x,y,z);
+        for(uint8 itr = 0; itr < 2; ++itr)
+            pPlayer->SummonCreature(NPC_SHADOWFORGE_AMBUSHER, x + irand(-3,3), y + irand(-3,3), z, 0.0f, TEMPSUMMON_DEAD_DESPAWN, 0);
+    }
+    return false;
+}
+
+/*######
+## mob_jadespine_basilisk
+######*/
+
+#define SPELL_CSLUMBER        3636
+
+struct MANGOS_DLL_DECL mob_jadespine_basiliskAI : public ScriptedAI
+{
+    mob_jadespine_basiliskAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+
+    uint32 Cslumber_Timer;
+
+    void Reset()
+    {
+        Cslumber_Timer = 2000;
+    }
+
+    void UpdateAI(const uint32 diff)
+    {
+        //Return since we have no target
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        //Cslumber_Timer
+        if (Cslumber_Timer < diff)
+        {
+            //Cast
+            // DoCastSpellIfCan(m_creature->getVictim(),SPELL_CSLUMBER);
+            m_creature->CastSpell(m_creature->getVictim(),SPELL_CSLUMBER, true);
+
+            //Stop attacking target thast asleep and pick new target
+            Cslumber_Timer = 28000;
+
+            Unit* Target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0);
+
+            if (!Target || Target == m_creature->getVictim())
+                Target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+
+            if (Target)
+                m_creature->TauntApply(Target);
+
+        }else Cslumber_Timer -= diff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_mob_jadespine_basilisk(Creature* pCreature)
+{
+    return new mob_jadespine_basiliskAI(pCreature);
+}
 
 /*######
 ## npc_lore_keeper_of_norgannon
@@ -120,6 +216,26 @@ bool GossipSelect_npc_lore_keeper_of_norgannon(Player* pPlayer, Creature* pCreat
 void AddSC_uldaman()
 {
     Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name="at_map_chamber";
+    pNewScript->pAreaTrigger = &AT_map_chamber;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name="go_keystone_chamber";
+    pNewScript->pGOUse = &GOUse_go_keystone_chamber;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name="go_shadowforge_cache";
+    pNewScript->pGOUse = &GOUse_go_shadowforge_cache;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "mob_jadespine_basilisk";
+    pNewScript->GetAI = &GetAI_mob_jadespine_basilisk;
+    pNewScript->RegisterSelf();
 
     pNewScript = new Script;
     pNewScript->Name = "npc_lore_keeper_of_norgannon";

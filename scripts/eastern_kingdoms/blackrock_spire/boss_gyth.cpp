@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,219 +17,123 @@
 /* ScriptData
 SDName: Boss_Gyth
 SD%Complete: 100
-SDComment: Whole Event needs some rewrite
+SDComment:
 SDCategory: Blackrock Spire
 EndScriptData */
 
 #include "precompiled.h"
 #include "blackrock_spire.h"
 
-enum
+enum eGyth
 {
-    SPELL_CORROSIVEACID     = 20667,
-    SPELL_FREEZE            = 16350,                        // ID was wrong!
-    SPELL_FLAMEBREATH       = 20712,
-    SPELL_ROOT_SELF         = 33356,
+    SPELL_CHROMATIC_CHAOS         = 16337,
+    SPELL_CORROSIVE_ACID_BREATH   = 16359,
+    SPELL_FLAME_BREATH            = 16390,
+    SPELL_FREEZE                  = 16350,
+    SPELL_KNOCK_AWAY              = 10101,
 
-    MODEL_ID_INVISIBLE      = 11686,
-    MODEL_ID_GYTH_MOUNTED   = 9723,
-    MODEL_ID_GYTH           = 9806,
-
-    NPC_FIRE_TONGUE         = 10372,
-    NPC_CHROMATIC_WHELP     = 10442,
-    NPC_CHROMATIC_DRAGON    = 10447,
-    NPC_BLACKHAND_ELITE     = 10317,
-    NPC_REND_BLACKHAND      = 10429
+    MODEL_GYTH                    = 9806,
+    MODEL_GYTH_REND               = 9723,
 };
 
 struct MANGOS_DLL_DECL boss_gythAI : public ScriptedAI
 {
     boss_gythAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (instance_blackrock_spire*) pCreature->GetInstanceData();
+        m_pInstance = (instance_blackrock_spire*)pCreature->GetInstanceData();
         Reset();
     }
 
     instance_blackrock_spire* m_pInstance;
-    uint64 m_uiCombatDoorGUID;
-    uint32 uiAggroTimer;
-    uint32 uiDragonsTimer;
-    uint32 uiOrcTimer;
-    uint32 uiCorrosiveAcidTimer;
-    uint32 uiFreezeTimer;
-    uint32 uiFlamebreathTimer;
-    uint32 uiLine1Count;
-    uint32 uiLine2Count;
 
-    bool m_bSummonedRend;
-    bool m_bAggro;
-    bool m_bRootSelf;
+    bool m_bRendSummoned;
+    uint32 m_uiCorrosiveAcidBreathTimer;
+    uint32 m_uiFlameBreathTimer;
+    uint32 m_uiFreezeTimer;
+    uint32 m_uiKnockAwayTimer;
 
     void Reset()
     {
-        uiDragonsTimer = 3000;
-        uiOrcTimer = 60000;
-        uiAggroTimer = 60000;
-        uiCorrosiveAcidTimer = 8000;
-        uiFreezeTimer = 11000;
-        uiFlamebreathTimer = 4000;
-        m_bSummonedRend = false;
-        m_bAggro = false;
-        m_bRootSelf = false;
+        m_bRendSummoned = false;
+        m_uiCorrosiveAcidBreathTimer = (8000,10000);
+        m_uiFlameBreathTimer = urand(0,3000);
+        m_uiFreezeTimer = (12000,14000);
+        m_uiKnockAwayTimer = urand(5000,7000);
 
-        // how many times should the two lines of summoned creatures be spawned
-        // min 2 x 2, max 7 lines of attack in total
-        uiLine1Count = urand(2, 5);
-        uiLine2Count = urand(2, 7 - uiLine1Count);
-
-        // Invisible for event start
-        m_creature->SetDisplayId(MODEL_ID_INVISIBLE);
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-    }
-
-    void Aggro(Unit* pWho)
-    {
-        if (m_pInstance)
-        {
-            m_pInstance->SetData(TYPE_GYTH, IN_PROGRESS);
-            m_uiCombatDoorGUID = m_pInstance->GetData64(GO_GYTH_COMBAT_DOOR);
-        }
-    }
-
-    void JustDied(Unit* pKiller)
-    {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_GYTH, DONE);
+        m_creature->SetDisplayId(MODEL_GYTH_REND);
     }
 
     void JustReachedHome()
     {
+        m_creature->RemoveFromWorld();
         if (m_pInstance)
-            m_pInstance->SetData(TYPE_GYTH, FAIL);
+            m_pInstance->SetData(TYPE_REND_BLACKHAND, NOT_STARTED);
     }
 
-    void SummonCreatureWithRandomTarget(uint32 uiCreatureId)
+    void Aggro(Unit* /*pWho*/)
     {
-        float fX, fY, fZ;
-        m_creature->GetRandomPoint(m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 2*INTERACTION_DISTANCE, fX, fY, fZ);
-        fX = std::min(m_creature->GetPositionX(), fX);      // Halfcircle - suits better the rectangular form
-        if (Creature* pSummoned = m_creature->SummonCreature(uiCreatureId, fX, fY, fZ, 0, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 240000))
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                pSummoned->AI()->AttackStart(pTarget);
+        DoCastSpellIfCan(m_creature, SPELL_CHROMATIC_CHAOS);
+    }
+
+    void JustDied(Unit* /*pKiller*/)
+    {
+        // Finish event if gyth somehow died without summoning Warchief
+        if (m_pInstance && m_creature->GetDisplayId() == MODEL_GYTH_REND)
+            m_pInstance->SetData(TYPE_REND_BLACKHAND, DONE);
     }
 
     void UpdateAI(const uint32 uiDiff)
     {
-        //Return since we have no target
+        // Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        if (!m_bRootSelf)
+        // Summon Warchief Rend Blackhand
+        if (!m_bRendSummoned && HealthBelowPct(16) && m_creature->GetHealth() > 0)
         {
-            DoCastSpellIfCan(m_creature, SPELL_ROOT_SELF);
-            m_bRootSelf = true;
+            m_creature->InterruptNonMeleeSpells(false);
+            m_creature->SetDisplayId(MODEL_GYTH);
+            m_creature->SummonCreature(NPC_WARCHIEF_REND_BLACKHAND, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 0, TEMPSUMMON_DEAD_DESPAWN, 120000);
+            m_bRendSummoned = true;
         }
 
-        if (!m_bAggro && uiLine1Count == 0 && uiLine2Count == 0)
+        // Corrosive Acid Breath
+        if (m_uiCorrosiveAcidBreathTimer <= uiDiff)
         {
-            if (uiAggroTimer < uiDiff)
-            {
-                m_bAggro = true;
-                // Visible now!
-                m_creature->SetDisplayId(MODEL_ID_GYTH_MOUNTED);
-                m_creature->setFaction(14);
-                m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-                m_creature->RemoveAurasDueToSpell(SPELL_ROOT_SELF);
-                if (m_pInstance)
-                    m_pInstance->DoUseDoorOrButton(m_uiCombatDoorGUID);
-
-            }
-            else
-                uiAggroTimer -= uiDiff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_CORROSIVE_ACID_BREATH);
+            m_uiCorrosiveAcidBreathTimer = urand(6000,10000);
         }
+        else
+            m_uiCorrosiveAcidBreathTimer -= uiDiff;
 
-        // Summon Dragon pack. 2 Dragons and 3 Whelps
-        if (!m_bAggro && !m_bSummonedRend && uiLine1Count > 0)
+        // Flame Breath 
+        if (m_uiFlameBreathTimer <= uiDiff)
         {
-            if (uiDragonsTimer < uiDiff)
-            {
-                SummonCreatureWithRandomTarget(NPC_FIRE_TONGUE);
-                SummonCreatureWithRandomTarget(NPC_FIRE_TONGUE);
-                SummonCreatureWithRandomTarget(NPC_CHROMATIC_WHELP);
-                SummonCreatureWithRandomTarget(NPC_CHROMATIC_WHELP);
-                SummonCreatureWithRandomTarget(NPC_CHROMATIC_WHELP);
-                --uiLine1Count;
-                if (m_pInstance)
-                    m_pInstance->DoUseDoorOrButton(m_uiCombatDoorGUID);
-                uiDragonsTimer = 60000;
-            }
-            else
-                uiDragonsTimer -= uiDiff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAME_BREATH);
+            m_uiFlameBreathTimer = urand(4000,8000);
         }
+        else
+            m_uiFlameBreathTimer -= uiDiff;
 
-        //Summon Orc pack. 1 Orc Handler 1 Elite Dragonkin and 3 Whelps
-        if (!m_bAggro && !m_bSummonedRend && uiLine1Count == 0 && uiLine2Count > 0)
+        // Freeze
+        if (m_uiFreezeTimer <= uiDiff)
         {
-            if (uiOrcTimer < uiDiff)
-            {
-                SummonCreatureWithRandomTarget(NPC_CHROMATIC_DRAGON);
-                SummonCreatureWithRandomTarget(NPC_BLACKHAND_ELITE);
-                SummonCreatureWithRandomTarget(NPC_CHROMATIC_WHELP);
-                SummonCreatureWithRandomTarget(NPC_CHROMATIC_WHELP);
-                SummonCreatureWithRandomTarget(NPC_CHROMATIC_WHELP);
-                if (m_pInstance)
-                    m_pInstance->DoUseDoorOrButton(m_uiCombatDoorGUID);
-                --uiLine2Count;
-                uiOrcTimer = 60000;
-            }
-            else
-                uiOrcTimer -= uiDiff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_FREEZE);
+            m_uiFreezeTimer = urand(10000,15000);
         }
+        else
+            m_uiFreezeTimer -= uiDiff;
 
-        // we take part in the fight
-        if (m_bAggro)
+        // Knock Away
+        if (m_uiKnockAwayTimer <= uiDiff)
         {
-             // CorrosiveAcid_Timer
-            if (uiCorrosiveAcidTimer < uiDiff)
-            {
-                DoCastSpellIfCan(m_creature, SPELL_CORROSIVEACID);
-                uiCorrosiveAcidTimer = 7000;
-            }
-            else
-                uiCorrosiveAcidTimer -= uiDiff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_KNOCK_AWAY);
+            m_uiKnockAwayTimer = urand(6000,10000);
+        }
+        else
+            m_uiKnockAwayTimer -= uiDiff;
 
-            // Freeze_Timer
-            if (uiFreezeTimer < uiDiff)
-            {
-                if (DoCastSpellIfCan(m_creature, SPELL_FREEZE) == CAST_OK)
-                    uiFreezeTimer = 16000;
-            }
-            else
-                uiFreezeTimer -= uiDiff;
-
-            // Flamebreath_Timer
-            if (uiFlamebreathTimer < uiDiff)
-            {
-                DoCastSpellIfCan(m_creature, SPELL_FLAMEBREATH);
-                uiFlamebreathTimer = 10500;
-            }
-            else
-                uiFlamebreathTimer -= uiDiff;
-
-            //Summon Rend
-            if (!m_bSummonedRend && m_creature->GetHealthPercent() < 11.0f)
-            {
-                // summon Rend and Change model to normal Gyth
-                // Inturrupt any spell casting
-                m_creature->InterruptNonMeleeSpells(false);
-                // Gyth model
-                m_creature->SetDisplayId(MODEL_ID_GYTH);
-                m_creature->SummonCreature(NPC_REND_BLACKHAND, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 0, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 900000);
-                m_bSummonedRend = true;
-            }
-
-            DoMeleeAttackIfReady();
-        }                                                   // end if Aggro
+        DoMeleeAttackIfReady();
     }
 };
 
@@ -243,9 +144,9 @@ CreatureAI* GetAI_boss_gyth(Creature* pCreature)
 
 void AddSC_boss_gyth()
 {
-    Script* pNewScript;
-    pNewScript = new Script;
-    pNewScript->Name = "boss_gyth";
-    pNewScript->GetAI = &GetAI_boss_gyth;
-    pNewScript->RegisterSelf();
+    Script* pNewscript;
+    pNewscript = new Script;
+    pNewscript->Name = "boss_gyth";
+    pNewscript->GetAI = &GetAI_boss_gyth;
+    pNewscript->RegisterSelf();
 }

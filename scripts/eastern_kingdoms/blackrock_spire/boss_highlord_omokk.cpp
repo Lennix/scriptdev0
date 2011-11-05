@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,111 +23,67 @@ EndScriptData */
 
 #include "precompiled.h"
 
-enum
+enum Spells
 {
-    SPELL_WARSTOMP    = 24375,
-    SPELL_STRIKE      = 18368,
-    SPELL_REND        = 18106,
-    SPELL_SUNDERARMOR = 24317,
-    SPELL_KNOCKAWAY   = 20686,
-    SPELL_SLOW        = 22356
+    SPELL_CLEAVE            = 15284,
+    SPELL_FRENZY            = 8269,
+    SPELL_KNOCK_AWAY        = 10101
 };
 
-struct MANGOS_DLL_DECL boss_highlordomokkAI : public ScriptedAI
+struct MANGOS_DLL_DECL boss_highlord_omokkAI : public ScriptedAI
 {
-    boss_highlordomokkAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    boss_highlord_omokkAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 m_uiWarStompTimer;
-    uint32 m_uiStrikeTimer;
-    uint32 m_uiRendTimer;
-    uint32 m_uiSunderArmorTimer;
+    uint32 m_uiCleaveTimer;
     uint32 m_uiKnockAwayTimer;
-    uint32 m_uiSlowTimer;
 
     void Reset()
-    {
-        m_uiWarStompTimer    = 15000;
-        m_uiStrikeTimer      = 10000;
-        m_uiRendTimer        = 14000;
-        m_uiSunderArmorTimer = 2000;
-        m_uiKnockAwayTimer   = 18000;
-        m_uiSlowTimer        = 24000;
+    {        
+        m_uiCleaveTimer = urand(6000,8000);
+        m_uiKnockAwayTimer = urand(2000,4000);
     }
 
     void UpdateAI(const uint32 uiDiff)
     {
-        //Return since we have no target
+        // Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        // WarStomp
-        if (m_uiWarStompTimer < uiDiff)
+        if (HealthBelowPct(50))
+            DoCastSpellIfCan(m_creature, SPELL_FRENZY, CAST_AURA_NOT_PRESENT);
+
+        // Cleave
+        if (m_uiCleaveTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature, SPELL_WARSTOMP);
-            m_uiWarStompTimer = 14000;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE);
+            m_uiCleaveTimer = urand(6000,6000);
         }
         else
-            m_uiWarStompTimer -= uiDiff;
+            m_uiCleaveTimer -= uiDiff;
 
-        // Strike
-        if (m_uiStrikeTimer < uiDiff)
+        // Knock Away
+        if (m_uiKnockAwayTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_STRIKE);
-            m_uiStrikeTimer = 10000;
-        }
-        else
-            m_uiStrikeTimer -= uiDiff;
-
-        // Rend
-        if (m_uiRendTimer < uiDiff)
-        {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_REND);
-            m_uiRendTimer = 18000;
-        }
-        else
-            m_uiRendTimer -= uiDiff;
-
-        // Sunder Armor
-        if (m_uiSunderArmorTimer < uiDiff)
-        {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_SUNDERARMOR);
-            m_uiSunderArmorTimer = 25000;
-        }
-        else
-            m_uiSunderArmorTimer -= uiDiff;
-
-        // KnockAway
-        if (m_uiKnockAwayTimer < uiDiff)
-        {
-            DoCastSpellIfCan(m_creature, SPELL_KNOCKAWAY);
-            m_uiKnockAwayTimer = 12000;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_KNOCK_AWAY);
+            m_uiKnockAwayTimer = urand(7000,9000);
         }
         else
             m_uiKnockAwayTimer -= uiDiff;
 
-        // Slow
-        if (m_uiSlowTimer < uiDiff)
-        {
-            DoCastSpellIfCan(m_creature, SPELL_SLOW);
-            m_uiSlowTimer = 18000;
-        }
-        else
-            m_uiSlowTimer -= uiDiff;
-
         DoMeleeAttackIfReady();
     }
 };
-
-CreatureAI* GetAI_boss_highlordomokk(Creature* pCreature)
+CreatureAI* GetAI_boss_highlord_omokk(Creature* pCreature)
 {
-    return new boss_highlordomokkAI(pCreature);
+    return new boss_highlord_omokkAI(pCreature);
 }
 
-void AddSC_boss_highlordomokk()
+void AddSC_boss_highlord_omokk()
 {
-    Script* newscript;
-    newscript = new Script;
-    newscript->Name = "boss_highlord_omokk";
-    newscript->GetAI = &GetAI_boss_highlordomokk;
-    newscript->RegisterSelf();
+    Script* pNewscript;
+
+    pNewscript = new Script;
+    pNewscript->Name = "boss_highlord_omokk";
+    pNewscript->GetAI = &GetAI_boss_highlord_omokk;
+    pNewscript->RegisterSelf();
 }

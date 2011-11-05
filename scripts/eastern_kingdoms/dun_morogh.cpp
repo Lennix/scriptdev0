@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -34,10 +31,7 @@ EndContentData */
 ## npc_narm_faulk
 ######*/
 
-enum
-{
-    SAY_HEAL   = -1000187
-};
+#define SAY_HEAL    -1000187
 
 struct MANGOS_DLL_DECL npc_narm_faulkAI : public ScriptedAI
 {
@@ -88,10 +82,10 @@ CreatureAI* GetAI_npc_narm_faulk(Creature* pCreature)
 
 void AddSC_dun_morogh()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_narm_faulk";
-    pNewScript->GetAI = &GetAI_npc_narm_faulk;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_narm_faulk";
+    pNewscript->GetAI = &GetAI_npc_narm_faulk;
+    pNewscript->RegisterSelf();
 }

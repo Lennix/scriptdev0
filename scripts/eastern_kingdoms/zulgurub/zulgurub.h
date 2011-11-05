@@ -1,52 +1,80 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This program is free software licensed under GPL version 2
+ * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_ZULGURUB_H
 #define DEF_ZULGURUB_H
 
-enum
+enum Data
 {
-    MAX_ENCOUNTER           = 8,
-    MAX_PRIESTS             = 5,
+    TYPE_ARLOKK,
+    TYPE_JEKLIK,
+    TYPE_VENOXIS,
+    TYPE_MARLI,
+    TYPE_THEKAL,
+    TYPE_ZATH,
+    TYPE_LORKHAN,
+    TYPE_MANDOKIR,
+    TYPE_OHGAN,
+    TYPE_HAKKAR,
+    MAX_ENCOUNTER,
+};
 
-    TYPE_JEKLIK             = 0,
-    TYPE_VENOXIS            = 1,
-    TYPE_MARLI              = 2,
-    TYPE_THEKAL             = 3,
-    TYPE_ARLOKK             = 4,
-    TYPE_OHGAN              = 5,                            // Do not change, used by Acid
-    TYPE_LORKHAN            = 6,
-    TYPE_ZATH               = 7,
+enum Creatures
+{
+    // Bosses
+    NPC_JEKLIK                      = 14517,
+    NPC_VENOXIS                     = 14507,
+    NPC_MARLI                       = 14510,
+    NPC_OHGAN                       = 14988,
+    NPC_MANDOKIR                    = 11382,
+    NPC_LORKHAN                     = 11347,
+    NPC_ZATH                        = 11348,
+    NPC_THEKAL                      = 14509,
+    NPC_ARLOKK                      = 14515,
+    NPC_JINDO                       = 11380,
+    NPC_HAKKAR                      = 14834,
 
-    NPC_LORKHAN             = 11347,
-    NPC_ZATH                = 11348,
-    NPC_THEKAL              = 14509,
-    NPC_JINDO               = 11380,
-    NPC_HAKKAR              = 14834,
+    // Trash
+    NPC_BLOODSEEKER_BAT             = 11368,
+    NPC_FRENZIED_BLOODSEEKER_BAT    = 14965,
+    NPC_GURUBASHI_BAT_RIDER         = 14750,
+    NPC_CHAINED_SPIRIT              = 15117,
+    NPC_NIGHTMARE_ILLUSION          = 15163,
+    NPC_POWERFUL_HEALING_WARD       = 14987,
+    NPC_RAZZASHI_COBRA              = 11373,
+    NPC_SACRIFICED_TROLL            = 14826,
+    NPC_SHADE_OF_JINDO              = 14986,
+    NPC_SPAWN_OF_MARLI              = 15041,
+    NPC_ZULIAN_GUARDIAN             = 15068,
+    NPC_ZULIAN_PROWLER              = 15101,
+    NPC_ZULIAN_TIGER                = 11361,
+    NPC_POISONOUS_CLOUD             = 14989,
+};
 
-    SAY_MINION_DESTROY      = -1309022,
-    SAY_HAKKAR_PROTECT      = -1309023,
+enum GameObjects
+{
+    GO_GONG_OF_BETHEKK              = 180526,
+    GO_FORCE_FIELD                  = 180497,
+    GO_SPIDER_EGG                   = 179985,
+    GO_LIQUID_FIRE                  = 180125,
+};
 
-    HP_LOSS_PER_PRIEST      = 60000,
+enum Misc
+{
+    AT_ZULGURUB_ENTRANCE_1          = 3958,
+    AT_ZULGURUB_ENTRANCE_2          = 3956,
+    AT_ALTAR_OF_THE_BLOOD_GOD_DOWN  = 3964,
+    AT_ALTAR_OF_THE_BLOOD_GOD_UP    = 3960,
+    FACTION_ENEMY                   = 14,
+    FACTION_FRIENDLY                = 35,
+    SAY_HAKKAR_MINION_DESTROY       = -1309024,         // Yell when player steps into ZG instance
+    SAY_HAKKAR_PROTECT_ALTAR        = -1309025,         // Yell when player steps on Altar of Blood
+};
 
-    AREATRIGGER_ENTER       = 3958,
-    AREATRIGGER_ALTAR       = 3960,
+struct Loc
+{
+    float x, y, z, o;
 };
 
 class MANGOS_DLL_DECL instance_zulgurub : public ScriptedInstance
@@ -56,26 +84,36 @@ class MANGOS_DLL_DECL instance_zulgurub : public ScriptedInstance
         ~instance_zulgurub() {}
 
         void Initialize();
-        // IsEncounterInProgress() const { return false; }  // not active in Zul'Gurub
 
         void OnCreatureCreate(Creature* pCreature);
+        void OnCreatureDeath(Creature* pCreature);
+        void OnCreatureEnterCombat(Creature* pCreature);
+        void OnObjectCreate(GameObject* pGo);
 
         void SetData(uint32 uiType, uint32 uiData);
         uint32 GetData(uint32 uiType);
 
-        const char* Save() { return m_strInstData.c_str(); }
+        const char* Save() { return strInstData.c_str(); }
         void Load(const char* chrIn);
 
-        void DoYellAtTriggerIfCan(uint32 uiTriggerId);
+        void Update(uint32 uiDiff);
+
+        void LowerHakkarHitPoints();
+        void HakkarYell(uint32 atEntry);
+        void HandleThekalEvent(uint32 uiData);
 
     protected:
-        void DoLowerHakkarHitPoints();
-
         uint32 m_auiEncounter[MAX_ENCOUNTER];
-        std::string m_strInstData;
+        std::string strInstData;
 
-        bool m_bHasIntroYelled;
-        bool m_bHasAltarYelled;
+        bool m_bEnterZulGurubYelled;
+        bool m_bProtectAltarYelled;
+        bool m_bThekalEvent;
+
+        uint32 m_uiThekalEventTimer;
+
+        GUIDList lJeklikFire;
+        GUIDList lChainedSpirits;
 };
 
 #endif

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,7 +17,7 @@
 /* ScriptData
 SDName: Darkshore
 SD%Complete: 100
-SDComment: Quest support: 731, 2078, 2118, 5321
+SDComment: Quest support: 731, 2078, 5321
 SDCategory: Darkshore
 EndScriptData */
 
@@ -40,28 +37,28 @@ EndContentData */
 
 enum
 {
-    SAY_KER_START            = -1000434,
+    SAY_KER_START               = -1000434,
 
-    EMOTE_KER_SLEEP_1        = -1000435,
-    EMOTE_KER_SLEEP_2        = -1000436,
-    EMOTE_KER_SLEEP_3        = -1000437,
+    EMOTE_KER_SLEEP_1           = -1000435,
+    EMOTE_KER_SLEEP_2           = -1000436,
+    EMOTE_KER_SLEEP_3           = -1000437,
 
-    SAY_KER_SLEEP_1          = -1000438,
-    SAY_KER_SLEEP_2          = -1000439,
-    SAY_KER_SLEEP_3          = -1000440,
-    SAY_KER_SLEEP_4          = -1000441,
+    SAY_KER_SLEEP_1             = -1000438,
+    SAY_KER_SLEEP_2             = -1000439,
+    SAY_KER_SLEEP_3             = -1000440,
+    SAY_KER_SLEEP_4             = -1000441,
 
-    EMOTE_KER_AWAKEN         = -1000445,
+    EMOTE_KER_AWAKEN            = -1000445,
 
-    SAY_KER_ALERT_1          = -1000442,
-    SAY_KER_ALERT_2          = -1000443,
+    SAY_KER_ALERT_1             = -1000442,
+    SAY_KER_ALERT_2             = -1000443,
 
-    SAY_KER_END              = -1000444,
+    SAY_KER_END                 = -1000444,
 
-    SPELL_SLEEP_VISUAL       = 25148,
-    SPELL_AWAKEN             = 17536,
-    QUEST_SLEEPER_AWAKENED   = 5321,
-    NPC_LILADRIS             = 11219 // attackers entries unknown
+    SPELL_SLEEP_VISUAL          = 25148,
+    SPELL_AWAKEN                = 17536,
+    QUEST_SLEEPER_AWAKENED      = 5321,
+    NPC_LILADRIS                = 11219                     //attackers entries unknown
 };
 
 //TODO: make concept similar as "ringo" -escort. Find a way to run the scripted attacks, _if_ player are choosing road.
@@ -187,38 +184,38 @@ bool QuestAccept_npc_kerlonian(Player* pPlayer, Creature* pCreature, const Quest
 
 enum
 {
-    SAY_REM_START             = -1000327,
-    SAY_REM_AGGRO             = -1000339,
-    SAY_REM_RAMP1_1           = -1000328,
-    SAY_REM_RAMP1_2           = -1000329,
-    SAY_REM_BOOK              = -1000330,
-    SAY_REM_TENT1_1           = -1000331,
-    SAY_REM_TENT1_2           = -1000332,
-    SAY_REM_MOSS              = -1000333,
-    EMOTE_REM_MOSS            = -1000334,
-    SAY_REM_MOSS_PROGRESS     = -1000335,
-    SAY_REM_PROGRESS          = -1000336,
-    SAY_REM_REMEMBER          = -1000337,
-    EMOTE_REM_END             = -1000338,
+    SAY_REM_START               = -1000327,
+    SAY_REM_AGGRO               = -1000339,
+    SAY_REM_RAMP1_1             = -1000328,
+    SAY_REM_RAMP1_2             = -1000329,
+    SAY_REM_BOOK                = -1000330,
+    SAY_REM_TENT1_1             = -1000331,
+    SAY_REM_TENT1_2             = -1000332,
+    SAY_REM_MOSS                = -1000333,
+    EMOTE_REM_MOSS              = -1000334,
+    SAY_REM_MOSS_PROGRESS       = -1000335,
+    SAY_REM_PROGRESS            = -1000336,
+    SAY_REM_REMEMBER            = -1000337,
+    EMOTE_REM_END               = -1000338,
 
-    QUEST_ABSENT_MINDED_PT2   = 731,
-    NPC_GRAVEL_SCOUT          = 2158,
-    NPC_GRAVEL_BONE           = 2159,
-    NPC_GRAVEL_GEO            = 2160
+    QUEST_ABSENT_MINDED_PT2     = 731,
+    NPC_GRAVEL_SCOUT            = 2158,
+    NPC_GRAVEL_BONE             = 2159,
+    NPC_GRAVEL_GEO              = 2160
 };
 
 struct MANGOS_DLL_DECL npc_prospector_remtravelAI : public npc_escortAI
 {
     npc_prospector_remtravelAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 i)
     {
         Player* pPlayer = GetPlayerForEscort();
 
         if (!pPlayer)
             return;
 
-        switch(uiPointId)
+        switch(i)
         {
             case 0:
                 DoScriptText(SAY_REM_START, m_creature, pPlayer);
@@ -276,10 +273,10 @@ struct MANGOS_DLL_DECL npc_prospector_remtravelAI : public npc_escortAI
 
     void Reset() { }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* who)
     {
         if (urand(0, 1))
-            DoScriptText(SAY_REM_AGGRO, m_creature, pWho);
+            DoScriptText(SAY_REM_AGGRO, m_creature, who);
     }
 
     void JustSummoned(Creature* pSummoned)
@@ -313,11 +310,11 @@ bool QuestAccept_npc_prospector_remtravel(Player* pPlayer, Creature* pCreature, 
 
 enum
 {
-    EMOTE_START          = -1000325,
-    SAY_AT_CLOSE         = -1000326,
-    QUEST_GYROMAST_REV   = 2078,
-    NPC_GELKAK           = 6667,
-    FACTION_HOSTILE      = 14
+    EMOTE_START             = -1000325,
+    SAY_AT_CLOSE            = -1000326,
+    QUEST_GYROMAST_REV      = 2078,
+    NPC_GELKAK              = 6667,
+    FACTION_HOSTILE         = 14
 };
 
 #define GOSSIP_ITEM_INSERT_KEY  "[PH] Insert key"
@@ -383,82 +380,26 @@ bool GossipSelect_npc_threshwackonator(Player* pPlayer, Creature* pCreature, uin
     return true;
 }
 
-/*######
-## npc_rabid_bear
-######*/
-
-enum
-{
-    QUEST_PLAGUED_LANDS          = 2118,
-    NPC_RABID_BEAR               = 2164,
-    NPC_RABID_BEAR_CAPTURED      = 11836,
-    GO_BEAR_TRAP                 = 111148,
-};
-
-struct MANGOS_DLL_DECL npc_rabid_bearAI : public ScriptedAI
-{
-    npc_rabid_bearAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        Reset();
-    }
-
-    Player* pPlayer;
-
-    void Reset()
-    {
-        pPlayer = NULL;
-    }
-
-    void MoveInLineOfSight(Unit* pWho)
-    {
-        if (pWho->GetTypeId() != TYPEID_PLAYER)
-            return;
-
-        pPlayer = (Player*)pWho;
-        if (pPlayer->GetQuestStatus(QUEST_PLAGUED_LANDS) == QUEST_STATUS_INCOMPLETE)
-        {
-            if (GetClosestGameObjectWithEntry(m_creature, GO_BEAR_TRAP, 0.5f))
-            {
-                pPlayer->CastedCreatureOrGO(NPC_RABID_BEAR_CAPTURED, m_creature->GetObjectGuid(), 9437, true);
-                m_creature->setFaction(35);
-                m_creature->addUnitState(UNIT_STAT_STUNNED);
-                m_creature->DeleteThreatList();
-                m_creature->ForcedDespawn(5000);
-            }
-        }
-    }
-};
-
-CreatureAI* GetAI_npc_rabid_bear(Creature* pCreature)
-{
-    return new npc_rabid_bearAI(pCreature);
-}
-
 void AddSC_darkshore()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_kerlonian";
-    pNewScript->GetAI = &GetAI_npc_kerlonian;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_kerlonian;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_kerlonian";
+    pNewscript->GetAI = &GetAI_npc_kerlonian;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_kerlonian;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_prospector_remtravel";
-    pNewScript->GetAI = &GetAI_npc_prospector_remtravel;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_prospector_remtravel;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_prospector_remtravel";
+    pNewscript->GetAI = &GetAI_npc_prospector_remtravel;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_prospector_remtravel;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_threshwackonator";
-    pNewScript->GetAI = &GetAI_npc_threshwackonator;
-    pNewScript->pGossipHello = &GossipHello_npc_threshwackonator;
-    pNewScript->pGossipSelect = &GossipSelect_npc_threshwackonator;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_rabid_bear";
-    pNewScript->GetAI = &GetAI_npc_rabid_bear;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_threshwackonator";
+    pNewscript->GetAI = &GetAI_npc_threshwackonator;
+    pNewscript->pGossipHello = &GossipHello_npc_threshwackonator;
+    pNewscript->pGossipSelect = &GossipSelect_npc_threshwackonator;
+    pNewscript->RegisterSelf();
 }

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,29 +17,72 @@
 #ifndef DEF_ZULFARRAK_H
 #define DEF_ZULFARRAK_H
 
-enum
+enum Type
 {
-    MAX_ENCOUNTER                   = 8,
+    TYPE_GAHZRILLA,
+    TYPE_PYRAMIDE,
+    TYPE_WEEGLI
+};
 
-    TYPE_VELRATHA                   = 0,
-    TYPE_GAHZRILLA                  = 1,
-    TYPE_ANTUSUL                    = 2,
-    TYPE_THEKA                      = 3,
-    TYPE_ZUMRAH                     = 4,
-    TYPE_NEKRUM                     = 5,
-    TYPE_SEZZZIZ                    = 6,
-    TYPE_CHIEF_SANDSCALP            = 7,
+enum Data
+{
+    DATA_WEEGLI,
+    DATA_BLY,
+    DATA_RAVEN,
+    DATA_ORO,
+    DATA_MURTA
+};
 
-    NPC_VELRATHA                    = 7795,
-    NPC_GAHZRILLA                   = 7273,
-    NPC_ANTUSUL                     = 8127,
-    NPC_THEKA                       = 7272,
-    NPC_ZUMRAH                      = 7271,
-    NPC_NEKRUM                      = 7796,
-    NPC_SEZZZIZ                     = 7275,
-    NPC_CHIEF_SANDSCALP             = 7267,
+enum Creatures
+{
+    NPC_DUSTWRAITH              = 10081,
+    NPC_GAHZRILLA               = 7273,
+    NPC_SANDARR_DUNEREAVER      = 10080,
+    NPC_ZERILIS                 = 10082,
+    NPC_GOBLIN_LAND_MINE        = 7527,
 
-    AREATRIGGER_ANTUSUL             = 1447,
+    // Pyramide prisoners
+    NPC_WEEGLI_BLASTFUSE        = 7607,
+    NPC_SERGEANT_BLY            = 7604,
+    NPC_RAVEN                   = 7605,
+    NPC_ORO_EYEGOUGE            = 7606,
+    NPC_MURTA_GRIMGUT           = 7608,
+    
+    // Pyramide trash
+    NPC_SANDFURY_SLAVE          = 7787,
+    NPC_SANDFURY_DRUDGE         = 7788,
+    NPC_SANDFURY_CRETIN         = 7789,
+    NPC_SANDFURY_ACOLYTE        = 8876,
+    NPC_SANDFURY_ZEALOT         = 8877,
+    NPC_SANDFURY_SOUL_EATER     = 7247,
+    NPC_SHADOWPRIEST_SEZZZIZZ   = 7275,
+    NPC_NEKRUM_GUTCHEWER        = 7796
+};
+
+enum GameObjects
+{
+    GO_GONG_OF_ZULFARRAK        = 141832,
+    GO_TROLL_CAGE1              = 141070,
+    GO_TROLL_CAGE2              = 141071,
+    GO_TROLL_CAGE3              = 141072,
+    GO_TROLL_CAGE4              = 141073,
+    GO_TROLL_CAGE5              = 141074,
+    GO_END_DOOR                 = 146084,
+    GO_DOOR_EXPLOSIVE           = 141612,
+};
+
+enum Misc 
+{
+    ITEM_MALLET_OF_ZULFARRAK    = 9240,
+    FACTION_HOSTILE             = 54,
+    FACTION_FRIENDLY            = 35,
+    FACTION_FFP_EFE             = 250,
+    MAX_ENCOUNTER               = 3
+};
+
+enum Spells
+{
+    SPELL_BLYS_BANDS_ESCAPE     = 11365         // Bly's Band's Heartstone
 };
 
 class MANGOS_DLL_DECL instance_zulfarrak : public ScriptedInstance
@@ -53,21 +93,28 @@ class MANGOS_DLL_DECL instance_zulfarrak : public ScriptedInstance
 
         void Initialize();
 
-        void OnCreatureEnterCombat(Creature* pCreature);
-        void OnCreatureEvade(Creature* pCreature);
-        void OnCreatureDeath(Creature* pCreature);
-
         void OnCreatureCreate(Creature* pCreature);
+		void OnObjectCreate(GameObject* pGo);
 
         void SetData(uint32 uiType, uint32 uiData);
         uint32 GetData(uint32 uiType);
 
-        const char* Save() { return m_strInstData.c_str(); }
-        void Load(const char* chrIn);
+		void Update(uint32 uiDiff);
 
+        const char* Save() { return strInstData.c_str(); }
+        void Load(const char* chrIn);
     protected:
         uint32 m_auiEncounter[MAX_ENCOUNTER];
-        std::string m_strInstData;
+        std::string strInstData;
+
+		uint32 m_uiCheckPyramideTrash_Timer;
+		uint32 m_uiBombExplodationExpire_Timer;
+		uint32 m_uiBlysBandHeartstone_Timer;
+
+		uint32 m_uiTrollsMovedCount;
+		uint32 m_uiTrollsKilledCount;
+
+		GUIDList m_uiPyramideTrash;
 };
 
 #endif

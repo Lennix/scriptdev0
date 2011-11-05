@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -32,11 +29,89 @@ enum
     FACTION_NEUTRAL             = 734,
     FACTION_HOSTILE             = 754,
 
+    SPELL_CLEAVE                = 15284,
+    //SPELL_CLEAVE                = 15496,
+    SPELL_HAMSTRING             = 9080,
+    SPELL_MORTAL_STRIKE         = 13737,
+    SPELL_RECKLESSNESS          = 13847,
+
     SPELL_SMELT_DARK_IRON       = 14891,
     SPELL_LEARN_SMELT           = 14894,
     QUEST_SPECTRAL_CHALICE      = 4083,
     SKILLPOINT_MIN              = 230
 };
+
+struct MANGOS_DLL_DECL boss_gloomrelAI : public ScriptedAI
+{
+    boss_gloomrelAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_pInstance = (instance_blackrock_depths*)pCreature->GetInstanceData();
+        Reset();
+    }
+    
+    instance_blackrock_depths* m_pInstance;
+
+    uint32 m_uiCleave_Timer;
+    uint32 m_uiHamstring_Timer;
+    uint32 m_uiMortalStrike_Timer;
+    
+    void Reset()
+    {
+    	m_uiCleave_Timer = urand(5000, 7000);
+    	m_uiHamstring_Timer = urand(2000, 4000);
+    	m_uiMortalStrike_Timer = urand(9000, 13000);
+    }
+
+  	void JustReachedHome()
+  	{
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_TOMB_OF_SEVEN, FAIL);
+  	}
+    
+    void UpdateAI(const uint32 uiDiff)
+    {
+    		//return since we have no target
+    		if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+    			return;
+
+    		//m_uiCleave_Timer
+        if (m_uiCleave_Timer <= uiDiff)
+    	{
+        DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE);
+        m_uiCleave_Timer = urand(7000, 9000);
+    	}
+    	else
+        m_uiCleave_Timer -= uiDiff;
+
+        //m_uiHamstring_Timer
+        if (m_uiHamstring_Timer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_HAMSTRING);
+            m_uiHamstring_Timer = urand(15000, 18000);
+        }
+        else
+            m_uiHamstring_Timer -= uiDiff;
+
+        //m_uiMortalStrike_Timer
+        if (m_uiMortalStrike_Timer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_MORTAL_STRIKE);
+            m_uiMortalStrike_Timer = urand(14000, 18000);
+        }
+        else
+            m_uiMortalStrike_Timer -= uiDiff;
+
+        //Cast Recklessness when health is below 30 percent
+        if (HealthBelowPct(30))
+            DoCastSpellIfCan(m_creature, SPELL_RECKLESSNESS, CAST_AURA_NOT_PRESENT);
+
+        DoMeleeAttackIfReady();
+	}
+};
+CreatureAI* GetAI_boss_gloomrel(Creature* pCreature)
+{
+    return new boss_gloomrelAI (pCreature);
+}
 
 #define GOSSIP_ITEM_TEACH_1 "Teach me the art of smelting dark iron"
 #define GOSSIP_ITEM_TEACH_2 "Continue..."
@@ -44,7 +119,7 @@ enum
 
 bool GossipHello_boss_gloomrel(Player* pPlayer, Creature* pCreature)
 {
-    if (ScriptedInstance* pInstance = (ScriptedInstance*)pCreature->GetInstanceData())
+    if (instance_blackrock_depths* pInstance = (instance_blackrock_depths*)pCreature->GetInstanceData())
     {
         if (pInstance->GetData(TYPE_TOMB_OF_SEVEN) == NOT_STARTED)
         {
@@ -58,7 +133,7 @@ bool GossipHello_boss_gloomrel(Player* pPlayer, Creature* pCreature)
                 pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_TRIBUTE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
         }
     }
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
+	pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
     return true;
 }
 
@@ -80,10 +155,10 @@ bool GossipSelect_boss_gloomrel(Player* pPlayer, Creature* pCreature, uint32 uiS
             break;
         case GOSSIP_ACTION_INFO_DEF+22:
             pPlayer->CLOSE_GOSSIP_MENU();
-            if (ScriptedInstance* pInstance = (ScriptedInstance*)pCreature->GetInstanceData())
+            if (instance_blackrock_depths* pInstance = (instance_blackrock_depths*)pCreature->GetInstanceData())
             {
                 //are 5 minutes expected? go template may have data to despawn when used at quest
-                pInstance->DoRespawnGameObject(GO_SPECTRAL_CHALICE, MINUTE*5);
+				pInstance->DoRespawnGameObject(GO_SPECTRAL_CHALICE, 5*MINUTE);
             }
             break;
     }
@@ -109,11 +184,11 @@ struct MANGOS_DLL_DECL boss_doomrelAI : public ScriptedAI
 {
     boss_doomrelAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_blackrock_depths*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_blackrock_depths* m_pInstance;
 
     uint32 m_uiShadowVolley_Timer;
     uint32 m_uiImmolate_Timer;
@@ -157,7 +232,7 @@ struct MANGOS_DLL_DECL boss_doomrelAI : public ScriptedAI
         switch(uiPhase)
         {
             case 0:
-                return m_pInstance->GetSingleCreatureFromStorage(NPC_ANGERREL);
+				return m_pInstance->GetSingleCreatureFromStorage(NPC_ANGERREL);
             case 1:
                 return m_pInstance->GetSingleCreatureFromStorage(NPC_SEETHREL);
             case 2:
@@ -266,7 +341,7 @@ struct MANGOS_DLL_DECL boss_doomrelAI : public ScriptedAI
             m_uiDemonArmor_Timer -= diff;
 
         //Summon Voidwalkers
-        if (!m_bHasSummoned && m_creature->GetHealthPercent() <= 50.0f)
+        if (!m_bHasSummoned && HealthBelowPct(50))
         {
             m_creature->CastSpell(m_creature, SPELL_SUMMON_VOIDWALKERS, true);
             m_bHasSummoned = true;
@@ -283,13 +358,13 @@ CreatureAI* GetAI_boss_doomrel(Creature* pCreature)
 
 bool GossipHello_boss_doomrel(Player* pPlayer, Creature* pCreature)
 {
-    if (ScriptedInstance* pInstance = (ScriptedInstance*)pCreature->GetInstanceData())
+    if (instance_blackrock_depths* pInstance = (instance_blackrock_depths*)pCreature->GetInstanceData())
     {
         if (pInstance->GetData(TYPE_TOMB_OF_SEVEN) == NOT_STARTED)
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_CHALLENGE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
     }
 
-    pPlayer->SEND_GOSSIP_MENU(2601, pCreature->GetObjectGuid());
+	pPlayer->SEND_GOSSIP_MENU(2601, pCreature->GetObjectGuid());
     return true;
 }
 
@@ -301,7 +376,7 @@ bool GossipSelect_boss_doomrel(Player* pPlayer, Creature* pCreature, uint32 uiSe
             pPlayer->CLOSE_GOSSIP_MENU();
             DoScriptText(SAY_DOOMREL_START_EVENT, pCreature, pPlayer);
             // start event
-            if (ScriptedInstance* pInstance = (ScriptedInstance*)pCreature->GetInstanceData())
+            if (instance_blackrock_depths* pInstance = (instance_blackrock_depths*)pCreature->GetInstanceData())
                 pInstance->SetData(TYPE_TOMB_OF_SEVEN, IN_PROGRESS);
 
             break;
@@ -311,18 +386,19 @@ bool GossipSelect_boss_doomrel(Player* pPlayer, Creature* pCreature, uint32 uiSe
 
 void AddSC_boss_tomb_of_seven()
 {
-    Script *newscript;
+    Script* pNewscript;
 
-    newscript = new Script;
-    newscript->Name = "boss_gloomrel";
-    newscript->pGossipHello = &GossipHello_boss_gloomrel;
-    newscript->pGossipSelect = &GossipSelect_boss_gloomrel;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "boss_gloomrel";
+    pNewscript->GetAI = &GetAI_boss_gloomrel;
+    pNewscript->pGossipHello = &GossipHello_boss_gloomrel;
+    pNewscript->pGossipSelect = &GossipSelect_boss_gloomrel;
+    pNewscript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_doomrel";
-    newscript->GetAI = &GetAI_boss_doomrel;
-    newscript->pGossipHello = &GossipHello_boss_doomrel;
-    newscript->pGossipSelect = &GossipSelect_boss_doomrel;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "boss_doomrel";
+    pNewscript->GetAI = &GetAI_boss_doomrel;
+    pNewscript->pGossipHello = &GossipHello_boss_doomrel;
+    pNewscript->pGossipSelect = &GossipSelect_boss_doomrel;
+    pNewscript->RegisterSelf();
 }

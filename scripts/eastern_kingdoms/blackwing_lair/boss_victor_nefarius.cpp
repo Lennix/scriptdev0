@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,172 +17,234 @@
 /* ScriptData
 SDName: Boss_Victor_Nefarius
 SD%Complete: 75
-SDComment: Missing some text, Vael beginning event, and spawns Nef in wrong place
+SDComment: unfinished
 SDCategory: Blackwing Lair
 EndScriptData */
 
 #include "precompiled.h"
 #include "blackwing_lair.h"
 
-enum
+enum eNefarian
 {
-    SAY_GAMESBEGIN_1                = -1469004,
-    SAY_GAMESBEGIN_2                = -1469005,
+    // Event texts
+    SAY_GAMES_BEGIN_1               = -1469004,
+    SAY_GAMES_BEGIN_2               = -1469005,
+    SAY_VAEL_INTRO                  = -1469006,                    // when he corrupts Vaelastrasz
 
-    GOSSIP_ITEM_NEFARIUS_1          = -3469000,
-    GOSSIP_ITEM_NEFARIUS_2          = -3469001,
-    GOSSIP_ITEM_NEFARIUS_3          = -3469002,
-    GOSSIP_TEXT_NEFARIUS_1          = 7134,
-    GOSSIP_TEXT_NEFARIUS_2          = 7198,
-    GOSSIP_TEXT_NEFARIUS_3          = 7199,
+    // Nefarian phase two texts
+    SAY_AGGRO                       = -1469007,
+    SAY_XHEALTH                     = -1469008,
+    SAY_SHADOWFLAME                 = -1469009,
+    SAY_RAISE_SKELETONS             = -1469010,
+    SAY_SLAY                        = -1469011,
+    SAY_DEATH                       = -1469012,
+    SAY_MAGE                        = -1469013,
+    SAY_WARRIOR                     = -1469014,
+    SAY_DRUID                       = -1469015,
+    SAY_PRIEST                      = -1469016,
+    SAY_PALADIN                     = -1469017,
+    SAY_SHAMAN                      = -1469018,
+    SAY_WARLOCK                     = -1469019,
+    SAY_HUNTER                      = -1469020,
+    SAY_ROGUE                       = -1469021,
 
-    MAX_DRAKES                      = 5,
-    MAX_DRAKE_SUMMONS               = 42,
-    NPC_BRONZE_DRAKANOID            = 14263,
-    NPC_BLUE_DRAKANOID              = 14261,
-    NPC_RED_DRAKANOID               = 14264,
-    NPC_GREEN_DRAKANOID             = 14262,
-    NPC_BLACK_DRAKANOID             = 14265,
-    NPC_CHROMATIC_DRAKANOID         = 14302,
+    // Victor's spells
+    SPELL_NEFARIANS_BARRIER         = 22663,
+    SPELL_FEAR                      = 22678,    // 26070,
+    SPELL_SHADOW_BOLT               = 22677,    // 21077,
+    SPELL_SHADOW_BOLT_VOLLEY        = 22665,
+    SPELL_SHADOW_COMMAND            = 22667,
+    SPELL_SHADOWBLINK_1             = 22664,    // dummy effects
+    SPELL_SHADOWBLINK_2             = 22681,    // dummy effects
 
-    SPELL_NEFARIUS_BARRIER          = 22663,                // immunity in phase 1
-    SPELL_SHADOWBOLT                = 21077,
-    SPELL_FEAR                      = 26070,                // shouldn't this be 22678?
-    // shadowbolt vollye = 22665
-    // silence = 22666 -> silence a player
-    // shadow command = 22667 -> charm a player
-    // shadowblink = 22664, 22681 -> teleport around the room, possibly random
+    // Nefarian's spells
+    SPELL_BELLOWING_ROAR            = 22686,
+    SPELL_CLEAVE                    = 19983,    // 20691,
+    SPELL_SHADOW_FLAME              = 22539,
+    SPELL_SHADOW_FLAME_INITIAL      = 22972,
+    SPELL_TAIL_LASH                 = 23364,
+    SPELL_VEIL_OF_SHADOW            = 22687,    // 7068,
 
-    FACTION_BLACK_DRAGON            = 103,
-    FACTION_FRIENDLY                = 35
+    SPELL_RAISE_UNDEAD_DRAKONID     = 23361,
+    SPELL_RAISE_DRAKONID            = 23362,
+    SPELL_SUMMON_DRAKONID_CORPSE    = 23363,
+
+    // Class-call outs
+    SPELL_WILD_POLYMORPH            = 23603,    // MAGE
+    SPELL_BERSERK                   = 23397,    // WARRIOR
+    SPELL_INVOLUNTARY_TRANSFORM     = 23398,    // DRUID
+    SPELL_CORRUPTED_HEALING         = 23401,    // PRIEST
+    SPELL_SIPHON_BLESSING           = 23418,    // PALADIN
+    SPELL_CORRUPTED_TOTEMS          = 23425,    // SHAMAN - triggers spell 23424 - dummy - need to script
+    SPELL_SUMMON_INFERNALS          = 23427,    // WARLOCK
+    SPELL_CORRUPT_WEAPON            = 23436,    // HUNTER
+    SPELL_PARALYZE                  = 23414,    // ROGUE
+
+    MAX_DRAKONID                    = 42
 };
 
-struct SpawnLocation
+uint32 aDrakonids[5] = {NPC_BLACK_DRAKONID, NPC_BLUE_DRAKONID, NPC_BRONZE_DRAKONID, NPC_GREEN_DRAKONID, NPC_RED_DRAKONID};
+
+static Location Drake[]=
 {
-    float m_fX, m_fY, m_fZ;
+    {-7591.15f, -1204.05f, 476.80f, 0.0f},
+    {-7514.59f, -1150.44f, 476.80f, 0.0f}
 };
 
-static const SpawnLocation aNefarianLocs[5] =
+struct ClassInfo
 {
-    {-7599.32f, -1191.72f, 475.545f},                       // opening where red/blue/black darknid spawner appear (ori 3.05433)
-    {-7526.27f, -1135.04f, 473.445f},                       // same as above, closest to door (ori 5.75959)
-    {-7498.177f, -1273.277f, 481.649f},                     // nefarian spawn location (ori 1.798)
-    {-7592.0f, -1264.0f, 481.0f},                           // hide pos (useless; remove this)
-    {-7502.002f, -1256.503f, 476.758f},                     // nefarian fly to this position
+    Classes classId;
+    uint32 spellId;
+    int32 yellId;
 };
 
-static const uint32 aPossibleDrake[MAX_DRAKES] = {NPC_BRONZE_DRAKANOID, NPC_BLUE_DRAKANOID, NPC_RED_DRAKANOID, NPC_GREEN_DRAKANOID, NPC_BLACK_DRAKANOID};
+static ClassInfo CallOut[]=
+{
+    {CLASS_MAGE, SPELL_WILD_POLYMORPH, SAY_MAGE},
+    {CLASS_WARRIOR, SPELL_BERSERK, SAY_WARRIOR},
+    {CLASS_DRUID, SPELL_INVOLUNTARY_TRANSFORM, SAY_DRUID},
+    {CLASS_PRIEST, SPELL_CORRUPTED_HEALING, SAY_PRIEST},
+    {CLASS_PALADIN, SPELL_SIPHON_BLESSING, SAY_PALADIN},
+    {CLASS_SHAMAN, SPELL_CORRUPTED_TOTEMS, SAY_SHAMAN},
+    {CLASS_WARLOCK, SPELL_SUMMON_INFERNALS, SAY_WARLOCK},
+    {CLASS_HUNTER, SPELL_CORRUPT_WEAPON, SAY_HUNTER},
+    {CLASS_ROGUE, SPELL_PARALYZE, SAY_ROGUE}
+};
 
-//This script is complicated
-//Instead of morphing Victor Nefarius we will have him control phase 1
-//And then have him spawn "Nefarian" for phase 2
-//When phase 2 starts Victor Nefarius will go invisible and stop attacking
-//If Nefarian reched home because nef killed the players then nef will trigger this guy to EnterEvadeMode
-//and allow players to start the event over
-//If nefarian dies then he will kill himself then he will be despawned in Nefarian script
-//To prevent players from doing the event twice
-
-// Dev note: Lord Victor Nefarius should despawn completely, then ~5 seconds later Nefarian should appear.
+#define GOSSIP_ITEM_1           "I've made no mistakes."
+#define GOSSIP_ITEM_2           "You have lost your mind, Nefarius. You speak in riddles."
+#define GOSSIP_ITEM_3           "Please do."
 
 struct MANGOS_DLL_DECL boss_victor_nefariusAI : public ScriptedAI
 {
     boss_victor_nefariusAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        // Select the 2 different drakes that we are going to use until despawned
-        // 5 possiblities for the first drake, 4 for the second, 20 total possiblites
-
-        // select two different numbers between 0..MAX_DRAKES-1
-        uint8 uiPos1 = urand(0, MAX_DRAKES - 1);
-        uint8 uiPos2 = (uiPos1 + urand(1, MAX_DRAKES - 1)) % MAX_DRAKES;
-
-        m_uiDrakeTypeOne = aPossibleDrake[uiPos1];
-        m_uiDrakeTypeTwo = aPossibleDrake[uiPos2];
-
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
         Reset();
+
+        m_auiDrakonidType[0] = aDrakonids[urand(0,4)];
+        m_auiDrakonidType[1] = aDrakonids[urand(0,4)];
+
+        while(m_auiDrakonidType[0] == m_auiDrakonidType[1])
+            m_auiDrakonidType[1] = aDrakonids[urand(0,4)];
     }
 
-    ScriptedInstance* m_pInstance;
+    bool m_bPhaseOne;
+    bool m_bPhaseThree;
 
-    uint32 m_uiSpawnedAdds;
-    uint32 m_uiAddSpawnTimer;
+    uint32 m_auiDrakonidType[2];
+    uint32 m_uiDrakonidSummoned;
+    uint32 m_uiDrakonidDead;
+    uint32 m_uiDrakonidSpawnTimer;
     uint32 m_uiShadowBoltTimer;
     uint32 m_uiFearTimer;
-    uint32 m_uiMindControlTimer;
     uint32 m_uiResetTimer;
-    uint32 m_uiDrakeTypeOne;
-    uint32 m_uiDrakeTypeTwo;
+
+    uint32 m_uiBellowingRoarTimer;
+    uint32 m_uiCleaveTimer;
+    uint32 m_uiShadowFlameTimer;
+    uint32 m_uiTailLashTimer;
+    uint32 m_uiVeilOfShadowTimer;
+    uint32 m_uiClassCallTimer;
+
+    DrakonidInfoList m_lDrakonidInfo;
 
     void Reset()
     {
-        m_uiSpawnedAdds     = 0;
-        m_uiAddSpawnTimer   = 10000;
+        m_bPhaseOne = true;
+        m_bPhaseThree = false;
+
+        m_uiDrakonidSummoned = 0;
+        m_uiDrakonidDead = 0;
+        m_uiDrakonidSpawnTimer = 10000;
         m_uiShadowBoltTimer = 5000;
-        m_uiFearTimer       = 8000;
-        m_uiResetTimer      = 15 * MINUTE * IN_MILLISECONDS;
+        m_uiFearTimer = 8000;
+        m_uiResetTimer = 900000;                                // On official it takes him 15 minutes(900 seconds) to reset. We are only doing 1 minute to make testing easier
 
-        // set gossip flag to begin the event
-        m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+        m_uiBellowingRoarTimer = 30000;
+        m_uiCleaveTimer = 7000;
+        m_uiShadowFlameTimer = 12000;
+        m_uiTailLashTimer = 10000;
+        m_uiVeilOfShadowTimer = 15000;
+        m_uiClassCallTimer = 35000;
 
-        // Make visible if needed
-        if (m_creature->GetVisibility() != VISIBILITY_ON)
-            m_creature->SetVisibility(VISIBILITY_ON);
-    }
+        m_lDrakonidInfo.clear();
+        m_creature->RemoveAurasDueToSpell(SPELL_NEFARIANS_BARRIER);
 
-    void Aggro(Unit* pWho)
-    {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_NEFARIAN, IN_PROGRESS);
-    }
+        if (m_creature->GetEntry() != NPC_VICTOR_NEFARIUS)
+            m_creature->UpdateEntry(NPC_VICTOR_NEFARIUS);
 
-    void JustReachedHome()
-    {
         m_creature->setFaction(FACTION_FRIENDLY);
-        m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+        m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+    }
 
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_NEFARIAN, FAIL);
+    void JustDied(Unit* pKiller)
+    {
+        DoScriptText(SAY_DEATH, m_creature);
+    }
+
+    void KilledUnit(Unit* pVictim)
+    {
+        if (urand(0,4))
+            return;
+
+        DoScriptText(SAY_SLAY, m_creature, pVictim);
     }
 
     void JustSummoned(Creature* pSummoned)
     {
-        if (pSummoned->GetEntry() == NPC_NEFARIAN)
-        {
-            pSummoned->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
+        // Victor summons Rend in UBRS -> we don't any action here
+        if (pSummoned->GetEntry() == 10429)
+            return;
 
-            // see boss_onyxia (also note the removal of this in boss_nefarian)
-            pSummoned->SetByteValue(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND/* | UNIT_BYTE1_FLAG_UNK_2*/);
-            pSummoned->AddSplineFlag(SPLINEFLAG_FLYING);
+        if (pSummoned->GetEntry() != NPC_BONE_CONSTRUCT)
+            ++m_uiDrakonidSummoned;
 
-            // Let Nefarian fly towards combat area
-            pSummoned->GetMotionMaster()->MovePoint(1, aNefarianLocs[4].m_fX, aNefarianLocs[4].m_fY, aNefarianLocs[4].m_fZ);
-        }
+        if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            pSummoned->AI()->AttackStart(pTarget);
         else
-        {
-            ++m_uiSpawnedAdds;
-
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                pSummoned->AI()->AttackStart(pTarget);
-        }
-
-        pSummoned->SetRespawnDelay(7*DAY);
-    }
-
-    void SummonedMovementInform(Creature* pSummoned, uint32 uiMotionType, uint32 uiPointId)
-    {
-        // If Nefarian has reached combat area, let him attack
-        if (pSummoned->GetEntry() == NPC_NEFARIAN && uiMotionType == POINT_MOTION_TYPE && uiPointId == 1)
-        {
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                pSummoned->AI()->AttackStart(pTarget);
-        }
+            pSummoned->SetInCombatWithZone();
     }
 
     void SummonedCreatureJustDied(Creature* pSummoned)
     {
-        // Despawn self when Nefarian is killed
-        if (pSummoned->GetEntry() == NPC_NEFARIAN)
-            m_creature->ForcedDespawn();
+        if (!m_bPhaseOne)
+            return;
+
+        if (pSummoned->GetEntry() != NPC_BONE_CONSTRUCT)
+        {
+            pSummoned->CastSpell(pSummoned, SPELL_SUMMON_DRAKONID_CORPSE, true);
+            float fX, fY, fZ;
+            pSummoned->GetPosition(fX, fY, fZ);
+            m_lDrakonidInfo.push_back(DrakonidInfo(fX, fY, fZ));
+
+            ++m_uiDrakonidDead;
+
+            // Start phase two
+            if (m_uiDrakonidDead >= MAX_DRAKONID)
+            {
+                m_bPhaseOne = false;
+                m_creature->InterruptNonMeleeSpells(false);
+                m_creature->RemoveAurasDueToSpell(SPELL_NEFARIANS_BARRIER);
+                m_creature->UpdateEntry(NPC_NEFARIAN);
+                DoResetThreat();
+                DoScriptText(SAY_AGGRO, m_creature);
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                {
+                    DoCastSpellIfCan(pTarget, SPELL_SHADOW_FLAME_INITIAL);
+                    m_creature->AI()->AttackStart(pTarget);
+                }
+            }
+        }
+    }
+
+    void BeginEvent(Player* pTarget)
+    {
+        DoScriptText(SAY_GAMES_BEGIN_2, m_creature);
+
+        m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
+        DoCastSpellIfCan(m_creature, SPELL_NEFARIANS_BARRIER);
+        m_creature->setFaction(FACTION_BLACKWING);
+        m_creature->AI()->AttackStart(pTarget);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -193,76 +252,118 @@ struct MANGOS_DLL_DECL boss_victor_nefariusAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        // Only do this if we haven't spawned nef yet
-        if (m_uiSpawnedAdds < MAX_DRAKE_SUMMONS)
+        if (m_bPhaseOne)
         {
-            // Shadowbolt Timer
+            // Shadow Bolt
             if (m_uiShadowBoltTimer < uiDiff)
             {
-                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                {
-                    if (DoCastSpellIfCan(pTarget, SPELL_SHADOWBOLT) == CAST_OK)
-                        m_uiShadowBoltTimer = urand(3000, 10000);
-                }
+                Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+                if (pTarget && DoCastSpellIfCan(pTarget, SPELL_SHADOW_BOLT) == CAST_OK)
+                    m_uiShadowBoltTimer = urand(3000, 10000);
             }
             else
                 m_uiShadowBoltTimer -= uiDiff;
 
-            // Fear Timer
+            // Fear
             if (m_uiFearTimer < uiDiff)
             {
-                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                {
-                    if (DoCastSpellIfCan(pTarget, SPELL_FEAR) == CAST_OK)
-                        m_uiFearTimer = urand(10000, 20000);
-                }
+                Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+                if (pTarget && DoCastSpellIfCan(pTarget, SPELL_FEAR) == CAST_OK)
+                    m_uiFearTimer = urand(10000, 20000);
             }
             else
                 m_uiFearTimer -= uiDiff;
 
-            // Add spawning mechanism
-            if (m_uiAddSpawnTimer < uiDiff)
+            // Drakonid spawn
+            if (m_uiDrakonidSpawnTimer < uiDiff)
             {
-                //Spawn 2 random types of creatures at the 2 locations
-                uint32 uiCreatureId = 0;
-
-                // 1 in 3 chance it will be a chromatic
-                uiCreatureId = urand(0, 2) ? m_uiDrakeTypeOne : NPC_CHROMATIC_DRAKANOID;
-                m_creature->SummonCreature(uiCreatureId, aNefarianLocs[0].m_fX, aNefarianLocs[0].m_fY, aNefarianLocs[0].m_fZ, 5.000f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30*MINUTE*IN_MILLISECONDS);
-
-                // 1 in 3 chance it will be a chromatic
-                uiCreatureId = urand(0, 2) ? m_uiDrakeTypeTwo : NPC_CHROMATIC_DRAKANOID;
-                m_creature->SummonCreature(uiCreatureId, aNefarianLocs[1].m_fX, aNefarianLocs[1].m_fY, aNefarianLocs[1].m_fZ, 5.000, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30*MINUTE*IN_MILLISECONDS);
-
-                //Begin phase 2 by spawning Nefarian
-                if (m_uiSpawnedAdds >= MAX_DRAKE_SUMMONS)
+                for (uint8 i = 0; i < 2; ++i)
                 {
-                    //Teleport Victor Nefarius way out of the map
-                    //MapManager::Instance().GetMap(m_creature->GetMapId(), m_creature)->CreatureRelocation(m_creature,0,0,-5000,0);
-
-                    //Inturrupt any spell casting
-                    m_creature->InterruptNonMeleeSpells(false);
-
-                    //Root self
-                    DoCastSpellIfCan(m_creature, 33356, CAST_TRIGGERED);
-
-                    //Make super invis
-                    if (m_creature->GetVisibility() != VISIBILITY_OFF)
-                        m_creature->SetVisibility(VISIBILITY_OFF);
-
-                    // Do not teleport him away, this is not needed (invisible and rooted)
-                    //Teleport self to a hiding spot
-                    //m_creature->NearTeleportTo(aNefarianLocs[3].m_fX, aNefarianLocs[3].m_fY, aNefarianLocs[3].m_fZ, 0.0f);
-
-                    // Spawn Nefarian
-                    // Summon as active, to be able to work proper!
-                    m_creature->SummonCreature(NPC_NEFARIAN, aNefarianLocs[2].m_fX, aNefarianLocs[2].m_fY, aNefarianLocs[2].m_fZ, 0, TEMPSUMMON_DEAD_DESPAWN, 0, true);
+                    if (m_uiDrakonidSummoned < MAX_DRAKONID)
+                        m_creature->SummonCreature(m_auiDrakonidType[i], Drake[i].x, Drake[i].y, Drake[i].z, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30*IN_MILLISECONDS);
                 }
 
-                m_uiAddSpawnTimer = 4000;
+                if (!urand(0,3) && m_uiDrakonidSummoned < MAX_DRAKONID)
+                    m_creature->SummonCreature(NPC_CHROMATIC_DRAKONID, Drake[0].x, Drake[0].y, Drake[0].z, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30*IN_MILLISECONDS);
+
+                m_uiDrakonidSpawnTimer = 4000;
             }
             else
-                m_uiAddSpawnTimer -= uiDiff;
+                m_uiDrakonidSpawnTimer -= uiDiff;
+        }
+        else
+        {
+            // When we are below X health
+            if (!m_bPhaseThree && HealthBelowPct(20))
+            {
+                m_bPhaseThree = true;
+                DoScriptText(SAY_RAISE_SKELETONS, m_creature);
+
+                for(DrakonidInfoList::iterator itr = m_lDrakonidInfo.begin(); itr != m_lDrakonidInfo.end(); ++itr)
+                    m_creature->SummonCreature(NPC_BONE_CONSTRUCT, itr->x, itr->y, itr->z, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
+            }
+
+            // Bellowing Roar
+            if (m_uiBellowingRoarTimer < uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_BELLOWING_ROAR) == CAST_OK)
+                    m_uiBellowingRoarTimer = 30000;
+            }
+            else
+                m_uiBellowingRoarTimer -= uiDiff;
+
+            // Cleave
+            if (m_uiCleaveTimer < uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
+                    m_uiCleaveTimer = 7000;
+            }
+            else
+                m_uiCleaveTimer -= uiDiff;
+
+            // Shadow Flame
+            if (m_uiShadowFlameTimer < uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOW_FLAME) == CAST_OK)
+                    m_uiShadowFlameTimer = 12000;
+            }
+            else
+                m_uiShadowFlameTimer -= uiDiff;
+
+            // Veil Of Shadow
+            if (m_uiVeilOfShadowTimer < uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_VEIL_OF_SHADOW) == CAST_OK)
+                    m_uiVeilOfShadowTimer = 15000;
+            }
+            else
+                m_uiVeilOfShadowTimer -= uiDiff;
+
+            // Tail Lash
+            if (m_uiTailLashTimer < uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_TAIL_LASH) == CAST_OK)
+                    m_uiTailLashTimer = 10000;
+            }
+            else
+                m_uiTailLashTimer -= uiDiff;
+
+            // Class Call
+            if (m_uiClassCallTimer < uiDiff)
+            {
+                // On official it is based on what classes are currently on the hostil list
+                // but we can't do that yet so just randomly call one
+                uint32 i = urand(0,8);
+                if (DoCastSpellIfCan(m_creature, CallOut[i].spellId) == CAST_OK)
+                {
+                    DoScriptText(CallOut[i].yellId, m_creature);
+                    m_uiClassCallTimer = urand(35000, 40000);
+                }
+            }
+            else
+                m_uiClassCallTimer -= uiDiff;
+
+            DoMeleeAttackIfReady();
         }
     }
 };
@@ -274,8 +375,10 @@ CreatureAI* GetAI_boss_victor_nefarius(Creature* pCreature)
 
 bool GossipHello_boss_victor_nefarius(Player* pPlayer, Creature* pCreature)
 {
-    pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NEFARIUS_1 , GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-    pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_NEFARIUS_1, pCreature->GetObjectGuid());
+    if (pCreature->GetMapId() == 469)
+        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_1 , GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+    pPlayer->SEND_GOSSIP_MENU(7134, pCreature->GetObjectGuid());
     return true;
 }
 
@@ -283,24 +386,19 @@ bool GossipSelect_boss_victor_nefarius(Player* pPlayer, Creature* pCreature, uin
 {
     switch(uiAction)
     {
-        case GOSSIP_ACTION_INFO_DEF+1:
-            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NEFARIUS_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_NEFARIUS_2, pCreature->GetObjectGuid());
+        case GOSSIP_ACTION_INFO_DEF + 1:
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+            pPlayer->SEND_GOSSIP_MENU(7198, pCreature->GetObjectGuid());
             break;
-        case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NEFARIUS_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+3);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_NEFARIUS_3, pCreature->GetObjectGuid());
-            DoScriptText(SAY_GAMESBEGIN_1, pCreature);
+        case GOSSIP_ACTION_INFO_DEF + 2:
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
+            pPlayer->SEND_GOSSIP_MENU(7199, pCreature->GetObjectGuid());
             break;
-        case GOSSIP_ACTION_INFO_DEF+3:
+        case GOSSIP_ACTION_INFO_DEF + 3:
             pPlayer->CLOSE_GOSSIP_MENU();
-            DoScriptText(SAY_GAMESBEGIN_2, pCreature);
-            // remove gossip, set hostile and attack
-            pCreature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-            pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-            pCreature->setFaction(FACTION_BLACK_DRAGON);
-            pCreature->CastSpell(pCreature, SPELL_NEFARIUS_BARRIER, false);
-            pCreature->AI()->AttackStart(pPlayer);
+            DoScriptText(SAY_GAMES_BEGIN_1, pCreature);
+            if (boss_victor_nefariusAI* pNefAI = dynamic_cast<boss_victor_nefariusAI*>(pCreature->AI()))
+                pNefAI->BeginEvent(pPlayer);
             break;
     }
     return true;

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -18,8 +15,8 @@
  */
 
 /* ScriptData
-SDName: instance_zulfarrak
-SD%Complete: 50%
+SDName: Instance Zul'Farrak
+SD%Complete: 80
 SDComment:
 SDCategory: Zul'Farrak
 EndScriptData */
@@ -27,22 +24,69 @@ EndScriptData */
 #include "precompiled.h"
 #include "zulfarrak.h"
 
-instance_zulfarrak::instance_zulfarrak(Map* pMap) : ScriptedInstance(pMap)
+instance_zulfarrak::instance_zulfarrak(Map* pMap) : ScriptedInstance(pMap),
+	m_uiCheckPyramideTrash_Timer(15000),
+    m_uiBombExplodationExpire_Timer(0),
+    m_uiBlysBandHeartstone_Timer(2*MINUTE*IN_MILLISECONDS),
+	m_uiTrollsMovedCount(0),
+	m_uiTrollsKilledCount(0)
 {
     Initialize();
-}
+};
 
- void instance_zulfarrak::Initialize()
+void instance_zulfarrak::Initialize()
 {
     memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
+
+    m_uiPyramideTrash.clear();
+}
+
+void instance_zulfarrak::OnObjectCreate(GameObject* pGo)
+{
+    switch(pGo->GetEntry())
+    {
+        case GO_GONG_OF_ZULFARRAK:
+            if (m_auiEncounter[0] == DONE)
+                pGo->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND + GO_FLAG_NO_INTERACT);
+            break;
+        case GO_END_DOOR:
+            if (m_auiEncounter[2] == DONE)
+                pGo->SetGoState(GO_STATE_ACTIVE_ALTERNATIVE);
+            break;
+        case GO_DOOR_EXPLOSIVE:
+			break;
+		default:
+			return;
+    }
+
+	m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
 }
 
 void instance_zulfarrak::OnCreatureCreate(Creature* pCreature)
 {
-    switch (pCreature->GetEntry())
+    switch(pCreature->GetEntry())
     {
-        case NPC_ANTUSUL:
-            m_mNpcEntryGuidStore[NPC_ANTUSUL] = pCreature->GetObjectGuid();
+        case NPC_WEEGLI_BLASTFUSE:
+        case NPC_SERGEANT_BLY:
+        case NPC_RAVEN:
+        case NPC_ORO_EYEGOUGE:
+        case NPC_MURTA_GRIMGUT:
+        case NPC_NEKRUM_GUTCHEWER:
+			m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+			break;
+        case NPC_DUSTWRAITH:
+        case NPC_SANDARR_DUNEREAVER:
+        case NPC_ZERILIS:
+            SetRareBoss(pCreature, 75);
+            break;
+        case NPC_SANDFURY_SLAVE:
+        case NPC_SANDFURY_DRUDGE:
+        case NPC_SANDFURY_CRETIN:
+        case NPC_SANDFURY_ACOLYTE:
+        case NPC_SANDFURY_ZEALOT:
+        case NPC_SANDFURY_SOUL_EATER:
+        case NPC_SHADOWPRIEST_SEZZZIZZ:
+            m_uiPyramideTrash.push_back(pCreature->GetObjectGuid());
             break;
     }
 }
@@ -51,18 +95,54 @@ void instance_zulfarrak::SetData(uint32 uiType, uint32 uiData)
 {
     switch(uiType)
     {
-        case TYPE_VELRATHA:
         case TYPE_GAHZRILLA:
-        case TYPE_ANTUSUL:
-        case TYPE_THEKA:
-        case TYPE_ZUMRAH:
-        case TYPE_NEKRUM:
-        case TYPE_SEZZZIZ:
-        case TYPE_CHIEF_SANDSCALP:
-            m_auiEncounter[uiType] = uiData;
+            if (uiData == DONE)
+				if (GameObject* Gong = GetSingleGameObjectFromStorage(GO_GONG_OF_ZULFARRAK))
+                    Gong->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND + GO_FLAG_NO_INTERACT);
+            m_auiEncounter[0] = uiData;
             break;
-        default:
-            return;
+        case TYPE_PYRAMIDE:
+            if (uiData == IN_PROGRESS)
+            {
+                // Respawn Bly's crew if someone member is dead and set faction to "enemy for trolls, but friend with players"
+                if (Creature* pWeegli = GetSingleCreatureFromStorage(NPC_WEEGLI_BLASTFUSE))
+                {
+                    if (pWeegli->isDead())
+                        pWeegli->Respawn();
+                    pWeegli->setFaction(FACTION_FFP_EFE);
+                }
+                if (Creature* pBly = GetSingleCreatureFromStorage(NPC_SERGEANT_BLY))
+                {
+                    if (pBly->isDead())
+                        pBly->Respawn();
+                    pBly->setFaction(FACTION_FFP_EFE);
+                }
+                if (Creature* pRaven = GetSingleCreatureFromStorage(NPC_RAVEN))
+                {
+                    if (pRaven->isDead())
+                        pRaven->Respawn();
+                    pRaven->setFaction(FACTION_FFP_EFE);
+                }
+                if (Creature* pOro = GetSingleCreatureFromStorage(NPC_ORO_EYEGOUGE))
+                {
+                    if (pOro->isDead())
+                        pOro->Respawn();
+                    pOro->setFaction(FACTION_FFP_EFE);
+                }
+                if (Creature* pMurta = GetSingleCreatureFromStorage(NPC_MURTA_GRIMGUT))
+                {
+                    if (pMurta->isDead())
+                        pMurta->Respawn();
+                    pMurta->setFaction(FACTION_FFP_EFE);
+                }
+            }
+            m_auiEncounter[1] = uiData;
+            break;
+        case TYPE_WEEGLI:
+            if (uiData == DONE)
+                m_uiBombExplodationExpire_Timer = 10000;
+            m_auiEncounter[2] = uiData;
+            break;
     }
 
     if (uiData == DONE)
@@ -70,37 +150,13 @@ void instance_zulfarrak::SetData(uint32 uiType, uint32 uiData)
         OUT_SAVE_INST_DATA;
 
         std::ostringstream saveStream;
-        saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " " << m_auiEncounter[3]
-                   << " " << m_auiEncounter[4] << " " << m_auiEncounter[5] << " " << m_auiEncounter[6] << " " << m_auiEncounter[7];
+        saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2];
 
-        m_strInstData = saveStream.str();
+        strInstData = saveStream.str();
 
         SaveToDB();
         OUT_SAVE_INST_DATA_COMPLETE;
     }
-}
-
-void instance_zulfarrak::Load(const char* chrIn)
-{
-    if (!chrIn)
-    {
-        OUT_LOAD_INST_DATA_FAIL;
-        return;
-    }
-
-    OUT_LOAD_INST_DATA(chrIn);
-
-    std::istringstream loadStream(chrIn);
-    loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3]
-               >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6] >> m_auiEncounter[7];
-
-    for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
-    {
-        if (m_auiEncounter[i] == IN_PROGRESS)
-            m_auiEncounter[i] = NOT_STARTED;
-    }
-
-    OUT_LOAD_INST_DATA_COMPLETE;
 }
 
 uint32 instance_zulfarrak::GetData(uint32 uiType)
@@ -111,49 +167,114 @@ uint32 instance_zulfarrak::GetData(uint32 uiType)
     return 0;
 }
 
-void instance_zulfarrak::OnCreatureEnterCombat(Creature* pCreature)
+void instance_zulfarrak::Load(const char* in)
 {
-    switch (pCreature->GetEntry())
+    if (!in)
     {
-        case NPC_VELRATHA: SetData(TYPE_VELRATHA, IN_PROGRESS); break;
-        case NPC_GAHZRILLA: SetData(TYPE_GAHZRILLA, IN_PROGRESS); break;
-        case NPC_ANTUSUL: SetData(TYPE_ANTUSUL, IN_PROGRESS); break;
-        case NPC_THEKA: SetData(TYPE_THEKA, IN_PROGRESS); break;
-        case NPC_ZUMRAH: SetData(TYPE_ZUMRAH, IN_PROGRESS); break;
-        case NPC_NEKRUM: SetData(TYPE_NEKRUM, IN_PROGRESS); break;
-        case NPC_SEZZZIZ: SetData(TYPE_SEZZZIZ, IN_PROGRESS); break;
-        case NPC_CHIEF_SANDSCALP: SetData(TYPE_CHIEF_SANDSCALP, IN_PROGRESS); break;
+        OUT_LOAD_INST_DATA_FAIL;
+        return;
     }
+
+    OUT_LOAD_INST_DATA(in);
+
+    std::istringstream loadStream(in);
+    loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2];
+        
+    for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+    {
+        if (m_auiEncounter[i] == IN_PROGRESS)
+            m_auiEncounter[i] = NOT_STARTED;
+    }
+
+    OUT_LOAD_INST_DATA_COMPLETE;
 }
 
-void instance_zulfarrak::OnCreatureEvade(Creature* pCreature)
+void instance_zulfarrak::Update(uint32 uiDiff)
 {
-    switch (pCreature->GetEntry())
+    // Pyramide Trash
+    if (GetData(TYPE_PYRAMIDE) == IN_PROGRESS)
     {
-        case NPC_VELRATHA: SetData(TYPE_VELRATHA, FAIL); break;
-        case NPC_GAHZRILLA: SetData(TYPE_GAHZRILLA, FAIL); break;
-        case NPC_ANTUSUL: SetData(TYPE_ANTUSUL, FAIL); break;
-        case NPC_THEKA: SetData(TYPE_THEKA, FAIL); break;
-        case NPC_ZUMRAH: SetData(TYPE_ZUMRAH, FAIL); break;
-        case NPC_NEKRUM: SetData(TYPE_NEKRUM, FAIL); break;
-        case NPC_SEZZZIZ: SetData(TYPE_SEZZZIZ, FAIL); break;
-        case NPC_CHIEF_SANDSCALP: SetData(TYPE_CHIEF_SANDSCALP, FAIL); break;
-    }
-}
+        if (m_uiCheckPyramideTrash_Timer <= uiDiff)
+        {
+            debug_log("SD0: Instance Zul'Farrak: Pyramide event: Sending 2 trolls up stairs.");
 
-void instance_zulfarrak::OnCreatureDeath(Creature* pCreature)
-{
-    switch (pCreature->GetEntry())
-    {
-        case NPC_VELRATHA: SetData(TYPE_VELRATHA, DONE); break;
-        case NPC_GAHZRILLA: SetData(TYPE_GAHZRILLA, DONE); break;
-        case NPC_ANTUSUL: SetData(TYPE_ANTUSUL, DONE); break;
-        case NPC_THEKA: SetData(TYPE_THEKA, DONE); break;
-        case NPC_ZUMRAH: SetData(TYPE_ZUMRAH, DONE); break;
-        case NPC_NEKRUM: SetData(TYPE_NEKRUM, DONE); break;
-        case NPC_SEZZZIZ: SetData(TYPE_SEZZZIZ, DONE); break;
-        case NPC_CHIEF_SANDSCALP: SetData(TYPE_CHIEF_SANDSCALP, DONE); break;
+            if (!m_uiPyramideTrash.empty())
+                for(GUIDList::iterator itr = m_uiPyramideTrash.begin(); itr != m_uiPyramideTrash.end(); ++itr)
+                    if (Creature* pTroll = instance->GetCreature(*itr))
+                        if (!pTroll->isDead() || pTroll->isAlive())
+                        {
+                            // Move troll up Stairs
+                            if (!pTroll->getVictim())
+                            {
+                                pTroll->GetMotionMaster()->Clear();
+                                pTroll->GetMotionMaster()->MovePoint(1, 1886.31f, 1269.72f, 41.65f);
+                                CreatureCreatePos pos(pTroll->GetMap(), 1886.31f, 1269.72f, 41.65f, 0.0f);
+                                pTroll->SetSummonPoint(pos);
+                            }
+                            itr = m_uiPyramideTrash.erase(itr);
+
+                            // We want send only 2 trolls per wave
+                            if (++m_uiTrollsMovedCount == 2)
+                            {
+                                m_uiTrollsMovedCount = 0;
+                                break;
+                            }
+                        }
+
+            m_uiCheckPyramideTrash_Timer = 10000; // repeat every 10 seconds
+        }
+        else m_uiCheckPyramideTrash_Timer -= uiDiff;
     }
+
+    // Nekrum death state checker
+    if (GetData(TYPE_PYRAMIDE) != DONE)
+	{
+	    Creature* pNekrum = GetSingleCreatureFromStorage(NPC_NEKRUM_GUTCHEWER);
+        if (pNekrum && pNekrum->isDead())
+        {
+            SetData(TYPE_PYRAMIDE, DONE);
+            m_uiPyramideTrash.clear();
+        }
+	}
+
+    // Bomb explodation
+    if (m_uiBombExplodationExpire_Timer)
+    {
+        if (m_uiBombExplodationExpire_Timer <= uiDiff)
+        {
+            // Bomb explodation
+            GameObject* DoorExplosive = GetSingleGameObjectFromStorage(GO_DOOR_EXPLOSIVE);
+			if (DoorExplosive && DoorExplosive->GetGoState() != GO_STATE_ACTIVE_ALTERNATIVE)
+				DoorExplosive->SetGoState(GO_STATE_ACTIVE_ALTERNATIVE);
+            // Door opened by exploding bomb
+            GameObject* EndDoor = GetSingleGameObjectFromStorage(GO_END_DOOR);
+			if (EndDoor && EndDoor->GetGoState() != GO_STATE_ACTIVE_ALTERNATIVE)
+				EndDoor->SetGoState(GO_STATE_ACTIVE_ALTERNATIVE);
+        }
+        else
+			m_uiBombExplodationExpire_Timer -= uiDiff;
+    }
+
+    // Bly's crew use Heartstone after defeating trolls
+    if (m_uiBlysBandHeartstone_Timer)
+        if ( (GetData(TYPE_PYRAMIDE) == DONE) && (m_uiBlysBandHeartstone_Timer <= uiDiff) )
+        {
+            Creature* pBly = GetSingleCreatureFromStorage(NPC_SERGEANT_BLY);
+            if (pBly && pBly->isAlive() && !pBly->getVictim())
+                pBly->CastSpell(pBly, SPELL_BLYS_BANDS_ESCAPE, false);
+            Creature* pRaven = GetSingleCreatureFromStorage(NPC_RAVEN);
+            if (pRaven && pRaven->isAlive() && !pRaven->getVictim())
+                pRaven->CastSpell(pRaven, SPELL_BLYS_BANDS_ESCAPE, false);
+            Creature* pOro = GetSingleCreatureFromStorage(NPC_ORO_EYEGOUGE);
+            if (pOro && pOro->isAlive() && !pOro->getVictim())
+                pOro->CastSpell(pOro, SPELL_BLYS_BANDS_ESCAPE, false);
+            Creature* pMurta = GetSingleCreatureFromStorage(NPC_MURTA_GRIMGUT);
+            if (pMurta && pMurta->isAlive() && !pMurta->getVictim())
+                pMurta->CastSpell(pMurta, SPELL_BLYS_BANDS_ESCAPE, false);
+                
+            m_uiBlysBandHeartstone_Timer = 0;
+        }
+        else m_uiBlysBandHeartstone_Timer -= uiDiff;
 }
 
 InstanceData* GetInstanceData_instance_zulfarrak(Map* pMap)

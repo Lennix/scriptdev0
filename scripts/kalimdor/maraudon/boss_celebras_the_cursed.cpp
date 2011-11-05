@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -25,78 +22,115 @@ SDCategory: Maraudon
 EndScriptData */
 
 #include "precompiled.h"
+#include "maraudon.h"
 
-enum
+enum Spells
 {
-    SPELL_WRATH             = 21807,
-    SPELL_ENTANGLINGROOTS   = 12747,
-    SPELL_CORRUPT_FORCES    = 21968
+    SPELL_WRATH                 = 21807,
+    SPELL_ENTANGLING_ROOTS      = 12747,
+    SPELL_CORRUPT_FORCES        = 21968,
+    SPELL_TWISTED_TRANQUILITY   = 21793
 };
 
-struct MANGOS_DLL_DECL celebras_the_cursedAI : public ScriptedAI
+struct MANGOS_DLL_DECL boss_celebras_the_cursedAI : public ScriptedAI
 {
-    celebras_the_cursedAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    boss_celebras_the_cursedAI(Creature *pCreature) : ScriptedAI(pCreature)
+    {
+        m_pInstance = (instance_maraudon*)pCreature->GetInstanceData();
+        Reset();
+    }
+    
+    instance_maraudon* m_pInstance;
 
-    uint32 Wrath_Timer;
-    uint32 EntanglingRoots_Timer;
-    uint32 CorruptForces_Timer;
+    uint32 m_uiWrathTimer;
+    uint32 m_uiEntanglingRootsTimer;
+    uint32 m_uiCorruptForcesTimer;
+    uint32 m_uiTwistedTranquilityTimer;
 
     void Reset()
     {
-        Wrath_Timer = 8000;
-        EntanglingRoots_Timer = 2000;
-        CorruptForces_Timer = 30000;
+        m_uiWrathTimer = 0;
+        m_uiEntanglingRootsTimer = 2000;
+        m_uiCorruptForcesTimer = 20000;
+        m_uiTwistedTranquilityTimer = 10000;
     }
-
-    void JustDied(Unit* Killer)
+    
+    void JustReachedHome()
     {
-        m_creature->SummonCreature(13716, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN, 600000);
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_CELEBRAS_THE_CURSED, NOT_STARTED);
     }
 
-    void UpdateAI(const uint32 diff)
+    void Aggro(Unit* /*pWho*/)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_CELEBRAS_THE_CURSED, IN_PROGRESS);
+    }
+
+    void JustDied(Unit* /*pKiller*/)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_CELEBRAS_THE_CURSED, DONE);
+    }
+
+    void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //Wrath
-        if (Wrath_Timer < diff)
+        // Wrath
+        if (m_uiWrathTimer < uiDiff)
         {
-            Unit* target = NULL;
-            target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
-            if (target)
-                DoCastSpellIfCan(target,SPELL_WRATH);
-            Wrath_Timer = 8000;
-        }else Wrath_Timer -= diff;
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                DoCastSpellIfCan(pTarget, SPELL_WRATH);
+            m_uiWrathTimer = 8000;
+        }
+		else
+			m_uiWrathTimer -= uiDiff;
 
-        //EntanglingRoots
-        if (EntanglingRoots_Timer < diff)
+        // Entangling Roots
+        if (m_uiEntanglingRootsTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_ENTANGLINGROOTS);
-            EntanglingRoots_Timer = 20000;
-        }else EntanglingRoots_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_ENTANGLING_ROOTS);
+            m_uiEntanglingRootsTimer = 10000;
+        }
+		else
+			m_uiEntanglingRootsTimer -= uiDiff;
 
-        //CorruptForces
-        if (CorruptForces_Timer < diff)
+        // Corrupt Forces
+        if (m_uiCorruptForcesTimer < uiDiff)
         {
             m_creature->InterruptNonMeleeSpells(false);
-            DoCastSpellIfCan(m_creature,SPELL_CORRUPT_FORCES);
-            CorruptForces_Timer = 20000;
-        }else CorruptForces_Timer -= diff;
+            DoCastSpellIfCan(m_creature, SPELL_CORRUPT_FORCES);
+            m_uiCorruptForcesTimer = 12000;
+        }
+		else
+			m_uiCorruptForcesTimer -= uiDiff;
+        
+        // Twisted Tranquility
+        if (m_uiTwistedTranquilityTimer < uiDiff)
+        {
+            m_creature->InterruptNonMeleeSpells(false);
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_TWISTED_TRANQUILITY);
+            m_uiTwistedTranquilityTimer = 15000;
+        }
+		else
+			m_uiTwistedTranquilityTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
-CreatureAI* GetAI_celebras_the_cursed(Creature* pCreature)
+CreatureAI* GetAI_boss_celebras_the_cursed(Creature* pCreature)
 {
-    return new celebras_the_cursedAI(pCreature);
+    return new boss_celebras_the_cursedAI(pCreature);
 }
 
 void AddSC_boss_celebras_the_cursed()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "celebras_the_cursed";
-    pNewScript->GetAI = &GetAI_celebras_the_cursed;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "boss_celebras_the_cursed";
+    pNewscript->GetAI = &GetAI_boss_celebras_the_cursed;
+    pNewscript->RegisterSelf();
 }

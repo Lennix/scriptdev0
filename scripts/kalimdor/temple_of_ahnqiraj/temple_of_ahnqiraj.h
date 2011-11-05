@@ -1,46 +1,42 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+ * This program is free software licensed under GPL version 2
+ * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_TEMPLE_OF_AHNQIRAJ_H
 #define DEF_TEMPLE_OF_AHNQIRAJ_H
 
 enum
 {
-    MAX_ENCOUNTER               = 3,
+    MAX_ENCOUNTER               = 4,
 
     TYPE_SKERAM                 = 0,
     TYPE_VEM                    = 1,
     TYPE_TWINS                  = 2,
+    TYPE_CTHUN_PHASE            = 3,
 
     // NPC_SKERAM               = 15263,
     NPC_KRI                     = 15511,
     NPC_VEM                     = 15544,
     NPC_VEKLOR                  = 15276,
     NPC_VEKNILASH               = 15275,
+    NPC_CTHUN                   = 15727,
 
     GO_SKERAM_GATE              = 180636,
     GO_TWINS_ENTER_DOOR         = 180634,
     GO_TWINS_EXIT_DOOR          = 180635,
 
     DATA_BUG_TRIO_DEATH         = 10,
+};
 
-    TYPE_CTHUN_PHASE            = 20
+enum CThunPhase
+{
+    PHASE_NOT_STARTED           = 0,
+    PHASE_EYE_NORMAL            = 1,
+    PHASE_EYE_DARK_GLARE        = 2,
+    PHASE_TRANSITION            = 3,
+    PHASE_CTHUN                 = 4,
+    PHASE_CTHUN_WEAKENED        = 5,
+    PHASE_FINISH                = 6,
 };
 
 class MANGOS_DLL_DECL instance_temple_of_ahnqiraj : public ScriptedInstance
@@ -66,7 +62,6 @@ class MANGOS_DLL_DECL instance_temple_of_ahnqiraj : public ScriptedInstance
         std::string m_strInstData;
 
         uint32 m_uiBugTrioDeathCount;
-        uint32 m_uiCthunPhase;
 };
 
 #endif

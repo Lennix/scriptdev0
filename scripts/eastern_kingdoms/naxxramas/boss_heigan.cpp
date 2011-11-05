@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -48,7 +45,7 @@ enum
     SPELL_ERUPTION          = 29371,                        //Spell used by floor pieces to cause damage to players
 
     //Spells by boss
-    SPELL_DECREPIT_FEVER  = 29998,
+    SPELL_DECREPIT_FEVER_N  = 29998,
     SPELL_DISRUPTION        = 29310,
     SPELL_TELEPORT          = 30211,
     SPELL_PLAGUE_CLOUD      = 29350
@@ -91,7 +88,7 @@ struct MANGOS_DLL_DECL boss_heiganAI : public ScriptedAI
         ResetPhase();
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/)
     {
         switch(urand(0, 2))
         {
@@ -109,7 +106,7 @@ struct MANGOS_DLL_DECL boss_heiganAI : public ScriptedAI
         DoScriptText(SAY_SLAY, m_creature);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/)
     {
         DoScriptText(SAY_DEATH, m_creature);
 
@@ -149,7 +146,7 @@ struct MANGOS_DLL_DECL boss_heiganAI : public ScriptedAI
             // Fever
             if (m_uiFeverTimer < uiDiff)
             {
-                DoCastSpellIfCan(m_creature, SPELL_DECREPIT_FEVER);
+                DoCastSpellIfCan(m_creature, SPELL_DECREPIT_FEVER_N);
                 m_uiFeverTimer = 21000;
             }
             else
@@ -218,9 +215,10 @@ CreatureAI* GetAI_boss_heigan(Creature* pCreature)
 
 void AddSC_boss_heigan()
 {
-    Script* NewScript;
-    NewScript = new Script;
-    NewScript->Name = "boss_heigan";
-    NewScript->GetAI = &GetAI_boss_heigan;
-    NewScript->RegisterSelf();
+    Script* pNewscript;
+    pNewscript = new Script;
+    pNewscript->Name = "boss_heigan";
+    pNewscript->GetAI = &GetAI_boss_heigan;
+    pNewscript->RegisterSelf();
 }
+

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,7 +16,7 @@
 
 /* ScriptData
 SDName: Boss_Lucifron
-SD%Complete: 100
+SD%Complete: 90
 SDComment:
 SDCategory: Molten Core
 EndScriptData */
@@ -27,22 +24,27 @@ EndScriptData */
 #include "precompiled.h"
 #include "molten_core.h"
 
-enum
+enum eLucifron
 {
-    SPELL_IMPENDINGDOOM     = 19702,
-    SPELL_LUCIFRONCURSE     = 19703,
-    SPELL_SHADOWSHOCK       = 19460
+    // Lucifron
+    SPELL_IMPENDING_DOOM    = 19702,
+    SPELL_LUCIFRON_CURSE    = 19703,
+    SPELL_SHADOW_SHOCK      = 20603,
+
+    // Flamewaker Protector
+    SPELL_DOMINATE_MIND     = 20604,
+    SPELL_CLEAVE            = 20605,
 };
 
 struct MANGOS_DLL_DECL boss_lucifronAI : public ScriptedAI
 {
     boss_lucifronAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_molten_core*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_molten_core* m_pInstance;
 
     uint32 m_uiImpendingDoomTimer;
     uint32 m_uiLucifronCurseTimer;
@@ -50,23 +52,9 @@ struct MANGOS_DLL_DECL boss_lucifronAI : public ScriptedAI
 
     void Reset()
     {
-        m_uiImpendingDoomTimer = 10000;
-        m_uiLucifronCurseTimer = 20000;
-        m_uiShadowShockTimer   = 6000;
-    }
-
-    void Aggro(Unit* pWho)
-    {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_LUCIFRON, IN_PROGRESS);
-
-        m_creature->CallForHelp(RANGE_CALL_FOR_HELP);
-    }
-
-    void JustDied(Unit* pKiller)
-    {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_LUCIFRON, DONE);
+        m_uiImpendingDoomTimer = 10000;                         // Initial cast after 10 seconds so the debuffs alternate
+        m_uiLucifronCurseTimer = 20000;                         // Initial cast after 20 seconds
+        m_uiShadowShockTimer = 6000;                            // 6 seconds
     }
 
     void JustReachedHome()
@@ -75,37 +63,40 @@ struct MANGOS_DLL_DECL boss_lucifronAI : public ScriptedAI
             m_pInstance->SetData(TYPE_LUCIFRON, FAIL);
     }
 
+    void JustDied(Unit* /*pKiller*/)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_LUCIFRON, DONE);
+    }
+
     void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        // Impending doom timer
-        if (m_uiImpendingDoomTimer < uiDiff)
+        // Impending Doom
+        if (m_uiImpendingDoomTimer <= uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_IMPENDINGDOOM) == CAST_OK)
-                m_uiImpendingDoomTimer = 20000;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_IMPENDING_DOOM);
+            m_uiImpendingDoomTimer = 20000;
         }
         else
             m_uiImpendingDoomTimer -= uiDiff;
 
-        // Lucifron's curse timer
-        if (m_uiLucifronCurseTimer < uiDiff)
+        // Lucifron's Curse
+        if (m_uiLucifronCurseTimer <= uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_LUCIFRONCURSE) == CAST_OK)
-                m_uiLucifronCurseTimer = 20000;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_LUCIFRON_CURSE);
+            m_uiLucifronCurseTimer = 15000;
         }
         else
             m_uiLucifronCurseTimer -= uiDiff;
 
-        // Shadowshock
-        if (m_uiShadowShockTimer < uiDiff)
+        // Shadow Shock
+        if (m_uiShadowShockTimer <= uiDiff)
         {
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-            {
-                if (DoCastSpellIfCan(pTarget, SPELL_SHADOWSHOCK) == CAST_OK)
-                    m_uiShadowShockTimer = 6000;
-            }
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOW_SHOCK);
+            m_uiShadowShockTimer = 6000;
         }
         else
             m_uiShadowShockTimer -= uiDiff;
@@ -119,6 +110,64 @@ CreatureAI* GetAI_boss_lucifron(Creature* pCreature)
     return new boss_lucifronAI(pCreature);
 }
 
+struct MANGOS_DLL_DECL mob_flamewaker_protectorAI : public ScriptedAI
+{
+    mob_flamewaker_protectorAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_pInstance = (instance_molten_core*)pCreature->GetInstanceData();
+        Reset();
+    }
+
+    instance_molten_core* m_pInstance;
+
+    uint32 m_uiCleaveTimer;
+    uint32 m_uiDominateMindTimer;
+
+    void Reset()
+    {
+        m_uiCleaveTimer = 15000;
+        m_uiDominateMindTimer = 30000;
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        // Cleave
+        if (m_uiCleaveTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE);
+            m_uiCleaveTimer = 15000;
+        }
+        else
+            m_uiCleaveTimer -= uiDiff;
+
+        // Dominate Mind
+        if (m_uiDominateMindTimer <= uiDiff)
+        {
+            // Boss Lucifron must be in Line of Sight
+            if (m_pInstance)
+            {
+                Creature* pLucifron = m_pInstance->GetSingleCreatureFromStorage(NPC_LUCIFRON);
+                if (pLucifron && m_creature->IsWithinLOSInMap(pLucifron))
+                    DoCastSpellIfCan(m_creature->getVictim(), SPELL_DOMINATE_MIND);
+            }
+
+            m_uiDominateMindTimer = 30000;
+        }
+        else
+            m_uiDominateMindTimer -= uiDiff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_mob_flamewaker_protector(Creature* pCreature)
+{
+    return new mob_flamewaker_protectorAI(pCreature);
+}
+
 void AddSC_boss_lucifron()
 {
     Script* pNewScript;
@@ -126,5 +175,10 @@ void AddSC_boss_lucifron()
     pNewScript = new Script;
     pNewScript->Name = "boss_lucifron";
     pNewScript->GetAI = &GetAI_boss_lucifron;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "mob_flamewaker_protector";
+    pNewScript->GetAI = &GetAI_mob_flamewaker_protector;
     pNewScript->RegisterSelf();
 }

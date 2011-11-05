@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,7 +17,7 @@
 /* ScriptData
 SDName: Thousand_Needles
 SD%Complete: 90
-SDComment: Quest support: 1950, 4770, 4904, 4966
+SDComment: Quest support: 1950, 4770, 4904, 4966, 5151
 SDCategory: Thousand Needles
 EndScriptData
 */
@@ -30,6 +27,8 @@ npc_kanati
 npc_lakota_windsong
 npc_paoka_swiftmountain
 npc_plucky_johnson
+npc_enraged_panther
+go_panther_cage
 EndContentData */
 
 #include "precompiled.h"
@@ -41,13 +40,13 @@ EndContentData */
 
 enum
 {
-    SAY_KAN_START          = -1000410,
+    SAY_KAN_START              = -1000410,
 
-    QUEST_PROTECT_KANATI   = 4966,
-    NPC_GALAK_ASS          = 10720
+    QUEST_PROTECT_KANATI        = 4966,
+    NPC_GALAK_ASS               = 10720
 };
 
-const float m_afGalakLoc[] = {-4867.387695f, -1357.353760f, -48.226f};
+const float m_afGalakLoc[]= {-4867.387695f, -1357.353760f, -48.226f};
 
 struct MANGOS_DLL_DECL npc_kanatiAI : public npc_escortAI
 {
@@ -105,18 +104,18 @@ bool QuestAccept_npc_kanati(Player* pPlayer, Creature* pCreature, const Quest* p
 
 enum
 {
-    SAY_LAKO_START       = -1000365,
-    SAY_LAKO_LOOK_OUT    = -1000366,
-    SAY_LAKO_HERE_COME   = -1000367,
-    SAY_LAKO_MORE        = -1000368,
-    SAY_LAKO_END         = -1000369,
+    SAY_LAKO_START              = -1000365,
+    SAY_LAKO_LOOK_OUT           = -1000366,
+    SAY_LAKO_HERE_COME          = -1000367,
+    SAY_LAKO_MORE               = -1000368,
+    SAY_LAKO_END                = -1000369,
 
-    QUEST_FREE_AT_LAST   = 4904,
-    NPC_GRIM_BANDIT      = 10758,
+    QUEST_FREE_AT_LAST          = 4904,
+    NPC_GRIM_BANDIT             = 10758,
 
-    ID_AMBUSH_1          = 0,
-    ID_AMBUSH_2          = 2,
-    ID_AMBUSH_3          = 4
+    ID_AMBUSH_1                 = 0,
+    ID_AMBUSH_2                 = 2,
+    ID_AMBUSH_3                 = 4
 };
 
 float m_afBanditLoc[6][6]=
@@ -191,12 +190,12 @@ bool QuestAccept_npc_lakota_windsong(Player* pPlayer, Creature* pCreature, const
 
 enum
 {
-    SAY_START        = -1000362,
-    SAY_WYVERN       = -1000363,
-    SAY_COMPLETE     = -1000364,
+    SAY_START           = -1000362,
+    SAY_WYVERN          = -1000363,
+    SAY_COMPLETE        = -1000364,
 
-    QUEST_HOMEWARD   = 4770,
-    NPC_WYVERN       = 4107
+    QUEST_HOMEWARD      = 4770,
+    NPC_WYVERN          = 4107
 };
 
 float m_afWyvernLoc[3][3]=
@@ -263,10 +262,10 @@ bool QuestAccept_npc_paoka_swiftmountain(Player* pPlayer, Creature* pCreature, c
 
 enum
 {
-    FACTION_FRIENDLY       = 35,
-    QUEST_SCOOP            = 1950,
-    SPELL_PLUCKY_HUMAN     = 9192,
-    SPELL_PLUCKY_CHICKEN   = 9220
+    FACTION_FRIENDLY        = 35,
+    QUEST_SCOOP             = 1950,
+    SPELL_PLUCKY_HUMAN      = 9192,
+    SPELL_PLUCKY_CHICKEN    = 9220
 };
 
 #define GOSSIP_ITEM_QUEST   "Please tell me the Phrase.."
@@ -316,7 +315,7 @@ struct MANGOS_DLL_DECL npc_plucky_johnsonAI : public ScriptedAI
                 m_creature->setFaction(FACTION_FRIENDLY);
                 m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                 m_creature->CastSpell(m_creature, SPELL_PLUCKY_HUMAN, false);
-                m_creature->HandleEmoteCommand(EMOTE_ONESHOT_WAVE);
+                m_creature->HandleEmote(EMOTE_ONESHOT_WAVE);
             }
         }
     }
@@ -370,32 +369,93 @@ bool GossipSelect_npc_plucky_johnson(Player* pPlayer, Creature* pCreature, uint3
     return true;
 }
 
+/*######
+# Panther Cage
+######*/
+
+enum ePantherCage
+{
+    QUEST_HYPERCAPACITOR_GIZMO  = 5151,
+    NPC_ENRAGED_PANTHER    = 10992,
+    //FACTION_FRIENDLY            = 35, - defined in Plucky Johnson
+    FACTION_HOSTILE             = 14
+};
+
+bool go_panther_cage(Player* pPlayer, GameObject* pGo)
+{
+    if (pPlayer->GetQuestStatus(QUEST_HYPERCAPACITOR_GIZMO) == QUEST_STATUS_INCOMPLETE)
+    {
+        if (Creature* Panther = GetClosestCreatureWithEntry(pPlayer, NPC_ENRAGED_PANTHER, 5)) 
+        {
+            Panther->RemoveFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_NON_ATTACKABLE);
+            Panther->setFaction(FACTION_HOSTILE);
+            Panther->AI()->AttackStart(pPlayer);
+        }
+    }
+    return true;
+}
+
+struct MANGOS_DLL_DECL npc_enraged_pantherAI : public ScriptedAI
+{
+    npc_enraged_pantherAI(Creature *pCreature) : ScriptedAI(pCreature) {Reset();}
+
+    void Reset()
+    {
+        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+        m_creature->setFaction(FACTION_FRIENDLY);
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return; 
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_npc_enraged_panther(Creature* pCreature)
+{
+    return new npc_enraged_pantherAI(pCreature);
+}
+
+
 void AddSC_thousand_needles()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_kanati";
-    pNewScript->GetAI = &GetAI_npc_kanati;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_kanati;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_kanati";
+    pNewscript->GetAI = &GetAI_npc_kanati;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_kanati;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_lakota_windsong";
-    pNewScript->GetAI = &GetAI_npc_lakota_windsong;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_lakota_windsong;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_lakota_windsong";
+    pNewscript->GetAI = &GetAI_npc_lakota_windsong;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_lakota_windsong;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_paoka_swiftmountain";
-    pNewScript->GetAI = &GetAI_npc_paoka_swiftmountain;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_paoka_swiftmountain;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_paoka_swiftmountain";
+    pNewscript->GetAI = &GetAI_npc_paoka_swiftmountain;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_paoka_swiftmountain;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_plucky_johnson";
-    pNewScript->GetAI = &GetAI_npc_plucky_johnson;
-    pNewScript->pGossipHello = &GossipHello_npc_plucky_johnson;
-    pNewScript->pGossipSelect = &GossipSelect_npc_plucky_johnson;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_plucky_johnson";
+    pNewscript->GetAI = &GetAI_npc_plucky_johnson;
+    pNewscript->pGossipHello = &GossipHello_npc_plucky_johnson;
+    pNewscript->pGossipSelect = &GossipSelect_npc_plucky_johnson;
+    pNewscript->RegisterSelf();
+    
+    pNewscript = new Script;
+    pNewscript->Name="npc_enraged_panther";
+    pNewscript->GetAI = &GetAI_npc_enraged_panther;
+    pNewscript->RegisterSelf();
+
+    pNewscript = new Script;
+    pNewscript->Name="go_panther_cage";
+    pNewscript->pGOUse = &go_panther_cage;
+    pNewscript->RegisterSelf();
 }

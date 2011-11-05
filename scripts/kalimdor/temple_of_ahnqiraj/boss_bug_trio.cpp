@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -27,19 +24,16 @@ EndScriptData */
 #include "precompiled.h"
 #include "temple_of_ahnqiraj.h"
 
-enum
-{
-    SPELL_CLEAVE         = 26350,
-    SPELL_TOXIC_VOLLEY   = 25812,
-    SPELL_POISON_CLOUD   = 38718, // Only Spell with right dmg.
-    SPELL_ENRAGE         = 34624, // Changed cause 25790 is casted on gamers too. Same prob with old explosion of twin emperors.
+#define SPELL_CLEAVE        26350
+#define SPELL_TOXIC_VOLLEY  25812
+#define SPELL_POISON_CLOUD  38718                           //Only Spell with right dmg.
+#define SPELL_ENRAGE        34624                           //Changed cause 25790 is casted on gamers too. Same prob with old explosion of twin emperors.
 
-    SPELL_CHARGE         = 26561,
-    SPELL_KNOCKBACK      = 26027,
+#define SPELL_CHARGE        26561
+#define SPELL_KNOCKBACK     26027
 
-    SPELL_HEAL           = 25807,
-    SPELL_FEAR           = 19408
-};
+#define SPELL_HEAL      25807
+#define SPELL_FEAR      19408
 
 struct MANGOS_DLL_DECL boss_kriAI : public ScriptedAI
 {
@@ -320,20 +314,19 @@ CreatureAI* GetAI_boss_kri(Creature* pCreature)
 
 void AddSC_bug_trio()
 {
-    Script* pNewScript;
+    Script *newscript;
+    newscript = new Script;
+    newscript->Name = "boss_kri";
+    newscript->GetAI = &GetAI_boss_kri;
+    newscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "boss_kri";
-    pNewScript->GetAI = &GetAI_boss_kri;
-    pNewScript->RegisterSelf();
+    newscript = new Script;
+    newscript->Name = "boss_vem";
+    newscript->GetAI = &GetAI_boss_vem;
+    newscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "boss_vem";
-    pNewScript->GetAI = &GetAI_boss_vem;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "boss_yauj";
-    pNewScript->GetAI = &GetAI_boss_yauj;
-    pNewScript->RegisterSelf();
+    newscript = new Script;
+    newscript->Name = "boss_yauj";
+    newscript->GetAI = &GetAI_boss_yauj;
+    newscript->RegisterSelf();
 }

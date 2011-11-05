@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,79 +16,204 @@
 
 /* ScriptData
 SDName: Boss_Razorgore
-SD%Complete: 50
-SDComment: Needs additional review. Phase 1 NYI (Grethok the Controller), Conflagration needs core support
+SD%Complete: 75
+SDComment: Needs additional review
 SDCategory: Blackwing Lair
 EndScriptData */
 
 #include "precompiled.h"
 #include "blackwing_lair.h"
 
-// Razorgore Phase 2 Script
-enum
+enum eRazorgore
 {
-    SAY_EGGS_BROKEN_1           = -1469022,
-    SAY_EGGS_BROKEN_2           = -1469023,
-    SAY_EGGS_BROKEN_3           = -1469024,
-    SAY_DEATH                   = -1469025,
+    SAY_EGGS_BROKEN1        = -1469022,
+    SAY_EGGS_BROKEN2        = -1469023,
+    SAY_EGGS_BROKEN3        = -1469024,
+    SAY_DEATH               = -1469025,
 
-    EMOTE_TROOPS_FLEE           = -1469032,                 // emote by Nefarian's Troops npc
+    // Razorgore spells
+    SPELL_CLEAVE            = 19632,
+    SPELL_CONFLAGRATION     = 23023,
+    SPELL_FIREBALL_VOLLEY   = 22425,
+    SPELL_WAR_STOMP         = 24375,
+    SPELL_WARMING_FLAMES    = 23040,
 
-    SPELL_CLEAVE                = 19632,
-    SPELL_WARSTOMP              = 24375,
-    SPELL_FIREBALL_VOLLEY       = 22425,
-    SPELL_CONFLAGRATION         = 23023,
+    // Grethok
+    SPELL_ARCANE_MISSILES   = 22273,
+    SPELL_DOMINATE_MIND     = 14515,
+    SPELL_GREATER_POLYMORPH = 22274,
+    SPELL_SLOW              = 13747,
+
+    // Orb of Domination spells
+    SPELL_DRAGON_ORB        = 19869,
+    SPELL_MIND_EXHAUSTION   = 23958,
 };
 
 struct MANGOS_DLL_DECL boss_razorgoreAI : public ScriptedAI
 {
     boss_razorgoreAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_blackwing_lair*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_blackwing_lair* m_pInstance;
 
+    bool m_bFinalPhase;
+
+    uint32 m_uiCheckControllerAggroTimer;
     uint32 m_uiCleaveTimer;
-    uint32 m_uiWarStompTimer;
-    uint32 m_uiFireballVolleyTimer;
     uint32 m_uiConflagrationTimer;
+    uint32 m_uiFireballVolleyTimer;
+    uint32 m_uiWarStompTimer;
+
+    ObjectGuid m_uiControllerGUID;
 
     void Reset()
     {
-        m_uiCleaveTimer         = 15000;                       // These times are probably wrong
-        m_uiWarStompTimer       = 35000;
-        m_uiConflagrationTimer  = 12000;
+        m_bFinalPhase = false;
+
+        m_uiCheckControllerAggroTimer = 3000;
+        m_uiCleaveTimer = 15000;
+        m_uiConflagrationTimer = 12000;
         m_uiFireballVolleyTimer = 7000;
+        m_uiWarStompTimer = 35000;
 
+		m_uiControllerGUID.Clear();
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/)
     {
-        // TODO Temporarily add this InstData setting, must be started with Phase 1 which is not yet implemented
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_RAZORGORE, IN_PROGRESS);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/)
     {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_RAZORGORE, DONE);
+        if (m_bFinalPhase)
+            DoScriptText(SAY_DEATH, m_creature);
+        else
+        {
+            // TODO: we should kill whole raid -> find proper spell for that
+            m_creature->Respawn();
 
-        DoScriptText(SAY_DEATH, m_creature);
+            Map* pMap = m_creature->GetMap();
+            if (!pMap || !pMap->IsRaid())
+                return;
+
+            Map::PlayerList const& PlayerList = pMap->GetPlayers();
+
+            if (PlayerList.isEmpty())
+                return;
+
+            for(Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
+            {
+                Player* pPlayer = itr->getSource();
+
+                if (pPlayer && pPlayer->isAlive())
+                    m_creature->DealDamage(pPlayer, pPlayer->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+            }
+        }
     }
 
-    void JustReachedHome()
+    void KilledUnit(Unit* pVictim)
     {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_RAZORGORE, FAIL);
+        if (pVictim->GetTypeId() != TYPEID_PLAYER)
+            return;
+
+		if (((Player*)pVictim)->GetObjectGuid() == m_uiControllerGUID)
+			m_uiControllerGUID.Clear();
+    }
+
+    void SpellHit(Unit* pCaster, const SpellEntry* pSpell)
+    {
+        if (pSpell->Id != SPELL_USE_DRAGON_ORB || pCaster->GetTypeId() != TYPEID_PLAYER)
+            return;
+
+        // Drop threat for previous controller
+        if (Player* pPrevController = m_creature->GetMap()->GetPlayer(m_uiControllerGUID))
+            if (m_creature->getThreatManager().getThreat(pPrevController))
+                m_creature->getThreatManager().modifyThreatPercent(pPrevController,-100);
+
+        // Add huge amount of threat for new controller
+        m_creature->AddThreat(pCaster, 10000.0f);
+        m_uiControllerGUID = ((Player*)pCaster)->GetObjectGuid();
+    }
+
+    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
+    {
+        if (m_bFinalPhase)
+            return;
+
+        if (m_pInstance && m_pInstance->GetData(TYPE_RAZORGORE) == SPECIAL)
+        {
+            m_bFinalPhase = true;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_WARMING_FLAMES, CAST_TRIGGERED);
+            return;
+        }
+
+        // we don't want any damage from players until eggs are destroyed
+        if (pDoneBy->GetTypeId() == TYPEID_PLAYER)
+            uiDamage = 0;
+    }
+
+    void JustSummoned(Creature* pSummoned)
+    {
+        if (pSummoned->GetEntry() == NPC_BLACKWING_MAGE)
+        {
+            pSummoned->MonsterMoveWithSpeed(-7604.1f, -1042.1f, 408.16f, 30);
+            if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_uiControllerGUID))
+            {
+                pSummoned->SetInCombatWith(pPlayer);
+                pSummoned->AddThreat(pPlayer, 100.0f);
+            }
+        }
+        else
+            pSummoned->SetInCombatWithZone();
+    }
+
+    void SummonedCreatureJustDied(Creature* pSummoned)
+    {
+        if (m_bFinalPhase)
+            return;
+
+        uint32 i = urand(0,7);
+        m_creature->SummonCreature((pSummoned->GetEntry() == NPC_BLACKWING_MAGE && urand(0,1)) ? NPC_BLACKWING_LEGIONNAIRE : pSummoned->GetEntry(),
+            Corner[i].x, Corner[i].y, Corner[i].z, Corner[i].o, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 15000);
+    }
+
+    void CheckControllerAggro(Unit* pVictim)
+    {
+        if (pVictim->GetTypeId() != TYPEID_PLAYER)
+            return;
+
+        Player* pPlayer = (Player*)pVictim;
+
+        if (pPlayer->GetObjectGuid() == m_uiControllerGUID)
+            return;
+
+        if (Player* pController = m_creature->GetMap()->GetPlayer(m_uiControllerGUID))
+        {
+            float m_fThreat = m_creature->getThreatManager().getThreat(pPlayer);
+            m_creature->getThreatManager().addThreat(pController, m_fThreat*10);
+            m_creature->TauntApply(pController);
+        }
     }
 
     void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
+
+        // If last controller is alive he should always have aggro until he dies
+        if (m_uiControllerGUID)
+        {
+            if (m_uiCheckControllerAggroTimer <= uiDiff)
+            {
+                CheckControllerAggro(m_creature->getVictim());
+                m_uiCheckControllerAggroTimer = 3000;
+            }
+            else
+                m_uiCheckControllerAggroTimer -= uiDiff;
+        }
 
         // Cleave
         if (m_uiCleaveTimer < uiDiff)
@@ -102,41 +224,39 @@ struct MANGOS_DLL_DECL boss_razorgoreAI : public ScriptedAI
         else
             m_uiCleaveTimer -= uiDiff;
 
-        // War Stomp
-        if (m_uiWarStompTimer < uiDiff)
+        // Conflagration
+        if (m_uiConflagrationTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_WARSTOMP) == CAST_OK)
-                m_uiWarStompTimer = urand(15000, 25000);
+            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1);
+            if (pTarget && DoCastSpellIfCan(m_creature->getVictim(), SPELL_CONFLAGRATION) == CAST_OK)
+            {
+                if (m_creature->getThreatManager().getThreat(m_creature->getVictim()))
+                    m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(),-50);
+
+                m_creature->TauntApply(pTarget);
+                m_uiConflagrationTimer = 12000;
+            }
         }
         else
-            m_uiWarStompTimer -= uiDiff;
+            m_uiConflagrationTimer -= uiDiff;
 
         // Fireball Volley
         if (m_uiFireballVolleyTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_FIREBALL_VOLLEY) == CAST_OK)
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIREBALL_VOLLEY) == CAST_OK)
                 m_uiFireballVolleyTimer = urand(12000, 15000);
         }
         else
             m_uiFireballVolleyTimer -= uiDiff;
 
-        // Conflagration
-        if (m_uiConflagrationTimer < uiDiff)
+        // War Stomp
+        if (m_uiWarStompTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_CONFLAGRATION) == CAST_OK)
-                m_uiConflagrationTimer = 12000;
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_WAR_STOMP) == CAST_OK)
+                m_uiWarStompTimer = urand(15000, 25000);
         }
         else
-            m_uiConflagrationTimer -= uiDiff;
-
-        /* This is obsolete code, not working anymore, keep as reference, should be handled in core though
-        * // Aura Check. If the gamer is affected by confliguration we attack a random gamer.
-        * if (m_creature->getVictim()->HasAura(SPELL_CONFLAGRATION, EFFECT_INDEX_0))
-        * {
-        *     if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
-        *         m_creature->TauntApply(pTarget);
-        * }
-        */
+            m_uiWarStompTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -147,6 +267,112 @@ CreatureAI* GetAI_boss_razorgore(Creature* pCreature)
     return new boss_razorgoreAI(pCreature);
 }
 
+struct MANGOS_DLL_DECL mob_grethok_the_controllerAI : public ScriptedAI
+{
+    mob_grethok_the_controllerAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_pInstance = (instance_blackwing_lair*)pCreature->GetInstanceData();
+        Reset();
+    }
+
+    instance_blackwing_lair* m_pInstance;
+
+    uint32 m_uiArcaneMisslesTimer;
+    uint32 m_uiDominateMindTimer;
+    uint32 m_uiGreaterPolymorphTimer;
+    uint32 m_uiSlowTimer;
+
+    void Reset()
+    {
+        m_uiArcaneMisslesTimer = 2000;
+        m_uiDominateMindTimer = 8000;
+        m_uiGreaterPolymorphTimer = 18000;
+        m_uiSlowTimer = 13000;
+    }
+
+    void Aggro(Unit* pWho)
+    {
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        // Arcane Missiles
+        if (m_uiArcaneMisslesTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_ARCANE_MISSILES) == CAST_OK)
+                m_uiArcaneMisslesTimer = urand(7000, 10000);
+        }
+        else
+            m_uiArcaneMisslesTimer -= uiDiff;
+
+        // Dominate Mind
+        if (m_uiDominateMindTimer < uiDiff)
+        {
+            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+            if (DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_DOMINATE_MIND) == CAST_OK)
+                m_uiDominateMindTimer = urand(18000, 30000);
+        }
+        else
+            m_uiDominateMindTimer -= uiDiff;
+
+        // Greater Polymorph
+        if (m_uiGreaterPolymorphTimer < uiDiff)
+        {
+            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+            if (DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_GREATER_POLYMORPH) == CAST_OK)
+                m_uiGreaterPolymorphTimer = urand(15000, 25000);
+        }
+        else
+            m_uiGreaterPolymorphTimer -= uiDiff;
+
+        // Slow
+        if (m_uiSlowTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SLOW) == CAST_OK)
+                m_uiSlowTimer = urand(10000, 15000);
+        }
+        else
+            m_uiSlowTimer -= uiDiff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_mob_grethok_the_controller(Creature* pCreature)
+{
+    return new mob_grethok_the_controllerAI(pCreature);
+}
+
+/*####
+## go_orb_of_domination
+####*/
+
+bool GOUse_go_orb_of_domination(Player* pPlayer, GameObject* pGo)
+{
+    instance_blackwing_lair* m_pInstance = (instance_blackwing_lair*)pGo->GetInstanceData();
+
+    if (m_pInstance && m_pInstance->GetData(TYPE_RAZORGORE) != IN_PROGRESS)
+        return true;
+
+    if (Group* pGroup = pPlayer->GetGroup())
+    {
+        for(GroupReference* pRef = pGroup->GetFirstMember(); pRef != NULL; pRef = pRef->next())
+        {
+            Player* pMember = pRef->getSource();
+            if (pMember && pMember->HasAura(SPELL_USE_DRAGON_ORB, EFFECT_INDEX_0))
+                return true;
+        }
+    }
+
+    if (!pPlayer->HasAura(SPELL_MIND_EXHAUSTION, EFFECT_INDEX_0))
+        pPlayer->CastSpell(pPlayer, SPELL_USE_DRAGON_ORB, true);
+
+    return true;
+}
+
 void AddSC_boss_razorgore()
 {
     Script* pNewScript;
@@ -154,5 +380,15 @@ void AddSC_boss_razorgore()
     pNewScript = new Script;
     pNewScript->Name = "boss_razorgore";
     pNewScript->GetAI = &GetAI_boss_razorgore;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "mob_grethok_the_controller";
+    pNewScript->GetAI = &GetAI_mob_grethok_the_controller;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "go_orb_of_domination";
+    pNewScript->pGOUse = &GOUse_go_orb_of_domination;
     pNewScript->RegisterSelf();
 }

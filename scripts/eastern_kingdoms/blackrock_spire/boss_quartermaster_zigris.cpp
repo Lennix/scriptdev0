@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,33 +17,40 @@
 /* ScriptData
 SDName: Boss_Quartmaster_Zigris
 SD%Complete: 100
-SDComment: Needs revision
+SDComment:
 SDCategory: Blackrock Spire
 EndScriptData */
 
 #include "precompiled.h"
 
-enum
+enum Spells
 {
-    SPELL_SHOOT          = 16496,
-    SPELL_STUNBOMB       = 16497,
-    SPELL_HEALING_POTION = 15504,
-    SPELL_HOOKEDNET      = 15609
+    SPELL_DRINK_HEALING_POTION  = 15504,
+    SPELL_HOOKED_NET            = 15609,
+    SPELL_SHOOT                 = 16496,
+    SPELL_STUN_BOMB             = 16497
 };
 
-struct MANGOS_DLL_DECL boss_quatermasterzigrisAI : public ScriptedAI
+struct MANGOS_DLL_DECL boss_quatermaster_zigrisAI : public ScriptedAI
 {
-    boss_quatermasterzigrisAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    boss_quatermaster_zigrisAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
+    uint32 m_uiDrinkHealingPotionTimer;
+    uint32 m_uiHookedNetTimer;
     uint32 m_uiShootTimer;
-    uint32 m_uiStunBombTimer;
-    //uint32 HelingPotion_Timer;
+    uint32 m_uiStunBombTimer;    
 
     void Reset()
     {
-        m_uiShootTimer    = 1000;
-        m_uiStunBombTimer = 16000;
-        //HelingPotion_Timer = 25000;
+        m_uiDrinkHealingPotionTimer = urand(20000,30000);
+        m_uiHookedNetTimer = urand(8000,12000);
+        m_uiShootTimer = urand(0,500);
+        m_uiStunBombTimer = urand(3000,5000);        
+    }
+
+    void Aggro(Unit* /*pWho*/)
+    {
+        m_creature->CallForHelp(DEFAULT_VISIBILITY_INSTANCE);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -55,20 +59,39 @@ struct MANGOS_DLL_DECL boss_quatermasterzigrisAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
+        // Drink Healing Potion
+        if (HealthBelowPct(75) && m_uiDrinkHealingPotionTimer < uiDiff)
+        {
+            DoCastSpellIfCan(m_creature, SPELL_DRINK_HEALING_POTION);
+            m_uiDrinkHealingPotionTimer = urand(10000,15000);
+        }
+        else
+            m_uiDrinkHealingPotionTimer -= uiDiff;
+
+        // Hooked Net
+        if (m_uiHookedNetTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_HOOKED_NET);
+            m_uiHookedNetTimer = urand(4000,7000);
+        }
+        else
+            m_uiHookedNetTimer -= uiDiff;
+
         // Shoot
-        if (m_uiShootTimer < uiDiff)
+        if (m_uiShootTimer <= uiDiff)
         {
             DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHOOT);
-            m_uiShootTimer = 500;
+            m_uiShootTimer = urand(4000,8000);
         }
         else
             m_uiShootTimer -= uiDiff;
 
-        // StunBomb
-        if (m_uiStunBombTimer < uiDiff)
+        // Stun Bomb
+        if (m_uiStunBombTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature, SPELL_STUNBOMB);
-            m_uiStunBombTimer = 14000;
+            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
+            DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_STUN_BOMB);
+            m_uiStunBombTimer = urand(7000,10000);
         }
         else
             m_uiStunBombTimer -= uiDiff;
@@ -76,17 +99,17 @@ struct MANGOS_DLL_DECL boss_quatermasterzigrisAI : public ScriptedAI
         DoMeleeAttackIfReady();
     }
 };
-
-CreatureAI* GetAI_boss_quatermasterzigris(Creature* pCreature)
+CreatureAI* GetAI_boss_quatermaster_zigris(Creature* pCreature)
 {
-    return new boss_quatermasterzigrisAI(pCreature);
+    return new boss_quatermaster_zigrisAI(pCreature);
 }
 
-void AddSC_boss_quatermasterzigris()
+void AddSC_boss_quatermaster_zigris()
 {
-    Script* newscript;
-    newscript = new Script;
-    newscript->Name = "quartermaster_zigris";
-    newscript->GetAI = &GetAI_boss_quatermasterzigris;
-    newscript->RegisterSelf();
+    Script* pNewscript;
+
+    pNewscript = new Script;
+    pNewscript->Name = "quartermaster_zigris";
+    pNewscript->GetAI = &GetAI_boss_quatermaster_zigris;
+    pNewscript->RegisterSelf();
 }

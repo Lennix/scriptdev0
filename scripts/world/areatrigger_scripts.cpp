@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,54 +17,59 @@
 /* ScriptData
 SDName: Areatrigger_Scripts
 SD%Complete: 100
-SDComment: Quest support: 6681
+SDComment: PvP Barracks ports, Quest support: 6681
 SDCategory: Areatrigger
 EndScriptData */
 
 /* ContentData
+at_pvp_barracks
 at_ravenholdt
-at_childrens_week_spot          3546,3547,3548,3552,3549,3550
-at_scent_larkorwi
 EndContentData */
 
 #include "precompiled.h"
 
 /*######
-## at_childrens_week_spot
+## at_pvp_barracks
 ######*/
 
-uint32 TriggerOrphanSpell[6][3] =
+#define BARRACKS_ALLIANCE  "Champion's Hall"
+#define BARRACKS_HORDE  "Hall of Legends"
+
+enum eBarracks
 {
-    {3546, 14305, 65056},   // The Bough of the Eternals
-    {3547, 14444, 65059},   // Lordaeron Throne Room
-    {3548, 14305, 65055},   // The Stonewrought Dam
-    {3549, 14444, 65058},   // Gateway to the Frontier
-    {3550, 14444, 65057},   // Down at the Docks
-    {3552, 14305, 65054}    // Spooky Lighthouse
+    AT_CHAMPIONS_HALL   = 2532,
+    AT_HALL_OF_LEGENDS  = 2527,
+    HONOR_RANK_REQUIRED = 10,
 };
 
-bool AreaTrigger_at_childrens_week_spot(Player* pPlayer, AreaTriggerEntry const* pAt)
+bool AreaTrigger_at_pvp_barracks(Player* pPlayer, AreaTriggerEntry const* pAt)
 {
-    for (uint8 i = 0; i < 6; ++i)
+    if (pPlayer->GetHonorRankInfo().rank < HONOR_RANK_REQUIRED)
     {
-        if (pAt->id == TriggerOrphanSpell[i][0] &&
-            pPlayer->GetMiniPet() && pPlayer->GetMiniPet()->GetEntry() == TriggerOrphanSpell[i][1])
-        {
-            pPlayer->CastSpell(pPlayer, TriggerOrphanSpell[i][2], true);
-            return true;
-        }
+        pPlayer->GetSession()->SendAreaTriggerMessage("Only officers are allowed to enter %s. %s, come back later when you earn more honor!", pAt->id == AT_CHAMPIONS_HALL ? BARRACKS_ALLIANCE : BARRACKS_HORDE, pPlayer->GetName());
+        return false;
     }
-    return false;
+
+    switch(pAt->id)
+    {
+        case AT_CHAMPIONS_HALL:
+            pPlayer->TeleportTo(449, -0.299116f, 4.39156f, -0.255884f, 1.54805f, TELE_TO_NOT_UNSUMMON_PET);
+            break;
+        case AT_HALL_OF_LEGENDS:
+            pPlayer->TeleportTo(450, 221.322f, 74.4933f, 25.7195f, 0.484836f, TELE_TO_NOT_UNSUMMON_PET);
+            break;
+    }
+    return true;
 }
 
 /*######
 ## at_ravenholdt
 ######*/
 
-enum
+enum eRavenhold
 {
-    QUEST_MANOR_RAVENHOLDT   = 6681,
-    NPC_RAVENHOLDT           = 13936
+    QUEST_MANOR_RAVENHOLDT  = 6681,
+    NPC_RAVENHOLDT          = 13936
 };
 
 bool AreaTrigger_at_ravenholdt(Player* pPlayer, AreaTriggerEntry const* pAt)
@@ -78,44 +80,17 @@ bool AreaTrigger_at_ravenholdt(Player* pPlayer, AreaTriggerEntry const* pAt)
     return false;
 }
 
-/*######
-## at_scent_larkorwi
-######*/
-
-enum
-
-{
-    QUEST_SCENT_OF_LARKORWI   = 4291,
-    NPC_LARKORWI_MATE         = 9683
-};
-
-bool AreaTrigger_at_scent_larkorwi(Player* pPlayer, AreaTriggerEntry const* pAt)
-{
-    if (!pPlayer->isDead() && pPlayer->GetQuestStatus(QUEST_SCENT_OF_LARKORWI) == QUEST_STATUS_INCOMPLETE)
-    {
-        if (!GetClosestCreatureWithEntry(pPlayer, NPC_LARKORWI_MATE, 15))
-            pPlayer->SummonCreature(NPC_LARKORWI_MATE, pAt->x, pAt->y, pAt->z, 3.3f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 100000);
-    }
-
-    return false;
-}
-
 void AddSC_areatrigger_scripts()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "at_childrens_week_spot";
-    pNewScript->pAreaTrigger = &AreaTrigger_at_childrens_week_spot;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "at_pvp_barracks";
+    pNewscript->pAreaTrigger = &AreaTrigger_at_pvp_barracks;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "at_ravenholdt";
-    pNewScript->pAreaTrigger = &AreaTrigger_at_ravenholdt;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "at_scent_larkorwi";
-    pNewScript->pAreaTrigger = &AreaTrigger_at_scent_larkorwi;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "at_ravenholdt";
+    pNewscript->pAreaTrigger = &AreaTrigger_at_ravenholdt;
+    pNewscript->RegisterSelf();
 }

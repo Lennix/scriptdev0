@@ -1,125 +1,102 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This program is free software licensed under GPL version 2
+ * Please see the included DOCS/LICENSE.TXT for more information */
 
-#ifndef DEF_SUNKEN_TEMPLE_H
-#define DEF_SUNKEN_TEMPLE_H
+#ifndef DEF_SUNKENTEMPLE_H
+#define DEF_SUNKENTEMPLE_H
 
-enum
+enum Data
 {
-    MAX_ENCOUNTER         = 5,
-    MAX_STATUES           = 6,
-    MAX_FLAMES            = 4,
-
-    // Don't change types 1,2 and 3 (handled in ACID)
-    TYPE_ATALARION_OBSOLET= 1,
-    TYPE_PROTECTORS_OBS   = 2,
-    TYPE_JAMMALAN_OBS     = 3,
-
-    TYPE_ATALARION        = 4,
-    TYPE_PROTECTORS       = 5,
-    TYPE_JAMMALAN         = 6,
-    TYPE_MALFURION        = 7,
-    TYPE_AVATAR           = 8,
-
-    NPC_ATALARION         = 8580,
-    NPC_DREAMSCYTH        = 5721,
-    NPC_WEAVER            = 5720,
-    NPC_JAMMALAN          = 5710,
-    NPC_AVATAR_OF_HAKKAR  = 8443,
-    NPC_SHADE_OF_ERANIKUS = 5709,
-
-    // Jammalain mini-bosses
-    NPC_ZOLO              = 5712,
-    NPC_GASHER            = 5713,
-    NPC_LORO              = 5714,
-    NPC_HUKKU             = 5715,
-    NPC_ZULLOR            = 5716,
-    NPC_MIJAN             = 5717,
-
-    // Avatar of hakkar mobs
-    NPC_SHADE_OF_HAKKAR   = 8440,                           // Shade of Hakkar appears when the event starts; will despawn when avatar of hakkar is summoned
-    NPC_BLOODKEEPER       = 8438,                           // Spawned rarely and contains the hakkari blood -> used to extinguish the flames
-    NPC_HAKKARI_MINION    = 8437,                           // Npc randomly spawned during the event = trash
-    NPC_SUPPRESSOR        = 8497,                           // Npc summoned at one of the two doors and moves to the boss;
-
-    NPC_MALFURION         = 15362,
-
-    GO_ALTAR_OF_HAKKAR    = 148836,                         // Used in order to show the player the order of the statue activation
-    GO_IDOL_OF_HAKKAR     = 148838,                         // Appears when atalarion is summoned; this was removed in 4.0.1
-
-    GO_ATALAI_LIGHT       = 148883,                         // Green light, activates when the correct statue is chosen
-    GO_ATALAI_LIGHT_BIG   = 148937,                         // Big light, used at the altar event
-
-    GO_ATALAI_TRAP_1      = 177484,                         // Trapps triggered if the wrong statue is activated
-    GO_ATALAI_TRAP_2      = 177485,                         // The traps are spawned in DB randomly around the statues (we don't know exactly which statue has which trap)
-    GO_ATALAI_TRAP_3      = 148837,
-
-    GO_ETERNAL_FLAME_1    = 148418,
-    GO_ETERNAL_FLAME_2    = 148419,
-    GO_ETERNAL_FLAME_3    = 148420,
-    GO_ETERNAL_FLAME_4    = 148421,
-
-    GO_EVIL_CIRCLE        = 148998,                         // Objects used at the avatar event. they are spawned when the event starts, and the mobs are summon atop of them
-    GO_HAKKAR_DOOR_1      = 149432,                         // Combat doors
-    GO_HAKKAR_DOOR_2      = 149433,
-
-    GO_JAMMALAN_BARRIER   = 149431,
-
-    // Event ids related to the statue activation
-    EVENT_ID_STATUE_1     = 3094,
-    EVENT_ID_STATUE_2     = 3095,
-    EVENT_ID_STATUE_3     = 3097,
-    EVENT_ID_STATUE_4     = 3098,
-    EVENT_ID_STATUE_5     = 3099,
-    EVENT_ID_STATUE_6     = 3100,
-
-    SPELL_SUMMON_AVATAR   = 12639,                          // Cast by the shade of hakkar, updates entry to avatar
-    SPELL_AVATAR_SUMMONED = 12948,
-
-    SAY_JAMMALAN_INTRO    = -1109005,
-    SAY_AVATAR_BRAZIER_1  = -1109006,
-    SAY_AVATAR_BRAZIER_2  = -1109007,
-    SAY_AVATAR_BRAZIER_3  = -1109008,
-    SAY_AVATAR_BRAZIER_4  = -1109009,
-    SAY_AVATAR_SPAWN      = -1109010,
+    TYPE_ATALALARION,
+    TYPE_ATALAI_DEFENDERS,
+    TYPE_JAMMALAN_THE_PROPHET,
+    TYPE_SHADE_OF_ERANIKUS,
+    TYPE_MALFURION,
+    TYPE_AVATAR_OF_HAKKAR,
+    MAX_ENCOUNTER,
 };
 
-// This is also the needed order for activation: S, N, SW, SE, NW, NE
-static const uint32 m_aAtalaiStatueEvents[MAX_STATUES] = {EVENT_ID_STATUE_1, EVENT_ID_STATUE_2, EVENT_ID_STATUE_3, EVENT_ID_STATUE_4, EVENT_ID_STATUE_5, EVENT_ID_STATUE_6};
-
-struct SummonLocations
+enum Statues
 {
-    float m_fX, m_fY, m_fZ, m_fO;
+    ATALAI_STATUE_S                 = 0x001,
+    ATALAI_STATUE_N                 = 0x002,
+    ATALAI_STATUE_SW                = 0x004,
+    ATALAI_STATUE_SE                = 0x008,
+    ATALAI_STATUE_NW                = 0x010,
+    ATALAI_STATUE_NE                = 0x020,
+    ATALAI_STATUE_ALL               = ATALAI_STATUE_S | ATALAI_STATUE_N | ATALAI_STATUE_SW |
+                                    ATALAI_STATUE_SE | ATALAI_STATUE_NW | ATALAI_STATUE_NE
 };
 
-static const SummonLocations aSunkenTempleLocation[] =
+enum Creatures
 {
-    {-466.5130f, 95.19820f, -189.646f, 0.0349f},            // Atalarion summon loc
-    {-466.8673f,272.31204f, -90.7441f, 3.5255f},            // Shade of hakkar summon loc
-    {-660.5277f, -16.7117f, -90.8357f, 1.6055f}             // Malfurion summon loc
+    NPC_ATALALARION                 = 8580,
+    NPC_GASHER                      = 5713,
+    NPC_HUKKU                       = 5715,
+    NPC_LORO                        = 5714,
+    NPC_MIJAN                       = 5717,
+    NPC_ZOLO                        = 5712,
+    NPC_ZULLOR                      = 5716,
+    NPC_JAMMALAN_THE_PROPHET        = 5710,
+    NPC_OGOM_THE_WRETCHED           = 5711,
+    NPC_ATALAI_DEATHWALKER          = 5271,
+    NPC_ATALAI_HIGH_PRIEST          = 5273,
+    NPC_ATALAI_PRIEST               = 5269,
+    NPC_MUMMIFIED_ATALAI            = 5263,
+    NPC_DREAMSCYTHE                 = 5721,
+    NPC_WEAVER                      = 5720,
+    NPC_MORPHAZ                     = 5719,
+    NPC_HAZZAS                      = 5722,
+    NPC_NIGHTMARE_SCALEBANE         = 5277,
+    NPC_NIGHTMARE_SUPPRESSOR        = 8497,
+    NPC_NIGHTMARE_WANDERER          = 5283,
+    NPC_NIGHTMARE_WHELP             = 8319,
+    NPC_NIGHTMARE_WYRMKIN           = 5280,
+    NPC_SHADE_OF_ERANIKUS           = 5709,
+    NPC_SHADE_OF_HAKKAR             = 8440,
+    NPC_AVATAR_OF_HAKKAR            = 8443,
+    NPC_HAKKARI_BLOODKEEPER         = 8438,
+    NPC_HAKKARI_MINION              = 8437,
+    NPC_MALFURION                   = 15362
 };
 
-// Summon location for the suppressors
-static const SummonLocations aHakkariDoorLocations[2] =
+enum GameObjects
 {
-    {-420.629f, 276.682f, -90.827f},
-    {-512.015f, 276.134f, -90.827f}
+    GO_ATALAI_STATUE_S              = 148830,
+    GO_ATALAI_STATUE_N              = 148831,
+    GO_ATALAI_STATUE_SW             = 148832,
+    GO_ATALAI_STATUE_SE             = 148833,
+    GO_ATALAI_STATUE_NW             = 148834,
+    GO_ATALAI_STATUE_NE             = 148835,
+    GO_IDOL_OF_HAKKAR               = 148838,
+    GO_FORCE_FIELD                  = 149431,
+    GO_ETERNAL_FLAME_1              = 148418,
+    GO_ETERNAL_FLAME_2              = 148419,
+    GO_ETERNAL_FLAME_3              = 148420,
+    GO_ETERNAL_FLAME_4              = 148421,
+    GO_EVIL_GOD_SUMMONING_CIRCLE    = 148998,
+    GO_SANCTUM_DOOR_1               = 149432,
+    GO_SANCTUM_DOOR_2               = 149433,
+    GO_SANCTUM_OF_THE_FALLEN_GOD    = 300019
+};
+
+enum Factions
+{
+    FACTION_FRIENDLY                = 35,
+    FACTION_DRAGONKIN               = 50
+};
+
+enum Misc
+{
+    MAX_DEFENDER                    = 6,
+
+    ITEM_HAKKARI_BLOOD              = 10460,
+    SAY_ZONE_JAMMAL                 = -1109006
+};
+
+struct Loc
+{
+    float x, y, z, o;
 };
 
 class MANGOS_DLL_DECL instance_sunken_temple : public ScriptedInstance
@@ -130,40 +107,38 @@ class MANGOS_DLL_DECL instance_sunken_temple : public ScriptedInstance
 
         void Initialize();
 
-        void OnObjectCreate(GameObject* pGo);
         void OnCreatureCreate(Creature* pCreature);
-
-        void OnCreatureEvade(Creature* pCreature);
-        void OnCreatureDeath(Creature* pCreature);
+        void OnObjectCreate(GameObject* pGo);
 
         void SetData(uint32 uiType, uint32 uiData);
         uint32 GetData(uint32 uiType);
 
-        void Update(uint32 uiDiff);
-
-        bool ProcessStatueEvent(uint32 uiEventId);
-
-        const char* Save() { return m_strInstData.c_str(); }
+        const char* Save() { return strInstData.c_str(); }
         void Load(const char* chrIn);
 
+        void Update(uint32 uiDiff);
+
+        void HandleAtalaiStatue(uint32 uiEntry);
+        void SummonAtalalarion(GameObject* pGo);
+        void CallForHelp(uint32 uiCalllerEntry, GUIDList lCallings);
+        void HandleAvatarEventWave();
+        uint32 GetWaveCount() { return m_uiWaveCount;}
+
     protected:
-        void DoSpawnAtalarionIfCan();
-        void DoUpdateFlamesFlags(bool bRestore);
-
         uint32 m_auiEncounter[MAX_ENCOUNTER];
-        std::string m_strInstData;
+        std::string strInstData;
 
-        uint8 m_uiProtectorsRemaining;                      // Jammalan door handling
-        uint8 m_uiStatueCounter;                            // Atalarion Statue Event
-        uint8 m_uiFlameCounter;                             // Avatar of Hakkar Event
-        uint32 m_uiAvatarSummonTimer;
-        uint32 m_uiSupressorTimer;
-        bool m_bIsFirstHakkarWave;
-        bool m_bCanSummonBloodkeeper;
+        bool m_bIsSerpentSummoning;
 
-        GUIDList m_luiFlameGUIDs;
-        GUIDList m_luiBigLightGUIDs;
-        GUIDVector m_vuiCircleGUIDs;
+        uint32 m_uiSerpent;
+        uint32 m_uiSerpentSummonTimer;
+        uint32 m_uiStatueOrder;
+        uint32 m_uiWaveCount;
+
+        GUIDList m_lTrollGUID;
+        GUIDList m_lDragonkinGUID;
+        GUIDList m_lStatueGUID;
+        GUIDList m_lEternalFlameGUID;
 };
 
 #endif

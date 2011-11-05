@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -27,15 +24,12 @@ EndScriptData */
 /* ContentData
 npc_aged_dying_ancient_kodo
 npc_dalinda_malem
+go_hand_of_iruxos_crystal
 npc_melizza_brimbuzzle
 EndContentData */
 
 #include "precompiled.h"
 #include "escort_ai.h"
-
-/*######
-## npc_aged_dying_ancient_kodo
-######*/
 
 enum
 {
@@ -175,226 +169,201 @@ bool GossipHello_npc_aged_dying_ancient_kodo(Player* pPlayer, Creature* pCreatur
 ## npc_dalinda_malem
 ######*/
 
-enum
+enum eDalindaMalem
 {
-    QUEST_RETURN_TO_VAHLARRIEL  = 1440,
+	QUEST_RETURN_TO_VAHLARRIEL = 1440,
+	DALINDA_SAY1               = -1000351,
+	DALINDA_SAY2               = -1000352
 };
 
 struct MANGOS_DLL_DECL npc_dalinda_malemAI : public npc_escortAI
 {
-    npc_dalinda_malemAI(Creature* m_creature) : npc_escortAI(m_creature) { Reset(); }
+	npc_dalinda_malemAI(Creature* pCreature) : npc_escortAI(pCreature) {Reset();}
 
-    void Reset() {}
+	void Reset()
+	{
+		if (HasEscortState(STATE_ESCORT_ESCORTING))
+			return;
+	}
 
     void JustStartedEscort()
     {
-        m_creature->SetStandState(UNIT_STAND_STATE_STAND);
+        if (GetPlayerForEscort())
+            DoScriptText(DALINDA_SAY1, m_creature);
     }
 
-    void WaypointReached(uint32 uiPointId)
-    {
-        if (uiPointId == 18)
-        {
-            if (Player* pPlayer = GetPlayerForEscort())
-                pPlayer->GroupEventHappens(QUEST_RETURN_TO_VAHLARRIEL, m_creature);
-        }
-    }
+	void WaypointReached(uint32 uiPointId)
+	{
+		Player* pPlayer = GetPlayerForEscort();
+		if (!pPlayer)
+			return;
+
+		switch(uiPointId)
+		{
+			case 20:
+				DoScriptText(DALINDA_SAY2, m_creature);
+				SetRun();
+				break;
+			case 24:
+				m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP + UNIT_NPC_FLAG_QUESTGIVER);
+				pPlayer->GroupEventHappens(QUEST_RETURN_TO_VAHLARRIEL, m_creature);
+				break;
+		}
+	}
+
+	void JustDied(Unit* /*pKiller*/)
+	{
+		if (Player* pPlayer = GetPlayerForEscort())
+			pPlayer->FailQuest(QUEST_RETURN_TO_VAHLARRIEL);
+	}
+
+	void UpdateAI(const uint32 uiDiff)
+	{
+		npc_escortAI::UpdateAI(uiDiff);
+
+		//return since we have no target
+		if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+			return;
+
+		DoMeleeAttackIfReady();
+	}
 };
-
 CreatureAI* GetAI_npc_dalinda_malem(Creature* pCreature)
 {
-    return new npc_dalinda_malemAI(pCreature);
+	return new npc_dalinda_malemAI (pCreature);
 }
 
 bool QuestAccept_npc_dalinda_malem(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
-    if (pQuest->GetQuestId() == QUEST_RETURN_TO_VAHLARRIEL)
-    {
-        if (npc_dalinda_malemAI* pEscortAI = dynamic_cast<npc_dalinda_malemAI*>(pCreature->AI()))
-        {
-            // TODO This faction change needs confirmation, also possible that we need to drop her PASSIVE flag
-            pCreature->setFaction(FACTION_ESCORT_A_NEUTRAL_PASSIVE);
-            pEscortAI->Start(false, pPlayer, pQuest);
-        }
-    }
-    return true;
+	if (pQuest->GetQuestId() == QUEST_RETURN_TO_VAHLARRIEL)
+		if (npc_dalinda_malemAI* pEscortAI = dynamic_cast<npc_dalinda_malemAI*>(pCreature->AI()))
+			pEscortAI->Start(false, pPlayer, pQuest, true);
+	return true;
+}
+
+/*######
+## go_hand_of_iruxos_crystal
+######*/
+
+bool GOUse_go_hand_of_iruxos_crystal(Player* pPlayer, GameObject* pGo)
+{
+    // Summon "Demon Spirit" (11876)
+    pGo->SummonCreature(11876, pGo->GetPositionX()+2, pGo->GetPositionY()+2, pGo->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+    return false;
 }
 
 /*######
 ## npc_melizza_brimbuzzle
 ######*/
 
-enum
+enum eMelizzaBrimbuzzle
 {
-    QUEST_GET_ME_OUT_OF_HERE   = 6132,
-
-    GO_MELIZZAS_CAGE           = 177706,
-
-    SAY_MELIZZA_START          = -1000710,
-    SAY_MELIZZA_FINISH         = -1000711,
-    SAY_MELIZZA_1              = -1000712,
-    SAY_MELIZZA_2              = -1000713,
-    SAY_MELIZZA_3              = -1000714,
-
-    NPC_MARAUDINE_MARAUDER     = 4659,
-    NPC_MARAUDINE_WRANGLER     = 4655,
-    NPC_MARAUDINE_BONEPAW      = 4660
-};
-
-static const float aMarauderSpawn[4][4] =
-{
-    {-1294.016f, 2637.383f, 111.556f, 1.069f},
-    {-1298.763f, 2639.983f, 111.604f, 1.069f},
-    {-1312.778f, 2671.861f, 111.908f, 0.107f},
-    {-1311.301f, 2677.125f, 111.757f, 0.107f}
-};
-
-static const float aWranglerSpawn[3][4] =
-{
-    {-1387.094f, 2431.129f, 88.829f, 1.472f},
-    {-1390.120f, 2429.159f, 88.765f, 1.472f},
-    {-1385.852f, 2425.109f, 88.765f, 1.472f}
-};
-
-static const float aBonepawSpawn[2][4] =
-{
-    {-1383.824f, 2434.019f, 88.863f, 1.472f},
-    {-1388.103f, 2428.754f, 88.824f, 1.472f}
+    QUEST_GET_ME_OUT_OF_HERE        = 6132,
+    NPC_MARAUDINE_WRANGLER          = 4655,     // Ambusher
+    NPC_MARAUDINE_MAULER            = 4656,     // Ambusher
+    NPC_BONEPAW_HYENA               = 4688,     // Ambusher
+    GO_MELIZZAS_CAGES               = 177706,
 };
 
 struct MANGOS_DLL_DECL npc_melizza_brimbuzzleAI : public npc_escortAI
 {
-    npc_melizza_brimbuzzleAI(Creature* m_creature) : npc_escortAI(m_creature)
+    npc_melizza_brimbuzzleAI(Creature* pCreature) : npc_escortAI(pCreature) {Reset();}
+
+    bool m_bCanWalk;
+    uint32 m_uiByeWaveTimer;
+
+    void Reset()
     {
-        m_uiNormalFaction = m_creature->getFaction();
-        m_uiEventTimer    = 0;
-        m_uiEventPhase    = 0;
-        m_bCanDoEvent     = false;
-        Reset();
-    }
+        if (!HasEscortState(STATE_ESCORT_ESCORTING))
+            m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
 
-    uint32 m_uiNormalFaction;
-    uint32 m_uiEventTimer;
-
-    uint8 m_uiEventPhase;
-
-    bool m_bCanDoEvent;
-
-    void Reset() {}
-
-    void JustStartedEscort()
-    {
-        if (GameObject* pCage = GetClosestGameObjectWithEntry(m_creature, GO_MELIZZAS_CAGE, INTERACTION_DISTANCE))
-            pCage->UseDoorOrButton();
+        m_uiByeWaveTimer = 0;
+        m_bCanWalk = true;
     }
 
     void WaypointReached(uint32 uiPointId)
     {
+        Player* pPlayer = GetPlayerForEscort();
+        if (!pPlayer)
+            return;
+
         switch(uiPointId)
         {
-            case 1:
-            {
-                if (Player* pPlayer = GetPlayerForEscort())
-                    DoScriptText(SAY_MELIZZA_START, m_creature, pPlayer);
-
-                m_creature->setFaction(FACTION_ESCORT_N_NEUTRAL_PASSIVE);
+            case 6:
+                // 4x Maulers at Y
+                m_creature->SummonCreature(NPC_MARAUDINE_MAULER, -1305.36f, 2625.21f, 111.61f, 1.01f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+                m_creature->SummonCreature(NPC_MARAUDINE_MAULER, -1318.45f, 2672.05f, 111.86f, 6.17f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+                m_creature->SummonCreature(NPC_MARAUDINE_MAULER, -1323.01f, 2677.04f, 112.66f, 6.17f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+                m_creature->SummonCreature(NPC_MARAUDINE_MAULER, -1207.36f, 2679.65f, 111.36f, 3.31f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
                 break;
-            }
-            case 4:
-            {
-                for(uint8 i = 0; i < 4; ++i)
-                    m_creature->SummonCreature(NPC_MARAUDINE_MARAUDER, aMarauderSpawn[i][0], aMarauderSpawn[i][1], aMarauderSpawn[i][2], aMarauderSpawn[i][3], TEMPSUMMON_DEAD_DESPAWN, 0);
-
+            case 11:
+                // 3x Wranglers + Hyenas at Mountain exit
+                m_creature->SummonCreature(NPC_MARAUDINE_WRANGLER, -1371.50f, 2456.63f, 90.06f, 1.63f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+                m_creature->SummonCreature(NPC_MARAUDINE_WRANGLER, -1397.81f, 2415.76f, 88.51f, 1.22f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+                m_creature->SummonCreature(NPC_MARAUDINE_WRANGLER, -1421.87f, 2423.94f, 89.69f, 1.03f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+                m_creature->SummonCreature(NPC_BONEPAW_HYENA, -1419.94f, 2422.80f, 89.72f, 1.03f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
                 break;
-            }
-            case 9:
-            {
-                for(uint8 i = 0; i < 3; ++i)
-                    m_creature->SummonCreature(NPC_MARAUDINE_WRANGLER, aWranglerSpawn[i][0], aWranglerSpawn[i][1], aWranglerSpawn[i][2], aWranglerSpawn[i][3], TEMPSUMMON_DEAD_DESPAWN, 0);
-                for(uint8 i = 0; i < 2; ++i)
-                    m_creature->SummonCreature(NPC_MARAUDINE_BONEPAW, aBonepawSpawn[i][0], aBonepawSpawn[i][1], aBonepawSpawn[i][2], aBonepawSpawn[i][3], TEMPSUMMON_DEAD_DESPAWN, 0);
-
+            case 14:
+                m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
+                m_creature->SetFacingToObject(pPlayer);
+                m_creature->MonsterSay("Thanks alot for your help, $N. Thanks!", LANG_UNIVERSAL, pPlayer);
+                m_creature->HandleEmoteCommand(EMOTE_ONESHOT_TALK);
+                m_uiByeWaveTimer = 6000;
+                pPlayer->GroupEventHappens(QUEST_GET_ME_OUT_OF_HERE, m_creature);
+                SetRun(false);
                 break;
-            }
-            case 12:
-            {
-                SetEscortPaused(true);
-                m_bCanDoEvent = true;
-                m_uiEventTimer = 1000;
-                break;
-            }
-            case 19:
-            {
-                SetEscortPaused(true);
-                m_bCanDoEvent = true;
-                m_uiEventTimer = 5000;
-                m_creature->SetFacingTo(3.961f);
-                break;
-            }
         }
-
     }
 
-    void UpdateEscortAI(const uint32 uiDiff)
+    void JustSummoned(Creature* pSummoned)
     {
-        if (m_bCanDoEvent)
+        switch(pSummoned->GetEntry())
         {
-            if (m_uiEventTimer <= uiDiff)
+            case NPC_MARAUDINE_WRANGLER:
+            case NPC_BONEPAW_HYENA:
+                Player* pPlayer = GetPlayerForEscort();
+                if (pPlayer && rand() % 2 == 0)
+                    pSummoned->AI()->AttackStart(pPlayer);
+                else
+                    pSummoned->AI()->AttackStart(m_creature);
+                break;
+        }
+    }
+
+    void Aggro(Unit* /*pAttacker*/)
+    {
+        m_creature->MonsterSay("Help!", LANG_UNIVERSAL, NULL);
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        Player* pPlayer = GetPlayerForEscort();
+        if (!pPlayer)
+            return;
+
+        if (m_uiByeWaveTimer)
+            if (m_uiByeWaveTimer <= uiDiff)
             {
-                switch(m_uiEventPhase)
-                {
-                    case 0:
-                    {
-                        if (Player* pPlayer = GetPlayerForEscort())
-                        {
-                            DoScriptText(SAY_MELIZZA_FINISH, m_creature, pPlayer);
-                            pPlayer->GroupEventHappens(QUEST_GET_ME_OUT_OF_HERE, m_creature);
-                        }
-
-                        m_creature->setFaction(m_uiNormalFaction);
-                        SetRun(true);
-                        SetEscortPaused(false);
-                        m_bCanDoEvent = false;
-                        break;
-                    }
-                    case 1:
-                    {
-                        DoScriptText(SAY_MELIZZA_1, m_creature);
-                        m_uiEventTimer = 4000;
-                        break;
-                    }
-                    case 2:
-                    {
-                        DoScriptText(SAY_MELIZZA_2, m_creature);
-                        m_uiEventTimer = 4000;
-                        break;
-                    }
-                    case 3:
-                    {
-                        DoScriptText(SAY_MELIZZA_3, m_creature);
-                        m_uiEventTimer = 4000;
-                        break;
-                    }
-                    case 4:
-                    {
-                        SetEscortPaused(false);
-                        m_bCanDoEvent = false;
-                        break;
-                    }
-                }
-
-                ++m_uiEventPhase;
+                m_creature->HandleEmoteCommand(EMOTE_ONESHOT_WAVE);
+                m_uiByeWaveTimer = 0;
             }
             else
-                m_uiEventTimer -= uiDiff;
+                m_uiByeWaveTimer -= uiDiff;
 
-            return;
+        if (m_bCanWalk && !pPlayer->IsWithinDist(m_creature, 30.0f) && !m_creature->getVictim())
+        {
+            m_bCanWalk = false;
+            m_creature->StopMoving();
+            m_creature->SetFacingToObject(pPlayer);
+            m_creature->MonsterTextEmote("Melizza is waiting for you.", pPlayer);
+        }
+        else if (!m_bCanWalk && pPlayer->IsWithinDist(m_creature, 30.0f))
+        {
+            m_bCanWalk = true;
         }
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        DoMeleeAttackIfReady();
+        if (m_bCanWalk)
+            npc_escortAI::UpdateAI(uiDiff);
     }
 };
 
@@ -406,11 +375,23 @@ CreatureAI* GetAI_npc_melizza_brimbuzzle(Creature* pCreature)
 bool QuestAccept_npc_melizza_brimbuzzle(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_GET_ME_OUT_OF_HERE)
+    {
         if (npc_melizza_brimbuzzleAI* pEscortAI = dynamic_cast<npc_melizza_brimbuzzleAI*>(pCreature->AI()))
-            pEscortAI->Start(false, pPlayer, pQuest);
-
+        {
+            pEscortAI->Start(true, pPlayer, pQuest);
+            pCreature->setFaction(250);
+            if (GameObject* GoCage = GetClosestGameObjectWithEntry(pCreature, GO_MELIZZAS_CAGES, 10.0f))
+                GoCage->UseDoorOrButton();
+        }
+        else
+            return false;
+    }
     return true;
 }
+
+/*######
+## AddSC
+######*/
 
 void AddSC_desolace()
 {
@@ -423,15 +404,20 @@ void AddSC_desolace()
     pNewScript->pGossipHello = &GossipHello_npc_aged_dying_ancient_kodo;
     pNewScript->RegisterSelf();
 
-    pNewScript = new Script;
+	pNewScript = new Script;
     pNewScript->Name = "npc_dalinda_malem";
     pNewScript->GetAI = &GetAI_npc_dalinda_malem;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_dalinda_malem;
+	pNewScript->pQuestAcceptNPC = &QuestAccept_npc_dalinda_malem;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "go_hand_of_iruxos_crystal";
+    pNewScript->pGOUse = &GOUse_go_hand_of_iruxos_crystal;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
     pNewScript->Name = "npc_melizza_brimbuzzle";
     pNewScript->GetAI = &GetAI_npc_melizza_brimbuzzle;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_melizza_brimbuzzle;
+	pNewScript->pQuestAcceptNPC = &QuestAccept_npc_melizza_brimbuzzle;
     pNewScript->RegisterSelf();
 }

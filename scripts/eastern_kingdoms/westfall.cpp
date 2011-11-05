@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -78,16 +75,16 @@ struct MANGOS_DLL_DECL npc_daphne_stilwellAI : public npc_escortAI
         m_uiShootTimer = 0;
     }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPoint)
     {
-        m_uiWPHolder = uiPointId;
+        m_uiWPHolder = uiPoint;
 
-        switch(uiPointId)
+        switch(uiPoint)
         {
             case 4:
                 SetEquipmentSlots(false, EQUIP_NO_CHANGE, EQUIP_NO_CHANGE, EQUIP_ID_RIFLE);
                 m_creature->SetSheath(SHEATH_STATE_RANGED);
-                m_creature->HandleEmoteCommand(EMOTE_STATE_USESTANDING_NOSHEATHE);
+                m_creature->HandleEmote(EMOTE_STATE_USESTANDING_NOSHEATHE);
                 break;
             case 7:
                 m_creature->SummonCreature(NPC_DEFIAS_RAIDER, -11450.836f, 1569.755f, 54.267f, 4.230f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
@@ -118,7 +115,7 @@ struct MANGOS_DLL_DECL npc_daphne_stilwellAI : public npc_escortAI
             case 13:
                 SetEquipmentSlots(true);
                 m_creature->SetSheath(SHEATH_STATE_UNARMED);
-                m_creature->HandleEmoteCommand(EMOTE_STATE_USESTANDING_NOSHEATHE);
+                m_creature->HandleEmote(EMOTE_STATE_USESTANDING_NOSHEATHE);
                 break;
             case 17:
                 if (Player* pPlayer = GetPlayerForEscort())
@@ -156,7 +153,7 @@ struct MANGOS_DLL_DECL npc_daphne_stilwellAI : public npc_escortAI
         {
             m_uiShootTimer = 1000;
 
-            if (!m_creature->IsWithinDist(m_creature->getVictim(), ATTACK_DISTANCE))
+            if (!m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
                 DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHOOT);
 
         }
@@ -189,24 +186,21 @@ CreatureAI* GetAI_npc_daphne_stilwell(Creature* pCreature)
 ## npc_defias_traitor
 ######*/
 
-enum
-{
-    SAY_START                  = -1000101,
-    SAY_PROGRESS               = -1000102,
-    SAY_END                    = -1000103,
-    SAY_AGGRO_1                = -1000104,
-    SAY_AGGRO_2                = -1000105,
+#define SAY_START                   -1000101
+#define SAY_PROGRESS                -1000102
+#define SAY_END                     -1000103
+#define SAY_AGGRO_1                 -1000104
+#define SAY_AGGRO_2                 -1000105
 
-    QUEST_DEFIAS_BROTHERHOOD   = 155
-};
+#define QUEST_DEFIAS_BROTHERHOOD    155
 
 struct MANGOS_DLL_DECL npc_defias_traitorAI : public npc_escortAI
 {
     npc_defias_traitorAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 i)
     {
-        switch (uiPointId)
+        switch (i)
         {
             case 35:
                 SetRun(false);
@@ -225,7 +219,7 @@ struct MANGOS_DLL_DECL npc_defias_traitorAI : public npc_escortAI
         }
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* who)
     {
         DoScriptText(urand(0, 1) ? SAY_AGGRO_1 : SAY_AGGRO_2, m_creature);
     }

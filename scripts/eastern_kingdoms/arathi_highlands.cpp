@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,12 +17,13 @@
 /* ScriptData
 SDName: Arathi Highlands
 SD%Complete: 100
-SDComment: Quest support: 665
+SDComment: Quest support: 660, 665
 SDCategory: Arathi Highlands
 EndScriptData */
 
 /* ContentData
 npc_professor_phizzlethorpe
+npc_kinelory
 EndContentData */
 
 #include "precompiled.h"
@@ -88,7 +86,7 @@ struct MANGOS_DLL_DECL npc_professor_phizzlethorpeAI : public npc_escortAI
         }
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/)
     {
         DoScriptText(SAY_AGGRO, m_creature);
     }
@@ -117,13 +115,122 @@ CreatureAI* GetAI_npc_professor_phizzlethorpe(Creature* pCreature)
     return new npc_professor_phizzlethorpeAI(pCreature);
 }
 
+/*######
+## npc_kinelory
+######*/
+
+enum uKinelory
+{
+	SPELL_KINELORY_BEAR_FORM          = 4948,
+	SPELL_REJUVENATION                = 3627,
+	
+	SAY_KINELORY                      = -1000548,
+
+	QUEST_HINTS_OF_A_NEW_PLAGUE_PART4 = 660,
+	NPC_FORSAKEN_COURIER              = 2714,
+	NPC_FORSAKEN_BODYGUARD            = 2721
+};
+
+struct MANGOS_DLL_DECL npc_kineloryAI : public npc_escortAI
+{
+	npc_kineloryAI(Creature* pCreature) : npc_escortAI(pCreature) {Reset();}
+
+	uint32 m_uiKineloryBearForm_Timer;
+
+	void Reset()
+	{
+		if (HasEscortState(STATE_ESCORT_ESCORTING))
+			return;
+		m_uiKineloryBearForm_Timer = urand(1000, 3000);
+	}
+
+	void Aggro(Unit *)
+	{
+		if (!urand(0,2))
+			DoScriptText(SAY_KINELORY, m_creature);
+	}
+
+	void JustDied(Unit *)
+	{
+		if (Player* pPlayer = GetPlayerForEscort())
+			pPlayer->FailQuest(QUEST_HINTS_OF_A_NEW_PLAGUE_PART4);
+	}
+
+	void WaypointReached(uint32 uiPointId)
+	{
+		Player* pPlayer = GetPlayerForEscort();
+		if (!pPlayer)
+			return;
+
+		switch (uiPointId)
+		{
+			case 13:
+				m_creature->SummonCreature(NPC_FORSAKEN_COURIER, -1553.33f, -3028.65f, 13.64f, 0.f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5*MINUTE*IN_MILLISECONDS);
+				for (uint8 i = 0; i < 4; ++i)
+					m_creature->SummonCreature(NPC_FORSAKEN_BODYGUARD, (-1553.33f + urand(0.f, 3.f)), (-3028.65f + urand(0.f, 3.f)), 13.64f, 0.f, TEMPSUMMON_DEAD_DESPAWN, 5*MINUTE*IN_MILLISECONDS);
+				break;
+			case 31:
+				pPlayer->GroupEventHappens(QUEST_HINTS_OF_A_NEW_PLAGUE_PART4, m_creature);
+				m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP + UNIT_NPC_FLAG_QUESTGIVER);
+				break;
+		}
+	}
+
+	void UpdateAI(const uint32 uiDiff)
+	{
+		npc_escortAI::UpdateAI(uiDiff);
+
+		//return since we have no target
+		if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+			return;
+
+		//m_uiKineloryBearForm_Timer
+		if (m_uiKineloryBearForm_Timer <= uiDiff)
+		{
+			DoCastSpellIfCan(m_creature, SPELL_KINELORY_BEAR_FORM);
+			m_uiKineloryBearForm_Timer = urand(30000, 38000);
+		}
+			else m_uiKineloryBearForm_Timer -= uiDiff;
+
+		//m_uiRejuvenation_Timer
+		if (Unit* pTarget = DoSelectLowestHpFriendly(40.0f, 800.0f))
+		{
+			if (pTarget && !pTarget->HasAura(SPELL_REJUVENATION, EFFECT_INDEX_0))
+				DoCastSpellIfCan(m_creature, SPELL_REJUVENATION);
+		}
+		else if ((m_creature->GetMaxHealth() - 800) < m_creature->GetHealth())
+			if (!m_creature->HasAura(SPELL_REJUVENATION, EFFECT_INDEX_0))
+				DoCastSpellIfCan(m_creature, SPELL_REJUVENATION);
+
+		DoMeleeAttackIfReady();
+	}
+};
+CreatureAI* GetAI_npc_kinelory(Creature* pCreature)
+{
+	return new npc_kineloryAI (pCreature);
+}
+
+bool QuestAccept_npc_kinelory(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+{
+	if (pQuest->GetQuestId() == QUEST_HINTS_OF_A_NEW_PLAGUE_PART4)
+		if (npc_kineloryAI* pEscortAI = dynamic_cast<npc_kineloryAI*>(pCreature->AI()))
+			pEscortAI->Start(true, pPlayer, pQuest, true, false);
+	return true;
+}
+
 void AddSC_arathi_highlands()
 {
-    Script* pNewScript;
+    Script * pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_professor_phizzlethorpe";
-    pNewScript->GetAI = &GetAI_npc_professor_phizzlethorpe;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_professor_phizzlethorpe;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_professor_phizzlethorpe";
+    pNewscript->GetAI = &GetAI_npc_professor_phizzlethorpe;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_professor_phizzlethorpe;
+    pNewscript->RegisterSelf();
+
+	pNewscript = new Script;
+    pNewscript->Name = "npc_kinelory";
+    pNewscript->GetAI = &GetAI_npc_kinelory;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_kinelory;
+    pNewscript->RegisterSelf();
 }

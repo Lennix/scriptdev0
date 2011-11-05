@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,110 +16,114 @@
 
 /* ScriptData
 SDName: boss_postmaster_malown
-SD%Complete: 50
+SD%Complete: 90
 SDComment:
 SDCategory: Stratholme
 EndScriptData */
 
 #include "precompiled.h"
+#include "stratholme.h" 
 
-//Spell ID to summon this guy is 24627 "Summon Postmaster Malown"
-//He should be spawned along with three other elites once the third postbox has been opened
+enum
+{
+    SAY_AGGRO                   = -1329010,
+    SAY_MALOWNED                = -1329011,
 
-#define SAY_MALOWNED    "You just got MALOWNED!"
-
-#define SPELL_WAILINGDEAD    7713
-#define SPELL_BACKHAND    6253
-#define SPELL_CURSEOFWEAKNESS    8552
-#define SPELL_CURSEOFTONGUES    12889
-#define SPELL_CALLOFTHEGRAVE    17831
+    SPELL_WAILING_DEAD          = 7713,
+    SPELL_BACKHAND              = 6253,
+    SPELL_CURSE_OF_WEAKNESS     = 8552,
+    SPELL_CURSE_OF_TONGUES      = 12889,
+    SPELL_CALL_OF_THE_GRAVE     = 17831
+};
 
 struct MANGOS_DLL_DECL boss_postmaster_malownAI : public ScriptedAI
 {
     boss_postmaster_malownAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 WailingDead_Timer;
-    uint32 Backhand_Timer;
-    uint32 CurseOfWeakness_Timer;
-    uint32 CurseOfTongues_Timer;
-    uint32 CallOfTheGrave_Timer;
-    bool HasYelled;
+    bool m_bHasYelled;
+    uint32 m_uiBackhandTimer;
+    uint32 m_uiCallOfTheGraveTimer;
+    uint32 m_uiCurseOfWeaknessTimer;
+    uint32 m_uiCurseOfTonguesTimer;
+    uint32 m_uiWailingDeadTimer;
 
     void Reset()
     {
-        WailingDead_Timer = 19000; //lasts 6 sec
-        Backhand_Timer = 8000; //2 sec stun
-        CurseOfWeakness_Timer = 20000; //lasts 2 mins
-        CurseOfTongues_Timer = 22000;
-        CallOfTheGrave_Timer = 25000;
-        HasYelled = false;
+        m_bHasYelled = false;
+        m_uiBackhandTimer = urand(4000,6000);
+        m_uiCallOfTheGraveTimer = urand(25000,28000);
+        m_uiCurseOfWeaknessTimer = urand(15000,18000);
+        m_uiCurseOfTonguesTimer = urand(21000,23000);
+        m_uiWailingDeadTimer = urand(10000,12000);
     }
 
-    void UpdateAI(const uint32 diff)
+    void JustReachedHome()
     {
-        //Return since we have no target
+        m_creature->RemoveFromWorld();
+    }
+
+    void Aggro(Unit* /*pWho*/)
+    {
+        DoScriptText(SAY_AGGRO, m_creature);
+    }
+
+    void KilledUnit(Unit* pVictim)
+    {
+        DoScriptText(SAY_MALOWNED, m_creature);
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //WailingDead
-        if (WailingDead_Timer < diff)
+        // Backhand spell
+        if (m_uiBackhandTimer <= uiDiff)
         {
-            //Cast
-            if (rand()%100 < 65) //65% chance to cast
-            {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_WAILINGDEAD);
-            }
-            //19 seconds until we should cast this again
-            WailingDead_Timer = 19000;
-        }else WailingDead_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_BACKHAND);
+            m_uiBackhandTimer = urand(4000,8000);
+        }
+        else
+            m_uiBackhandTimer -= uiDiff;
 
-        //Backhand
-        if (Backhand_Timer < diff)
+        // Call Of The Grave spell
+        if (m_uiCallOfTheGraveTimer <= uiDiff)
         {
-            //Cast
-            if (rand()%100 < 45) //45% chance to cast
-            {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_BACKHAND);
-            }
-            //8 seconds until we should cast this again
-            Backhand_Timer = 8000;
-        }else Backhand_Timer -= diff;
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                DoCastSpellIfCan(pTarget, SPELL_CALL_OF_THE_GRAVE);
+            m_uiCallOfTheGraveTimer = urand(20000,25000);
+        }
+        else
+            m_uiCallOfTheGraveTimer -= uiDiff;
 
-        //CurseOfWeakness
-        if (CurseOfWeakness_Timer < diff)
+        // Curse Of Weakness spell
+        if (m_uiCurseOfWeaknessTimer <= uiDiff)
         {
-            //Cast
-            if (rand()%100 < 3) //3% chance to cast
-            {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_CURSEOFWEAKNESS);
-            }
-            //20 seconds until we should cast this again
-            CurseOfWeakness_Timer = 20000;
-        }else CurseOfWeakness_Timer -= diff;
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                DoCastSpellIfCan(pTarget, SPELL_CURSE_OF_WEAKNESS);
+            m_uiCurseOfWeaknessTimer = urand(20000,25000);
+        }
+        else
+            m_uiCurseOfWeaknessTimer -= uiDiff;
 
-        //CurseOfTongues
-        if (CurseOfTongues_Timer < diff)
+        // Curse Of Tongues spell
+        if (m_uiCurseOfTonguesTimer <= uiDiff)
         {
-            //Cast
-            if (rand()%100 < 3) //3% chance to cast
-            {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_CURSEOFTONGUES);
-            }
-            //22 seconds until we should cast this again
-            CurseOfTongues_Timer = 22000;
-        }else CurseOfTongues_Timer -= diff;
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                DoCastSpellIfCan(pTarget, SPELL_CURSE_OF_TONGUES);
+            m_uiCurseOfTonguesTimer = urand(20000,25000);
+        }
+        else
+            m_uiCurseOfTonguesTimer -= uiDiff;
 
-        //CallOfTheGrave
-        if (CallOfTheGrave_Timer < diff)
+        // Wailing Dead spell
+        if (m_uiWailingDeadTimer <= uiDiff)
         {
-            //Cast
-            if (rand()%100 < 5) //5% chance to cast
-            {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_CALLOFTHEGRAVE);
-            }
-            //25 seconds until we should cast this again
-            CallOfTheGrave_Timer = 25000;
-        }else CallOfTheGrave_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_WAILING_DEAD);
+            m_uiWailingDeadTimer = urand(15000,20000);
+        }
+        else
+            m_uiWailingDeadTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -134,9 +135,10 @@ CreatureAI* GetAI_boss_postmaster_malown(Creature* pCreature)
 
 void AddSC_boss_postmaster_malown()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_postmaster_malown";
-    newscript->GetAI = &GetAI_boss_postmaster_malown;
-    newscript->RegisterSelf();
+    Script* pNewscript;
+
+    pNewscript = new Script;
+    pNewscript->Name = "boss_postmaster_malown";
+    pNewscript->GetAI = &GetAI_boss_postmaster_malown;
+    pNewscript->RegisterSelf();
 }

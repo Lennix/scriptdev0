@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,43 +17,39 @@
 /* ScriptData
 SDName: Boss_Dathrohan_Balnazzar
 SD%Complete: 95
-SDComment: Possibly need to fix/improve summons after death
+SDComment:
 SDCategory: Stratholme
 EndScriptData */
 
 #include "precompiled.h"
+#include "stratholme.h"
 
 enum
 {
-    SAY_AGGRO                       = -1329016,
-    SAY_TRANSFORM                   = -1329017,
-    SAY_DEATH                       = -1329018,
+    SAY_AGGRO                       = -1329017,
+    SAY_TRANSFORM                   = -1329018,
+    SAY_DEATH                       = -1329019,
 
     //Dathrohan spells
-    SPELL_CRUSADERSHAMMER           = 17286,                //AOE stun
-    SPELL_CRUSADERSTRIKE            = 17281,
-    SPELL_HOLYSTRIKE                = 17284,                //weapon dmg +3
+    SPELL_CRUSADERS_HAMMER          = 17286,
+    SPELL_CRUSADER_STRIKE           = 17281,
+    SPELL_HOLY_STRIKE               = 17284,
 
     //Transform
-    SPELL_BALNAZZARTRANSFORM        = 17288,                //restore full HP/mana, trigger spell Balnazzar Transform Stun
+    SPELL_BALNAZZAR_TRANSFORM       = 17288,                //restore full HP/mana, trigger spell Balnazzar Transform Stun
 
     //Balnazzar spells
-    SPELL_SHADOWSHOCK               = 17399,
-    SPELL_MINDBLAST                 = 17287,
-    SPELL_PSYCHICSCREAM             = 13704,
+    SPELL_SHADOW_SHOCK              = 17399,
+    SPELL_MIND_BLAST                = 17287,
+    SPELL_PSYCHIC_SCREAM            = 13704,
     SPELL_SLEEP                     = 12098,
-    SPELL_MINDCONTROL               = 15690,
-
-    NPC_DATHROHAN                   = 10812,
-    NPC_BALNAZZAR                   = 10813,
-    NPC_SKELETAL_GUARDIAN           = 10390,
-    NPC_SKELETAL_BERSERKER          = 10391
+    SPELL_MIND_CONTROL              = 15690
 };
 
 struct SummonDef
 {
     uint32 m_uiEntry;
-    float m_fX, m_fY, m_fZ, m_fOrient;
+    float fX, fY, fZ, fO;
 };
 
 SummonDef m_aSummonPoint[]=
@@ -64,13 +57,10 @@ SummonDef m_aSummonPoint[]=
     {NPC_SKELETAL_BERSERKER, 3460.356f, -3070.572f, 135.086f, 0.332f},
     {NPC_SKELETAL_BERSERKER, 3465.289f, -3069.987f, 135.086f, 5.480f},
     {NPC_SKELETAL_BERSERKER, 3463.616f, -3074.912f, 135.086f, 5.009f},
-
     {NPC_SKELETAL_GUARDIAN, 3460.012f, -3076.041f, 135.086f, 1.187f},
     {NPC_SKELETAL_GUARDIAN, 3467.909f, -3076.401f, 135.086f, 3.770f},
-
     {NPC_SKELETAL_BERSERKER, 3509.269f, -3066.474f, 135.080f, 4.817f},
     {NPC_SKELETAL_BERSERKER, 3510.966f, -3069.011f, 135.080f, 3.491f},
-
     {NPC_SKELETAL_GUARDIAN, 3516.042f, -3066.873f, 135.080f, 3.997f},
     {NPC_SKELETAL_GUARDIAN, 3513.561f, -3063.027f, 135.080f, 2.356f},
     {NPC_SKELETAL_GUARDIAN, 3518.825f, -3060.926f, 135.080f, 3.944f}
@@ -80,31 +70,27 @@ struct MANGOS_DLL_DECL boss_dathrohan_balnazzarAI : public ScriptedAI
 {
     boss_dathrohan_balnazzarAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 m_uiCrusadersHammer_Timer;
-    uint32 m_uiCrusaderStrike_Timer;
-    uint32 m_uiMindBlast_Timer;
-    uint32 m_uiHolyStrike_Timer;
-    uint32 m_uiShadowShock_Timer;
-    uint32 m_uiPsychicScream_Timer;
-    uint32 m_uiDeepSleep_Timer;
-    uint32 m_uiMindControl_Timer;
     bool m_bTransformed;
+    uint32 m_uiCrusadersHammerTimer;
+    uint32 m_uiCrusaderStrikeTimer;
+    uint32 m_uiMindBlastTimer;
+    uint32 m_uiHolyStrikeTimer;
+    uint32 m_uiShadowShockTimer;
+    uint32 m_uiPsychicScreamTimer;
+    uint32 m_uiDeepSleepTimer;
+    uint32 m_uiMindControlTimer;
 
     void Reset()
     {
-        m_uiCrusadersHammer_Timer = 8000;
-        m_uiCrusaderStrike_Timer = 12000;
-        m_uiMindBlast_Timer = 6000;
-        m_uiHolyStrike_Timer = 18000;
-        m_uiShadowShock_Timer = 4000;
-        m_uiPsychicScream_Timer = 16000;
-        m_uiDeepSleep_Timer = 20000;
-        m_uiMindControl_Timer = 10000;
         m_bTransformed = false;
-
-        if (m_creature->GetEntry() == NPC_BALNAZZAR)
-            m_creature->UpdateEntry(NPC_DATHROHAN);
-
+        m_uiCrusadersHammerTimer = urand(3000,6000);
+        m_uiCrusaderStrikeTimer = urand(9000,11000);
+        m_uiMindBlastTimer = urand(1000,2000);
+        m_uiHolyStrikeTimer = urand(14000,17000);
+        m_uiShadowShockTimer = (4000,6000);
+        m_uiPsychicScreamTimer = urand(15000,18000);
+        m_uiDeepSleepTimer = urand(20000,25000);
+        m_uiMindControlTimer = urand(10000,12000);
     }
 
     void Aggro(Unit* pWho)
@@ -112,16 +98,23 @@ struct MANGOS_DLL_DECL boss_dathrohan_balnazzarAI : public ScriptedAI
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
-    void JustDied(Unit* Victim)
+    void JustReachedHome()
+    {
+        if (m_creature->GetEntry() == NPC_BALNAZZAR)
+            m_creature->UpdateEntry(NPC_DATHROHAN);
+    }
+
+    void JustDied(Unit* /*pKiller*/)
     {
         DoScriptText(SAY_DEATH, m_creature);
 
+        // it appears that dynflags are not properly assigned after calling UpdateEntry(), do it manually
+        m_creature->SetFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE | UNIT_DYNFLAG_TAPPED);
+
         static uint32 uiCount = sizeof(m_aSummonPoint)/sizeof(SummonDef);
 
-        for (uint32 i = 0; i < uiCount; ++i)
-            m_creature->SummonCreature(m_aSummonPoint[i].m_uiEntry,
-            m_aSummonPoint[i].m_fX, m_aSummonPoint[i].m_fY, m_aSummonPoint[i].m_fZ, m_aSummonPoint[i].m_fOrient,
-            TEMPSUMMON_TIMED_DESPAWN, HOUR*IN_MILLISECONDS);
+        for(uint8 i = 0; i < uiCount; ++i)
+            m_creature->SummonCreature(m_aSummonPoint[i].m_uiEntry, m_aSummonPoint[i].fX, m_aSummonPoint[i].fY, m_aSummonPoint[i].fZ, m_aSummonPoint[i].fO, TEMPSUMMON_DEAD_DESPAWN, 1000);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -129,42 +122,50 @@ struct MANGOS_DLL_DECL boss_dathrohan_balnazzarAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //START NOT TRANSFORMED
+        // START NOT TRANSFORMED
         if (!m_bTransformed)
         {
-            //MindBlast
-            if (m_uiMindBlast_Timer < uiDiff)
+            // Mind Blast spell
+            if (m_uiMindBlastTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_MINDBLAST);
-                m_uiMindBlast_Timer = urand(15000, 20000);
-            }else m_uiMindBlast_Timer -= uiDiff;
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_MIND_BLAST);
+                m_uiMindBlastTimer = urand(10000,15000);
+            }
+            else
+                m_uiMindBlastTimer -= uiDiff;
 
-            //CrusadersHammer
-            if (m_uiCrusadersHammer_Timer < uiDiff)
+            // Crusader's Hammer spell
+            if (m_uiCrusadersHammerTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_CRUSADERSHAMMER);
-                m_uiCrusadersHammer_Timer = 12000;
-            }else m_uiCrusadersHammer_Timer -= uiDiff;
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_CRUSADERS_HAMMER);
+                m_uiCrusadersHammerTimer = urand(10000,12000);
+            }
+            else
+                m_uiCrusadersHammerTimer -= uiDiff;
 
-            //CrusaderStrike
-            if (m_uiCrusaderStrike_Timer < uiDiff)
+            // Crusader Strike spell
+            if (m_uiCrusaderStrikeTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_CRUSADERSTRIKE);
-                m_uiCrusaderStrike_Timer = 15000;
-            }else m_uiCrusaderStrike_Timer -= uiDiff;
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_CRUSADER_STRIKE);
+                m_uiCrusaderStrikeTimer = urand(10000,15000);
+            }
+            else
+                m_uiCrusaderStrikeTimer -= uiDiff;
 
-            //HolyStrike
-            if (m_uiHolyStrike_Timer < uiDiff)
+            // Holy Strike spell
+            if (m_uiHolyStrikeTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_HOLYSTRIKE);
-                m_uiHolyStrike_Timer = 15000;
-            }else m_uiHolyStrike_Timer -= uiDiff;
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_HOLY_STRIKE);
+                m_uiHolyStrikeTimer = urand(10000,15000);
+            }
+            else
+                m_uiHolyStrikeTimer -= uiDiff;
 
-            //BalnazzarTransform
-            if (m_creature->GetHealthPercent() < 40.0f)
+            // Balnazzar Transform
+            if (HealthBelowPct(40))
             {
                 //restore hp, mana and stun
-                if (DoCastSpellIfCan(m_creature, SPELL_BALNAZZARTRANSFORM) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature, SPELL_BALNAZZAR_TRANSFORM, CAST_INTERRUPT_PREVIOUS + CAST_TRIGGERED) == CAST_OK)
                 {
                     m_creature->UpdateEntry(NPC_BALNAZZAR);
                     DoScriptText(SAY_TRANSFORM, m_creature);
@@ -174,44 +175,54 @@ struct MANGOS_DLL_DECL boss_dathrohan_balnazzarAI : public ScriptedAI
         }
         else
         {
-            //MindBlast
-            if (m_uiMindBlast_Timer < uiDiff)
+            // Mind Blast spell
+            if (m_uiMindBlastTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_MINDBLAST);
-                m_uiMindBlast_Timer = urand(15000, 20000);
-            }else m_uiMindBlast_Timer -= uiDiff;
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_MIND_BLAST);
+                m_uiMindBlastTimer = urand(8000,12000);
+            }
+            else
+                m_uiMindBlastTimer -= uiDiff;
 
-            //ShadowShock
-            if (m_uiShadowShock_Timer < uiDiff)
+            // Shadow Shock spell
+            if (m_uiShadowShockTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_SHADOWSHOCK);
-                m_uiShadowShock_Timer = 11000;
-            }else m_uiShadowShock_Timer -= uiDiff;
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOW_SHOCK);
+                m_uiShadowShockTimer = urand(9000,11000);
+            }
+            else
+                m_uiShadowShockTimer -= uiDiff;
 
-            //PsychicScream
-            if (m_uiPsychicScream_Timer < uiDiff)
+            // Psychic Scream spell
+            if (m_uiPsychicScreamTimer <= uiDiff)
             {
                 if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
-                    DoCastSpellIfCan(pTarget,SPELL_PSYCHICSCREAM);
+                    DoCastSpellIfCan(pTarget, SPELL_PSYCHIC_SCREAM);
 
-                m_uiPsychicScream_Timer = 20000;
-            }else m_uiPsychicScream_Timer -= uiDiff;
+                m_uiPsychicScreamTimer = urand(15000,20000);
+            }
+            else
+                m_uiPsychicScreamTimer -= uiDiff;
 
-            //DeepSleep
-            if (m_uiDeepSleep_Timer < uiDiff)
+            // Sleep spell
+            if (m_uiDeepSleepTimer <= uiDiff)
             {
                 if (Unit *pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
-                    DoCastSpellIfCan(pTarget,SPELL_SLEEP);
+                    DoCastSpellIfCan(pTarget, SPELL_SLEEP);
 
-                m_uiDeepSleep_Timer = 15000;
-            }else m_uiDeepSleep_Timer -= uiDiff;
+                m_uiDeepSleepTimer = urand(12000,16000);
+            }
+            else
+                m_uiDeepSleepTimer -= uiDiff;
 
-            //MindControl
-            if (m_uiMindControl_Timer < uiDiff)
+            // Mind Control spell
+            if (m_uiMindControlTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_MINDCONTROL);
-                m_uiMindControl_Timer = 15000;
-            }else m_uiMindControl_Timer -= uiDiff;
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_MIND_CONTROL);
+                m_uiMindControlTimer = urand(12000,16000);
+            }
+            else
+                m_uiMindControlTimer -= uiDiff;
         }
 
         DoMeleeAttackIfReady();
@@ -225,9 +236,10 @@ CreatureAI* GetAI_boss_dathrohan_balnazzar(Creature* pCreature)
 
 void AddSC_boss_dathrohan_balnazzar()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_dathrohan_balnazzar";
-    newscript->GetAI = &GetAI_boss_dathrohan_balnazzar;
-    newscript->RegisterSelf();
+    Script* pNewscript;
+
+    pNewscript = new Script;
+    pNewscript->Name = "boss_dathrohan_balnazzar";
+    pNewscript->GetAI = &GetAI_boss_dathrohan_balnazzar;
+    pNewscript->RegisterSelf();
 }

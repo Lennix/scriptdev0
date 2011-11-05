@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,7 +17,7 @@
 /* ScriptData
 SDName: Boss_Houndmaster_Loksey
 SD%Complete: 100
-SDComment: TODO: if this guy not involved in some special event, remove (and let ACID script)
+SDComment:
 SDCategory: Scarlet Monastery
 EndScriptData */
 
@@ -29,7 +26,7 @@ EndScriptData */
 enum
 {
     SAY_AGGRO                       = -1189021,
-    SPELL_SUMMONSCARLETHOUND        = 17164,
+    SPELL_SUMMON_SCARLET_HOUND        = 17164,
     SPELL_BLOODLUST                 = 6742
 };
 
@@ -37,29 +34,31 @@ struct MANGOS_DLL_DECL boss_houndmaster_lokseyAI : public ScriptedAI
 {
     boss_houndmaster_lokseyAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 BloodLust_Timer;
+    uint32 m_uiBloodLustTimer;
 
     void Reset()
     {
-        BloodLust_Timer = 20000;
+        m_uiBloodLustTimer = 20000;
     }
 
-    void Aggro(Unit *who)
+    void Aggro(Unit* /*pWho*/)
     {
         DoScriptText(SAY_AGGRO, m_creature);
-        DoCastSpellIfCan(m_creature,SPELL_SUMMONSCARLETHOUND);
+        DoCastSpellIfCan(m_creature, SPELL_SUMMON_SCARLET_HOUND);
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        if (BloodLust_Timer < diff)
+        if (m_uiBloodLustTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature,SPELL_BLOODLUST);
-            BloodLust_Timer = 20000;
-        }else BloodLust_Timer -= diff;
+            DoCastSpellIfCan(m_creature, SPELL_BLOODLUST);
+            m_uiBloodLustTimer = 20000;
+        }
+        else 
+            m_uiBloodLustTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -72,9 +71,9 @@ CreatureAI* GetAI_boss_houndmaster_loksey(Creature* pCreature)
 
 void AddSC_boss_houndmaster_loksey()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_houndmaster_loksey";
-    newscript->GetAI = &GetAI_boss_houndmaster_loksey;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+    pNewScript = new Script;
+    pNewScript->Name = "boss_houndmaster_loksey";
+    pNewScript->GetAI = &GetAI_boss_houndmaster_loksey;
+    pNewScript->RegisterSelf();
 }

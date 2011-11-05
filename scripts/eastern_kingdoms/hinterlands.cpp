@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,13 +17,15 @@
 /* ScriptData
 SDName: Hinterlands
 SD%Complete: 100
-SDComment: Quest support: 836, 2742
+SDComment: Quest support: 863, 2742
 SDCategory: The Hinterlands
 EndScriptData */
 
 /* ContentData
 npc_00x09hl
 npc_rinji
+mob_vilebranch_kidnapper
+go_lard_picnic_basket
 EndContentData */
 
 #include "precompiled.h"
@@ -38,16 +37,16 @@ EndContentData */
 
 enum
 {
-    SAY_OOX_START         = -1000287,
-    SAY_OOX_AGGRO1        = -1000288,
-    SAY_OOX_AGGRO2        = -1000289,
-    SAY_OOX_AMBUSH        = -1000290,
-    SAY_OOX_END           = -1000292,
+    SAY_OOX_START           = -1000287,
+    SAY_OOX_AGGRO1          = -1000288,
+    SAY_OOX_AGGRO2          = -1000289,
+    SAY_OOX_AMBUSH          = -1000290,
+    SAY_OOX_END             = -1000292,
 
-    QUEST_RESQUE_OOX_09   = 836,
+    QUEST_RESQUE_OOX_09     = 836,
 
-    NPC_MARAUDING_OWL     = 7808,
-    NPC_VILE_AMBUSHER     = 7809
+    NPC_MARAUDING_OWL       = 7808,
+    NPC_VILE_AMBUSHER       = 7809
 };
 
 struct MANGOS_DLL_DECL npc_00x09hlAI : public npc_escortAI
@@ -146,18 +145,18 @@ CreatureAI* GetAI_npc_00x09hl(Creature* pCreature)
 
 enum
 {
-    SAY_RIN_FREE           = -1000403,
-    SAY_RIN_BY_OUTRUNNER   = -1000404,
-    SAY_RIN_HELP_1         = -1000405,
-    SAY_RIN_HELP_2         = -1000406,
-    SAY_RIN_COMPLETE       = -1000407,
-    SAY_RIN_PROGRESS_1     = -1000408,
-    SAY_RIN_PROGRESS_2     = -1000409,
+    SAY_RIN_FREE            = -1000403,
+    SAY_RIN_BY_OUTRUNNER    = -1000404,
+    SAY_RIN_HELP_1          = -1000405,
+    SAY_RIN_HELP_2          = -1000406,
+    SAY_RIN_COMPLETE        = -1000407,
+    SAY_RIN_PROGRESS_1      = -1000408,
+    SAY_RIN_PROGRESS_2      = -1000409,
 
-    QUEST_RINJI_TRAPPED    = 2742,
-    NPC_RANGER             = 2694,
-    NPC_OUTRUNNER          = 2691,
-    GO_RINJI_CAGE          = 142036
+    QUEST_RINJI_TRAPPED     = 2742,
+    NPC_RANGER              = 2694,
+    NPC_OUTRUNNER           = 2691,
+    GO_RINJI_CAGE           = 142036
 };
 
 struct Location
@@ -167,13 +166,13 @@ struct Location
 
 Location m_afAmbushSpawn[] =
 {
-    {191.29620f, -2839.329346f, 107.388f},
-    {70.972466f, -2848.674805f, 109.459f}
+    {191.296204f, -2839.329346f, 107.388f},
+    {70.972466f,  -2848.674805f, 109.459f}
 };
 
 Location m_afAmbushMoveTo[] =
 {
-    {166.63038f, -2824.780273f, 108.153f},
+    {166.630386f, -2824.780273f, 108.153f},
     {70.886589f,  -2874.335449f, 116.675f}
 };
 
@@ -333,19 +332,100 @@ CreatureAI* GetAI_npc_rinji(Creature* pCreature)
     return new npc_rinjiAI(pCreature);
 }
 
+/*######
+## mob_vilebranch_kidnapper
+######*/
+
+#define SPELL_EXECUTE 7160
+
+struct MANGOS_DLL_DECL mob_vilebranch_kidnapperAI : public ScriptedAI
+{
+	mob_vilebranch_kidnapperAI(Creature* pCreature) : ScriptedAI(pCreature)
+	{Reset();}
+
+	uint32 m_uiExecute_Timer;
+
+	void Reset()
+	{
+		m_uiExecute_Timer = 2000;
+	}
+
+	void UpdateAI(const uint32 uiDiff)
+	{
+		//return since we have no target
+		if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+			return;
+
+		//if me target have less as 21% HP, execute him
+		Unit* mTarget = m_creature->getVictim();
+		if (((mTarget->GetHealth() * 100) / mTarget->GetMaxHealth()) < 21)
+			if (m_uiExecute_Timer <= uiDiff)
+			{
+				DoCastSpellIfCan(m_creature->getVictim(), SPELL_EXECUTE);
+				m_uiExecute_Timer = 10000;
+			}
+				else m_uiExecute_Timer -= uiDiff;
+
+		DoMeleeAttackIfReady();
+	}
+};
+CreatureAI* GetAI_mob_vilebranch_kidnapper(Creature* pCreature)
+{
+	return new mob_vilebranch_kidnapperAI (pCreature);
+}
+
+/*######
+## go_lard_picnic_basket
+######*/
+
+#define QUEST_LARD_LOST_HIS_LUNCH 7840
+#define NPC_VILEBRANCH_KIDNAPPER  14748
+
+bool GOUse_go_lard_picnic_basket(Player* pPlayer, GameObject* pGo)
+{
+	Creature* Raider[3];
+	for(uint8 i = 0; i < 3; ++i)
+		Raider[i] = NULL;
+
+	if (pPlayer->GetQuestStatus(QUEST_LARD_LOST_HIS_LUNCH) == QUEST_STATUS_INCOMPLETE)
+	{
+		Raider[0] = pGo->SummonCreature(NPC_VILEBRANCH_KIDNAPPER, 412.82f, -4804.24f, 12.32f, 4.52f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+		if (Raider[0]) {Raider[0]->AI()->AttackStart(pPlayer); Raider[0]->SetFloatValue(OBJECT_FIELD_SCALE_X, 0.7f);}
+		Raider[1] = pGo->SummonCreature(NPC_VILEBRANCH_KIDNAPPER, 429.69f, -4822.37f, 14.78f, 3.40f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+		if (Raider[1]) {Raider[1]->AI()->AttackStart(pPlayer); Raider[1]->SetFloatValue(OBJECT_FIELD_SCALE_X, 1.0f);}
+		Raider[2] = pGo->SummonCreature(NPC_VILEBRANCH_KIDNAPPER, 391.45f, -4807.61f, 10.22f, 5.45f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+		if (Raider[2]) {Raider[2]->AI()->AttackStart(pPlayer); Raider[2]->SetFloatValue(OBJECT_FIELD_SCALE_X, 1.3f);}
+
+		debug_log("SD2: Creatures for quest Lard Lost His Lunch summoned and start attacking players.");
+	}
+	return true;
+}
+
+/* AddSC */
+
 void AddSC_hinterlands()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_00x09hl";
-    pNewScript->GetAI = &GetAI_npc_00x09hl;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_00x09hl;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_00x09hl";
+    pNewscript->GetAI = &GetAI_npc_00x09hl;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_00x09hl;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_rinji";
-    pNewScript->GetAI = &GetAI_npc_rinji;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_rinji;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_rinji";
+    pNewscript->GetAI = &GetAI_npc_rinji;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_rinji;
+    pNewscript->RegisterSelf();
+
+    pNewscript = new Script;
+    pNewscript->Name = "mob_vilebranch_kidnapper";
+    pNewscript->GetAI = &GetAI_mob_vilebranch_kidnapper;
+    pNewscript->RegisterSelf();
+
+    pNewscript = new Script;
+    pNewscript->Name = "go_lard_picnic_basket";
+    pNewscript->pGOUse = &GOUse_go_lard_picnic_basket;
+    pNewscript->RegisterSelf();
 }

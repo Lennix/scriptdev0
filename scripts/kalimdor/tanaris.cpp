@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,7 +17,7 @@
 /* ScriptData
 SDName: Tanaris
 SD%Complete: 80
-SDComment: Quest support: 648, 1560, 2954, 4005. Noggenfogger Vendor
+SDComment: Quest support: 648, 1560, 2882, 2954, 4005, 10277, 10279(Special flight path). Noggenfogger vendor
 SDCategory: Tanaris
 EndScriptData */
 
@@ -30,6 +27,8 @@ npc_marin_noggenfogger
 npc_oox17tn
 npc_stone_watcher_of_norgannon
 npc_tooga
+npc_yehkinya
+go_landmark_treasure
 EndContentData */
 
 #include "precompiled.h"
@@ -40,13 +39,10 @@ EndContentData */
 ## mob_aquementas
 ######*/
 
-enum
-{
-    AGGRO_YELL_AQUE     = -1000168,
+#define AGGRO_YELL_AQUE     -1000168
 
-    SPELL_AQUA_JET      = 13586,
-    SPELL_FROST_SHOCK   = 15089
-};
+#define SPELL_AQUA_JET      13586
+#define SPELL_FROST_SHOCK   15089
 
 struct MANGOS_DLL_DECL mob_aquementasAI : public ScriptedAI
 {
@@ -77,10 +73,8 @@ struct MANGOS_DLL_DECL mob_aquementasAI : public ScriptedAI
             ((Player*)receiver)->HasItemCount(11173,1,false) &&
             !((Player*)receiver)->HasItemCount(11522,1,true))
         {
-            ItemPosCountVec dest;
-            uint8 msg = ((Player*)receiver)->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 11522, 1, false);
-            if (msg == EQUIP_ERR_OK)
-                ((Player*)receiver)->StoreNewItem(dest, 11522, 1, true);
+            if (Item* pItem = ((Player*)receiver)->StoreNewItemInInventorySlot(11522, 1))
+                ((Player*)receiver)->SendNewItem(pItem, 1, true, false);
         }
     }
 
@@ -132,6 +126,7 @@ CreatureAI* GetAI_mob_aquementas(Creature* pCreature)
 {
     return new mob_aquementasAI(pCreature);
 }
+
 
 /*######
 ## npc_marin_noggenfogger
@@ -205,7 +200,7 @@ struct MANGOS_DLL_DECL npc_oox17tnAI : public npc_escortAI
                 m_creature->SummonCreature(NPC_SCOFFLAW, -7488.02f, -4786.56f, 10.67f, 3.74f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000);
                 m_creature->SummonCreature(NPC_SHADOW_MAGE, -7486.41f, -4791.55f, 10.54f, 3.26f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
 
-                if (Creature* pCreature = m_creature->SummonCreature(NPC_SCOFFLAW, -7488.47f, -4800.77f, 9.77f, 2.50f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000))
+                if (Creature* pCreature = m_creature->SummonCreature(NPC_SCOFFLAW, -7488.47f, -4800.77f, 9.77f, 2.50f,TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000))
                     DoScriptText(SAY_OOX17_AMBUSH_REPLY,pCreature);
 
                 break;
@@ -322,19 +317,19 @@ bool GossipSelect_npc_stone_watcher_of_norgannon(Player* pPlayer, Creature* pCre
 
 enum
 {
-    SAY_TOOG_THIRST     = -1000391,
-    SAY_TOOG_WORRIED    = -1000392,
-    SAY_TOOG_POST_1     = -1000393,
-    SAY_TORT_POST_2     = -1000394,
-    SAY_TOOG_POST_3     = -1000395,
-    SAY_TORT_POST_4     = -1000396,
-    SAY_TOOG_POST_5     = -1000397,
-    SAY_TORT_POST_6     = -1000398,
+    SAY_TOOG_THIRST             = -1000391,
+    SAY_TOOG_WORRIED            = -1000392,
+    SAY_TOOG_POST_1             = -1000393,
+    SAY_TORT_POST_2             = -1000394,
+    SAY_TOOG_POST_3             = -1000395,
+    SAY_TORT_POST_4             = -1000396,
+    SAY_TOOG_POST_5             = -1000397,
+    SAY_TORT_POST_6             = -1000398,
 
-    QUEST_TOOGA         = 1560,
-    NPC_TORTA           = 6015,
+    QUEST_TOOGA                 = 1560,
+    NPC_TORTA                   = 6015,
 
-    POINT_ID_TO_WATER   = 1
+    POINT_ID_TO_WATER           = 1
 };
 
 const float m_afToWaterLoc[] = {-7032.664551f, -4906.199219f, -1.606446f};
@@ -476,90 +471,133 @@ bool QuestAccept_npc_tooga(Player* pPlayer, Creature* pCreature, const Quest* pQ
 }
 
 /*######
-## npc_mux_manascrambler
+## npc_yehkinya
 ######*/
 
-enum
+#define GOSSIP_SCROLL     "I'd like to be able to perform the ritual again."
+
+enum eYehkinya
 {
-    QUEST_IN_SEARCH_OF_ANTHION_A  = 8929,
-    QUEST_IN_SEARCH_OF_ANTHION_H  = 8930,
-
-    ITEM_GHOST_REVEALER           = 22115,
-
-    SPELL_CREATE_REVEALER         = 27754
+    SPELL_CREATE_ITEM_YEHKINYAS_SCROLL    = 12998,
+    ITEM_YEHKINYAS_SCROLL                 = 10818,
+    QUEST_THE_GOD_HAKKAR                  = 3528
 };
 
-bool GossipHello_npc_mux_manascrambler(Player* pPlayer, Creature* pCreature)
+bool GossipHello_npc_yehkinya(Player* pPlayer, Creature* pCreature)
 {
     if (pCreature->isQuestGiver())
         pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
 
-    // TODO: More strict checks are possible. Need to do some research to be sure when this option should be available.
-    if ((pPlayer->IsActiveQuest(QUEST_IN_SEARCH_OF_ANTHION_A) || pPlayer->IsActiveQuest(QUEST_IN_SEARCH_OF_ANTHION_H))
-        && !pPlayer->HasItemCount(ITEM_GHOST_REVEALER, 1))
-        // TODO: Get the correct gossip text, afterwards move this to database.
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "[PH] I have lost my Extra-Dimensional Ghost Revealer. Could you give me one more?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
+    if (!pPlayer->HasItemCount(ITEM_YEHKINYAS_SCROLL, 1, true) && pPlayer->GetQuestRewardStatus(QUEST_THE_GOD_HAKKAR))
+        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_SCROLL, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
 
     pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
 
     return true;
 }
 
-bool GossipSelect_npc_mux_manascrambler(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
+bool GossipSelect_npc_yehkinya(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
 {
-    if (uiAction != GOSSIP_ACTION_INFO_DEF)
-        return true;
-
-    int32 uiRequiredMoney = 50000; // TODO: Possible differnt amount of money required, or even no money is required.
-    if (pPlayer->GetMoney() >= uint32(uiRequiredMoney))
+    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
     {
-        pPlayer->ModifyMoney(-uiRequiredMoney);
-        pCreature->CastSpell(pPlayer, SPELL_CREATE_REVEALER, true);
+        pPlayer->CLOSE_GOSSIP_MENU();
+        pCreature->CastSpell(pPlayer, SPELL_CREATE_ITEM_YEHKINYAS_SCROLL, false);
     }
-    else
-        pPlayer->SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, pCreature, 0, 0);
 
-    pPlayer->CLOSE_GOSSIP_MENU(); // TODO: May the creature show up some gossip menu.
-    return true;                  //       Need to get the right here and because of this
-                                  //       the menu closing should be removed.
+    return true;
 }
+
+/*######
+## go_landmark_treasure
+######*/
+
+enum eGold
+{
+    NPC_BUCCANEER         = 7902,
+    NPC_PIRATE            = 7899,
+    NPC_SWASHBUCKLER      = 7901,
+    QUEST_CUERGOS_GOLD    = 2882,
+    GO_TREASURE           = 142194,
+    MAX_PIRATE            = 6
+};
+
+static float Point[6][3] = 
+{
+    {-10117.2f,-4083.79f,4.09952f},
+    {-10134.6f,-4090.37f,2.61774f},
+    {-10148.5f,-4083.61f,2.12749f},
+    {-10159.1f,-4063.23f,3.00599f},
+    {-10160.4f,-4049.66f,3.04275f},
+    {-10156.3f,-4031.97f,3.6349f}
+};
+
+bool GOUse_go_landmark_treasure(Player *pPlayer, GameObject* pGo)
+{
+    if (pPlayer->GetQuestStatus(QUEST_CUERGOS_GOLD) == QUEST_STATUS_INCOMPLETE)
+    {
+        uint32 Entry;
+        for(uint32 i = 0; i < MAX_PIRATE; ++i)
+        {
+            switch (urand(0,2))
+            {
+                case 0:
+                    Entry = NPC_PIRATE;
+                  break;
+                case 1:
+                    Entry = NPC_SWASHBUCKLER;
+                    break;
+                case 2:
+                    Entry = NPC_BUCCANEER;
+                    break;
+            }
+            if (Creature* Spawn = pPlayer->SummonCreature(Entry, -10038.2f, -4032.07f, 17.8228f, 3.42121f, TEMPSUMMON_TIMED_DESPAWN, 340000))
+                Spawn->GetMotionMaster()->MovePoint(0, Point[i][0], Point[i][1], Point[i][2]);
+        }
+    }
+    return true;
+};
 
 void AddSC_tanaris()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "mob_aquementas";
-    pNewScript->GetAI = &GetAI_mob_aquementas;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "mob_aquementas";
+    pNewscript->GetAI = &GetAI_mob_aquementas;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_marin_noggenfogger";
-    pNewScript->pGossipHello = &GossipHello_npc_marin_noggenfogger;
-    pNewScript->pGossipSelect = &GossipSelect_npc_marin_noggenfogger;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_marin_noggenfogger";
+    pNewscript->pGossipHello =  &GossipHello_npc_marin_noggenfogger;
+    pNewscript->pGossipSelect = &GossipSelect_npc_marin_noggenfogger;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_oox17tn";
-    pNewScript->GetAI = &GetAI_npc_oox17tn;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_oox17tn;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_oox17tn";
+    pNewscript->GetAI = &GetAI_npc_oox17tn;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_oox17tn;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_stone_watcher_of_norgannon";
-    pNewScript->pGossipHello = &GossipHello_npc_stone_watcher_of_norgannon;
-    pNewScript->pGossipSelect = &GossipSelect_npc_stone_watcher_of_norgannon;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_stone_watcher_of_norgannon";
+    pNewscript->pGossipHello =  &GossipHello_npc_stone_watcher_of_norgannon;
+    pNewscript->pGossipSelect = &GossipSelect_npc_stone_watcher_of_norgannon;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_tooga";
-    pNewScript->GetAI = &GetAI_npc_tooga;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_tooga;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_tooga";
+    pNewscript->GetAI = &GetAI_npc_tooga;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_tooga;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_mux_manascrambler";
-    pNewScript->pGossipHello = &GossipHello_npc_mux_manascrambler;
-    pNewScript->pGossipSelect = &GossipSelect_npc_mux_manascrambler;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_yehkinya";
+    pNewscript->pGossipHello =  &GossipHello_npc_yehkinya;
+    pNewscript->pGossipSelect = &GossipSelect_npc_yehkinya;
+    pNewscript->RegisterSelf();
+
+    pNewscript = new Script;
+    pNewscript->Name = "go_landmark_treasure";
+    pNewscript->pGOUse = &GOUse_go_landmark_treasure;
+    pNewscript->RegisterSelf();
 }

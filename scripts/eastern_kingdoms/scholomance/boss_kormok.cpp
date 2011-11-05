@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -25,117 +22,139 @@ SDCategory: Scholomance
 EndScriptData */
 
 #include "precompiled.h"
+#include "scholomance.h"
 
-#define SPELL_SHADOWBOLTVOLLEY      20741
-#define SPELL_BONESHIELD            27688
+enum Spells
+{
+    SPELL_BLOODLUST                 = 27689,
+    SPELL_BONE_SHIELD               = 27688,
+    SPELL_FRENZY                    = 8269,
+    SPELL_SHADOW_BOLT_VOLLEY        = 17228,
+};
 
 struct MANGOS_DLL_DECL boss_kormokAI : public ScriptedAI
 {
-    boss_kormokAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    boss_kormokAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_pInstance = (instance_scholomance*)pCreature->GetInstanceData();
+        Reset();
+    }
 
-    uint32 ShadowVolley_Timer;
-    uint32 BoneShield_Timer;
-    uint32 Minion_Timer;
-    uint32 Mage_Timer;
-    bool Mages;
-    int Rand1;
-    int Rand1X;
-    int Rand1Y;
-    int Rand2;
-    int Rand2X;
-    int Rand2Y;
-    Creature* SummonedMinions;
-    Creature* SummonedMages;
+    instance_scholomance* m_pInstance;
+
+    bool m_bMages;
+    uint32 m_uiBloodLustTimer;
+    uint32 m_uiBoneShieldTimer;
+    uint32 m_uiFrenzyTimer;
+    uint32 m_uiMinionTimer;
+    uint32 m_uiShadowVolleyTimer;
 
     void Reset()
     {
-        ShadowVolley_Timer = 10000;
-        BoneShield_Timer = 2000;
-        Minion_Timer = 15000;
-        Mage_Timer = 0;
-        Mages = false;
+        m_bMages = false;
+        m_uiBloodLustTimer = urand(15000,20000);
+        m_uiBoneShieldTimer = urand(4000,6000);
+        m_uiFrenzyTimer = 0;
+        m_uiMinionTimer = 15000;
+        m_uiShadowVolleyTimer = urand(8000,12000);
     }
 
-    void SummonMinion(Unit* victim)
+    void JustReachedHome()
     {
-        Rand1 = rand()%8;
-        switch(urand(0, 1))
-        {
-            case 0: Rand1X = 0 - Rand1; break;
-            case 1: Rand1X = 0 + Rand1; break;
-        }
-        Rand1 = 0;
-        Rand1 = rand()%8;
-        switch(urand(0, 1))
-        {
-            case 0: Rand1Y = 0 - Rand1; break;
-            case 1: Rand1Y = 0 + Rand1; break;
-        }
-        Rand1 = 0;
-        SummonedMinions = DoSpawnCreature(16119, Rand1X, Rand1Y, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 120000);
-        if (SummonedMinions)
-            SummonedMinions->AI()->AttackStart(victim);
+        m_creature->RemoveFromWorld();
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_KORMOK, NOT_STARTED);
     }
 
-    void SummonMages(Unit* victim)
+    void Aggro(Unit* /*pWho*/)
     {
-        Rand2 = rand()%10;
-        switch(urand(0, 1))
-        {
-            case 0: Rand2X = 0 - Rand2; break;
-            case 1: Rand2X = 0 + Rand2; break;
-        }
-        Rand2 = 0;
-        Rand2 = rand()%10;
-        switch(urand(0, 1))
-        {
-            case 0: Rand2Y = 0 - Rand2; break;
-            case 1: Rand2Y = 0 + Rand2; break;
-        }
-        Rand2 = 0;
-        SummonedMages = DoSpawnCreature(16120, Rand2X, Rand2Y, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 120000);
-        if (SummonedMages)
-            SummonedMages->AI()->AttackStart(victim);
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_KORMOK, IN_PROGRESS);
     }
 
-    void UpdateAI(const uint32 diff)
+    void JustDied(Unit* /*pKiller*/)
     {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_KORMOK, DONE);
+    }
+
+    void JustSummoned(Creature* pSummoned)
+    {
+        switch(pSummoned->GetEntry())
+        {
+            case NPC_BONE_MINION:
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                    pSummoned->AI()->AttackStart(pTarget);
+                break;
+            case NPC_BONE_MAGE:
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_BOTTOMAGGRO, 0))
+                    pSummoned->AI()->AttackStart(pTarget);
+                break;
+        }
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {        
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //ShadowVolley_Timer
-        if (ShadowVolley_Timer < diff)
+        // Bloodlust
+        if (m_uiBloodLustTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_SHADOWBOLTVOLLEY);
-            ShadowVolley_Timer = 15000;
-        }else ShadowVolley_Timer -= diff;
+            DoCastSpellIfCan(m_creature, SPELL_BLOODLUST);
+            m_uiBloodLustTimer = (10000,15000);
+        }
+        else
+            m_uiBloodLustTimer -= uiDiff;
 
-        //BoneShield_Timer
-        if (BoneShield_Timer < diff)
+        // Bone Shield
+        if (m_uiBoneShieldTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_BONESHIELD);
-            BoneShield_Timer = 45000;
-        }else BoneShield_Timer -= diff;
+            DoCastSpellIfCan(m_creature, SPELL_BONE_SHIELD);
+            m_uiBoneShieldTimer = (30000,45000);
+        }
+        else
+            m_uiBoneShieldTimer -= uiDiff;
 
-        //Minion_Timer
-        if (Minion_Timer < diff)
+        // Shadow Bolt Volley
+        if (m_uiShadowVolleyTimer <= uiDiff)
         {
-            //Cast
-            SummonMinion(m_creature->getVictim());
-            SummonMinion(m_creature->getVictim());
-            SummonMinion(m_creature->getVictim());
-            SummonMinion(m_creature->getVictim());
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOW_BOLT_VOLLEY);
+            m_uiShadowVolleyTimer = urand(8000,15000);
+        }
+        else
+            m_uiShadowVolleyTimer -= uiDiff;
 
-            Minion_Timer = 12000;
-        }else Minion_Timer -= diff;
-
-        //Summon 2 Bone Mages
-        if (!Mages && m_creature->GetHealthPercent() < 26.0f)
+        // Minions summon
+        if (m_uiMinionTimer <= uiDiff)
         {
-            //Cast
-            SummonMages(m_creature->getVictim());
-            SummonMages(m_creature->getVictim());
-            Mages = true;
+            for(uint8 i = 0; i < 4; ++i)
+                DoSpawnCreature(NPC_BONE_MINION, irand(-10,10), irand(-10,10), 0, 0, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 120000);
+
+            m_uiMinionTimer = urand(10000,15000);
+        }
+        else
+            m_uiMinionTimer -= uiDiff;
+
+        // Summon 3 Bone Mages
+        if (!m_bMages && HealthBelowPct(50))
+        {
+            for(uint8 i = 0; i < 3; ++i)
+                DoSpawnCreature(NPC_BONE_MAGE, irand(-10,10), irand(-10,10), 0, 0, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 120000);
+
+            m_bMages = true;
+        }
+
+        if (HealthBelowPct(25))
+        {
+            if (m_uiFrenzyTimer <= uiDiff)
+            {
+                DoCastSpellIfCan(m_creature, SPELL_FRENZY);
+                m_uiFrenzyTimer = 120000;
+            }
+            else
+                m_uiFrenzyTimer -= uiDiff;
         }
 
         DoMeleeAttackIfReady();
@@ -147,11 +166,63 @@ CreatureAI* GetAI_boss_kormok(Creature* pCreature)
     return new boss_kormokAI(pCreature);
 }
 
+struct MANGOS_DLL_DECL npc_kormok_triggerAI : public Scripted_NoMovementAI
+{
+    npc_kormok_triggerAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
+    {
+        m_pInstance = (instance_scholomance*)pCreature->GetInstanceData();
+        Reset();
+    }
+
+    instance_scholomance* m_pInstance;
+
+    void Reset()
+    {
+    }
+
+    void MoveInLineOfSight(Unit* pWho)
+    {
+        if (!pWho || pWho->GetTypeId() != TYPEID_PLAYER)
+            return;
+
+        if (!m_pInstance || m_pInstance->GetData(TYPE_KORMOK) != NOT_STARTED)
+            return;
+
+        GameObject* pBeckoning = GetClosestGameObjectWithEntry(m_creature, GO_BRAZIER_OF_BECKONING, 40.0f);
+        GameObject* pInvocation = GetClosestGameObjectWithEntry(m_creature, GO_BRAZIER_OF_INVOCATION, 40.0f);
+
+        if (!pBeckoning && !pInvocation)
+            return;
+        
+        if (pBeckoning)
+            pBeckoning->RemoveFromWorld();
+
+        if (pInvocation)
+            pInvocation->RemoveFromWorld();
+
+        m_pInstance->SetData(TYPE_KORMOK, IN_PROGRESS);
+
+        if (Creature* pKormok = DoSpawnCreature(NPC_KORMOK, 0, 0, 0, 0, TEMPSUMMON_DEAD_DESPAWN, 30000))
+            pKormok->AI()->AttackStart(pWho);
+    }
+};
+
+CreatureAI* GetAI_npc_kormok_trigger(Creature* pCreature)
+{
+    return new npc_kormok_triggerAI(pCreature);
+}
+
 void AddSC_boss_kormok()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_kormok";
-    newscript->GetAI = &GetAI_boss_kormok;
-    newscript->RegisterSelf();
+    Script* pNewscript;
+
+    pNewscript = new Script;
+    pNewscript->Name = "boss_kormok";
+    pNewscript->GetAI = &GetAI_boss_kormok;
+    pNewscript->RegisterSelf();
+
+    pNewscript = new Script;
+    pNewscript->Name = "npc_kormok_trigger";
+    pNewscript->GetAI = &GetAI_npc_kormok_trigger;
+    pNewscript->RegisterSelf();
 }

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,82 +17,104 @@
 /* ScriptData
 SDName: Boss_Baroness_Anastari
 SD%Complete: 90
-SDComment: MC disabled
+SDComment:
 SDCategory: Stratholme
 EndScriptData */
 
 #include "precompiled.h"
 #include "stratholme.h"
 
-#define SPELL_BANSHEEWAIL   16565
-#define SPELL_BANSHEECURSE  16867
-#define SPELL_SILENCE       18327
-//#define SPELL_POSSESS       17244
+enum Spells
+{
+    SPELL_BANSHEE_CURSE       = 16867,
+    SPELL_BANSHEE_WAIL        = 16565,
+    SPELL_POSSESS             = 17244,
+    SPELL_SILENCE             = 18327,
+};
 
 struct MANGOS_DLL_DECL boss_baroness_anastariAI : public ScriptedAI
 {
     boss_baroness_anastariAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_stratholme*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_stratholme* m_pInstance;
 
-    uint32 BansheeWail_Timer;
-    uint32 BansheeCurse_Timer;
-    uint32 Silence_Timer;
-    //uint32 Possess_Timer;
+    uint32 m_uiBansheeCurseTimer;
+    uint32 m_uiBansheeWailTimer;
+    uint32 m_uiPossessTimer;
+    uint32 m_uiSilenceTimer;
 
     void Reset()
     {
-        BansheeWail_Timer = 1000;
-        BansheeCurse_Timer = 11000;
-        Silence_Timer = 13000;
-        //Possess_Timer = 35000;
+        m_uiBansheeCurseTimer = urand(5000,7000);
+        m_uiBansheeWailTimer = urand(0,1000);
+        m_uiPossessTimer = urand(30000,35000);
+        m_uiSilenceTimer = urand(9000,11000);
     }
 
-    void UpdateAI(const uint32 diff)
+    void JustReachedHome()
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_BARONESS_ANASTARI, NOT_STARTED);
+    }
+
+    void Aggro(Unit* /*pWho*/)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_BARONESS_ANASTARI, IN_PROGRESS);
+    }
+
+    void JustDied(Unit* /*pKiller*/)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_BARONESS_ANASTARI, DONE);
+    }
+
+    void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //BansheeWail
-        if (BansheeWail_Timer < diff)
+        // Banshee Curse spell
+        if (m_uiBansheeCurseTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_BANSHEEWAIL);
-            BansheeWail_Timer = 4000;
-        }else BansheeWail_Timer -= diff;
-
-        //BansheeCurse
-        if (BansheeCurse_Timer < diff)
-        {
-            if (!urand(0, 3))
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_BANSHEECURSE);
-
-            BansheeCurse_Timer = 18000;
-        }else BansheeCurse_Timer -= diff;
-
-        //Silence
-        if (Silence_Timer < diff)
-        {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_SILENCE);
-            Silence_Timer = 13000;
-        }else Silence_Timer -= diff;
-
-        //Possess
-        /*            if (Possess_Timer < diff)
-        {
-        //Cast
-        if (rand()%100 < 65)
-        {
-        Unit* target = NULL;
-        target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
-        if (target)DoCastSpellIfCan(target,SPELL_POSSESS);
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_BANSHEE_CURSE);
+            m_uiBansheeCurseTimer = urand(10000,15000);
         }
-        Possess_Timer = 50000;
-        }else Possess_Timer -= diff;
-        */
+        else
+            m_uiBansheeCurseTimer -= uiDiff;
+
+        // Banshee Wail spell
+        if (m_uiBansheeWailTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_BANSHEE_WAIL);
+            m_uiBansheeWailTimer = urand(3000,5000);
+        }
+        else
+            m_uiBansheeWailTimer -= uiDiff;
+
+        // Possess spell
+        if (m_uiPossessTimer <= uiDiff)
+        {
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,1))
+                DoCastSpellIfCan(pTarget, SPELL_POSSESS);
+
+            m_uiPossessTimer = urand(30000,40000);
+        }
+        else
+            m_uiPossessTimer -= uiDiff;
+
+        // Silence spell
+        if (m_uiSilenceTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_SILENCE);
+            m_uiSilenceTimer = urand(10000,14000);
+        }
+        else
+            m_uiSilenceTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -107,9 +126,10 @@ CreatureAI* GetAI_boss_baroness_anastari(Creature* pCreature)
 
 void AddSC_boss_baroness_anastari()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_baroness_anastari";
-    newscript->GetAI = &GetAI_boss_baroness_anastari;
-    newscript->RegisterSelf();
+    Script* pNewscript;
+
+    pNewscript = new Script;
+    pNewscript->Name = "boss_baroness_anastari";
+    pNewscript->GetAI = &GetAI_boss_baroness_anastari;
+    pNewscript->RegisterSelf();
 }

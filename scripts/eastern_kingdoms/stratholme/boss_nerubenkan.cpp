@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,7 +16,7 @@
 
 /* ScriptData
 SDName: Boss_Nerubenkan
-SD%Complete: 70
+SD%Complete: 90
 SDComment:
 SDCategory: Stratholme
 EndScriptData */
@@ -27,97 +24,99 @@ EndScriptData */
 #include "precompiled.h"
 #include "stratholme.h"
 
-enum
+enum Spells
 {
-    SPELL_ENCASINGWEBS        = 4962,
-    SPELL_PIERCEARMOR         = 6016,
-    SPELL_VIRULENTPOISON      = 16427,
-    SPELL_RAISEUNDEADSCARAB   = 17235
+    SPELL_ENCASING_WEBS             = 4962,
+    SPELL_PIERCE_ARMOR              = 6016,
+    SPELL_RAISE_UNDEAD_SCARAB       = 17235
 };
 
 struct MANGOS_DLL_DECL boss_nerubenkanAI : public ScriptedAI
 {
     boss_nerubenkanAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_stratholme*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_stratholme* m_pInstance;
 
-    uint32 EncasingWebs_Timer;
-    uint32 PierceArmor_Timer;
-    uint32 VirulentPoison_Timer;
-    uint32 RaiseUndeadScarab_Timer;
-
-    int Rand;
-    int RandX;
-    int RandY;
-    Creature* Summoned;
+    bool m_bInitialSpawn;
+    uint32 m_uiSummonCount;
+    uint32 m_uiEncasingWebsTimer;
+    uint32 m_uiPierceArmorTimer;
+    uint32 m_uiRaiseUndeadScarabTimer;
 
     void Reset()
     {
-        VirulentPoison_Timer = 3000;
-        EncasingWebs_Timer = 7000;
-        PierceArmor_Timer = 19000;
-        RaiseUndeadScarab_Timer = 3000;
+        m_bInitialSpawn = true;
+        m_uiSummonCount = 0;
+        m_uiEncasingWebsTimer = urand(6000,8000);
+        m_uiPierceArmorTimer = urand(12000,13000);
+        m_uiRaiseUndeadScarabTimer = urand(2000,4000);
     }
 
-    void RaiseUndeadScarab(Unit* victim)
+    void JustReachedHome()
     {
-        Rand = rand()%10;
-        switch(urand(0, 1))
-        {
-        case 0: RandX = 0 - Rand; break;
-        case 1: RandX = 0 + Rand; break;
-        }
-        Rand = 0;
-        Rand = rand()%10;
-        switch(urand(0, 1))
-        {
-        case 0: RandY = 0 - Rand; break;
-        case 1: RandY = 0 + Rand; break;
-        }
-        Rand = 0;
-        Summoned = DoSpawnCreature(10876, RandX, RandY, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 180000);
-        if (Summoned)
-            Summoned->AI()->AttackStart(victim);
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_NERUBENKAN, NOT_STARTED);
     }
 
-    void UpdateAI(const uint32 diff)
+    void Aggro(Unit* /*pWho*/)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_NERUBENKAN, IN_PROGRESS);
+    }
+
+    void JustDied(Unit* /*pKiller*/)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_NERUBENKAN, DONE);
+    }
+
+    void JustSummoned(Creature* pSummoned)
+    {
+        if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
+            pSummoned->AI()->AttackStart(pTarget);
+    }
+
+    void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //EncasingWebs
-        if (EncasingWebs_Timer < diff)
+        // Encasing Webs spell
+        if (m_uiEncasingWebsTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_ENCASINGWEBS);
-            EncasingWebs_Timer = 30000;
-        }else EncasingWebs_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_ENCASING_WEBS);
+            m_uiEncasingWebsTimer = urand(10000,15000);
+        }
+        else
+            m_uiEncasingWebsTimer -= uiDiff;
 
-        //PierceArmor
-        if (PierceArmor_Timer < diff)
+        // Pierce Armor spell
+        if (m_uiPierceArmorTimer <= uiDiff)
         {
-            if (rand()%100 < 75)
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_PIERCEARMOR);
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_PIERCE_ARMOR);
+            m_uiPierceArmorTimer = urand(15000,25000);
+        }
+        else
+            m_uiPierceArmorTimer -= uiDiff;
 
-            PierceArmor_Timer = 35000;
-        }else PierceArmor_Timer -= diff;
-
-        //VirulentPoison
-        if (VirulentPoison_Timer < diff)
+        // Raise Undead Scarab
+        if (m_uiRaiseUndeadScarabTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_VIRULENTPOISON);
-            VirulentPoison_Timer = 20000;
-        }else VirulentPoison_Timer -= diff;
+            m_uiSummonCount = m_bInitialSpawn ? 5 : 3;
+            for(uint32 i = 0; i < m_uiSummonCount; ++i)
+                DoSpawnCreature(NPC_UNDEAD_SCARAB, 0, 0, 0, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
 
-        //RaiseUndeadScarab
-        if (RaiseUndeadScarab_Timer < diff)
-        {
-            RaiseUndeadScarab(m_creature->getVictim());
-            RaiseUndeadScarab_Timer = 18000;
-        }else RaiseUndeadScarab_Timer -= diff;
+            if (m_bInitialSpawn)
+                m_bInitialSpawn = false;
+
+            m_uiRaiseUndeadScarabTimer = urand(10000,15000);
+        }
+        else
+            m_uiRaiseUndeadScarabTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -129,10 +128,10 @@ CreatureAI* GetAI_boss_nerubenkan(Creature* pCreature)
 
 void AddSC_boss_nerubenkan()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "boss_nerubenkan";
-    pNewScript->GetAI = &GetAI_boss_nerubenkan;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "boss_nerubenkan";
+    pNewscript->GetAI = &GetAI_boss_nerubenkan;
+    pNewscript->RegisterSelf();
 }

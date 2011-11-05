@@ -1,97 +1,89 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This program is free software licensed under GPL version 2
+ * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_SCHOLOMANCE_H
 #define DEF_SCHOLOMANCE_H
 
-enum
+enum Data
 {
-    MAX_ENCOUNTER           = 10,
-    MAX_EVENTS              = 6,
-
-    TYPE_KIRTONOS           = 0,
-    TYPE_RATTLEGORE         = 1,
-    TYPE_RAS_FROSTWHISPER   = 2,
-    TYPE_MALICIA            = 3,
-    TYPE_THEOLEN            = 4,
-    TYPE_POLKELT            = 5,
-    TYPE_RAVENIAN           = 6,
-    TYPE_ALEXEI_BAROV       = 7,
-    TYPE_ILLUCIA_BAROV      = 8,
-    TYPE_GANDLING           = 9,
-
-    NPC_KIRTONOS            = 10506,
-    NPC_RATTLEGORE          = 11622,
-    NPC_RAS_FROSTWHISPER    = 10508,
-    NPC_THEOLEN_KRASTINOV   = 11261,
-    NPC_LOREKEEPER_POLKELT  = 10901,
-    NPC_RAVENIAN            = 10507,
-    NPC_ILLUCIA_BAROV       = 10502,
-    NPC_ALEXEI_BAROV        = 10504,
-    NPC_INSTRUCTOR_MALICIA  = 10505,
-    NPC_DARKMASTER_GANDLING = 1853,
-    NPC_BONE_MINION         = 16119,                        // summoned in random rooms by gandling
-
-    GO_GATE_KIRTONOS        = 175570,
-    GO_VIEWING_ROOM_DOOR    = 175167,                       // Must be opened in reload case
-    GO_GATE_RAS             = 177370,
-    GO_GATE_MALICIA         = 177375,
-    GO_GATE_THEOLEN         = 177377,
-    GO_GATE_POLKELT         = 177376,
-    GO_GATE_RAVENIAN        = 177372,
-    GO_GATE_BAROV           = 177373,
-    GO_GATE_ILLUCIA         = 177371,
-    GO_GATE_GANDLING        = 177374,
-
-    // Because the shadow portal teleport coordinates are guesswork (taken from old script) these IDs might be randomized
-    // TODO Syncronise with correct DB coordinates when they will be known
-    EVENT_ID_POLKELT        = 5618,
-    EVENT_ID_THEOLEN        = 5619,
-    EVENT_ID_MALICIA        = 5620,
-    EVENT_ID_ILLUCIA        = 5621,
-    EVENT_ID_BAROV          = 5622,
-    EVENT_ID_RAVENIAN       = 5623,
-
-    SAY_GANDLING_SPAWN      = -1289000,
+    TYPE_KIRTONOS_THE_HERALD,
+    TYPE_JANDICE_BAROV,
+    TYPE_GREAT_OSSUARY,
+    TYPE_RAS_FROSTWHISPER,
+    TYPE_KORMOK,
+    TYPE_LOREKEEPER_POLKELT,
+    TYPE_DOCTOR_THEOLEN_KRASTINOV,
+    TYPE_INSTRUCTOR_MALICIA,
+    TYPE_LADY_ILLUCIA_BAROV,
+    TYPE_LORD_ALEXEI_BAROV,
+    TYPE_THE_RAVENIAN,
+    TYPE_DARKMASTER_GANDLING,
+    TYPE_VIEWING_ROOM_DOOR,
+    MAX_ENCOUNTER
 };
 
-struct SpawnLocation
+enum Creatures
 {
-    float m_fX, m_fY, m_fZ, m_fO;
+    NPC_BLOOD_STEWARD_OF_KIRTONOS   = 14861,
+    NPC_KIRTONOS_THE_HERALD         = 10506,
+    NPC_ILLUSION_OF_JANDICE_BAROV   = 11439,
+    NPC_RISEN_CONSTRUCT             = 10488,
+    NPC_ASPECT_OF_BANALITY          = 14518,
+    NPC_BANAL_SPIRIT                = 14514,
+    NPC_ASPECT_OF_MALICE            = 14520,
+    NPC_MALICIOUS_SPIRIT            = 14513,
+    NPC_ASPECT_OF_CORRUPTION        = 14519,
+    NPC_CORRUPTED_SPIRIT            = 14512,
+    NPC_ASPECT_OF_SHADOW            = 14521,
+    NPC_SHADOWED_SPIRIT             = 14511,
+    NPC_DEATH_KNIGHT_DARKREAVER     = 14516,
+    NPC_DARKREAVERS_FALLEN_CHARGER  = 14568,
+    NPC_BONE_MINION                 = 16119,
+    NPC_BONE_MAGE                   = 16120,
+    NPC_SCHOLOMANCE_STUDENT         = 10475,
+    NPC_MARDUK_BLACKPOOL            = 10433,
+    NPC_VECTUS                      = 10432,
+    NPC_KORMOK                      = 16118,
+    NPC_RISEN_ABERRATION            = 10485,
+    NPC_DARKMASTER_GANDLING         = 1853,
 };
 
-static const SpawnLocation aGandlingSpawnLocs[1] =
+enum GameObjects
 {
-    {180.771f, -5.4286f, 75.5702f, 1.29154f}
+    GO_BRAZIER_OF_BECKONING         = 181045,
+    GO_BRAZIER_OF_INVOCATION        = 181051,
+    GO_BRAZIER_OF_THE_HERALD        = 175564,
+    GO_GATE_KIRTONOS                = 175570,
+    GO_JOURNAL_OF_JANDICE_BAROV     = 180794,
+    GO_GATE_GREAT_OSSUARY           = 179724,
+    GO_GREAT_OSSUARY                = 300144,
+    GO_GATE_RAS_FROSTWHISPER        = 177370,
+    GO_GATE_ILLUCIA                 = 177371,
+    GO_GATE_RAVENIAN                = 177372,
+    GO_GATE_ALEXEI                  = 177373,
+    GO_GATE_GANDLING                = 177374,
+    GO_GATE_MALICIA                 = 177375,
+    GO_GATE_POLKELT                 = 177376,
+    GO_GATE_THEOLEN                 = 177377,
+    GO_VIEWING_ROOM_DOOR            = 175167,
+    GO_DAWNS_GAMBIT_1               = 176110,
+    GO_DAWNS_GAMBIT_2               = 177304,
 };
 
-struct GandlingEventData
+enum Misc
 {
-    GandlingEventData() : m_bIsActive(false) {}
-    bool m_bIsActive;
-    ObjectGuid m_doorGuid;
-    std::set<uint32> m_sAddGuids;
+    FACTION_FRIENDLY                = 35,
+    FACTION_HOSTILE                 = 14,
+    ITEM_BLOOD_OF_INNOCENTS         = 13523,
+    SAY_VECTUS_DAWN_GAMBIT          = -1289005,
 };
 
-static const uint32 aGandlingEvents[MAX_EVENTS] = {EVENT_ID_POLKELT, EVENT_ID_THEOLEN, EVENT_ID_MALICIA, EVENT_ID_ILLUCIA, EVENT_ID_BAROV, EVENT_ID_RAVENIAN};
-
-typedef std::map<uint32, GandlingEventData> GandlingEventMap;
+struct Loc
+{
+	uint32 gate;
+    float x, y, z;
+};
 
 class MANGOS_DLL_DECL instance_scholomance : public ScriptedInstance
 {
@@ -101,30 +93,27 @@ class MANGOS_DLL_DECL instance_scholomance : public ScriptedInstance
 
         void Initialize();
 
-        void OnCreatureEnterCombat(Creature* pCreature);
-        void OnCreatureEvade(Creature* pCreature);
-        void OnCreatureDeath(Creature* pCreature);
-
         void OnCreatureCreate(Creature* pCreature);
         void OnObjectCreate(GameObject* pGo);
-        void OnPlayerEnter(Player* pPlayer);
-
-        void HandlePortalEvent(uint32 uiEventId, uint32 uiData);
 
         void SetData(uint32 uiType, uint32 uiData);
         uint32 GetData(uint32 uiType);
 
-        const char* Save() { return m_strInstData.c_str(); }
+        const char* Save() { return strInstData.c_str(); }
         void Load(const char* chrIn);
 
-    private:
-        void DoSpawnGandlingIfCan(bool bByPlayerEnter);
+        void Update(uint32 uiDiff);
 
+		void HandleGate(uint32 uiEntry, uint32 uiData, bool bTrySummon);
+		void HandleOssuaryWave();
+		void TrySummonGandling(GameObject* pGo);
+
+    protected:
         uint32 m_auiEncounter[MAX_ENCOUNTER];
-        std::string m_strInstData;
+        std::string strInstData;
 
-        uint32 m_uiGandlingEvent;
-        GandlingEventMap m_mGandlingData;
+        uint32 m_uiOssuaryWaveCount;
+        uint32 m_uiViewingRoomTimer;
 };
 
 #endif

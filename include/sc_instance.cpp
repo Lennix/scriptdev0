@@ -1,28 +1,13 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+ * This program is free software licensed under GPL version 2
+ * Please see the included DOCS/LICENSE.TXT for more information */
 
 #include "precompiled.h"
 
 /**
    Function that uses a door or a button
 
-   @param   guid The ObjectGuid of the Door/ Button that shall be used
+   @param   guid The ObjectGuid of the Door/ Button that will be used
    @param   uiWithRestoreTime (in seconds) if == 0 autoCloseTime will be used (if not 0 by default in *_template)
    @param   bUseAlternativeState Use to alternative state
  */
@@ -46,27 +31,20 @@ void ScriptedInstance::DoUseDoorOrButton(ObjectGuid guid, uint32 uiWithRestoreTi
 }
 
 /// Function that uses a door or button that is stored in m_mGoEntryGuidStore
-void ScriptedInstance::DoUseDoorOrButton(uint64 uiEntry, uint32 uiWithRestoreTime /*= 0*/, bool bUseAlternativeState /*= false*/)
+void ScriptedInstance::DoUseDoorOrButton(uint32 uiEntry, uint32 uiWithRestoreTime /*= 0*/, bool bUseAlternativeState /*= false*/)
 {
-    // FIXME REMOVE when no more GO-Guids are stored as uint64
-    if (uiEntry > (uint64(HIGHGUID_GAMEOBJECT) << 48))
-    {
-        DoUseDoorOrButton(ObjectGuid(uiEntry), uiWithRestoreTime, bUseAlternativeState);
-        return;
-    }
-
     EntryGuidMap::iterator find = m_mGoEntryGuidStore.find(uiEntry);
     if (find != m_mGoEntryGuidStore.end())
         DoUseDoorOrButton(find->second, uiWithRestoreTime, bUseAlternativeState);
     else
         // Output log, possible reason is not added GO to storage, or not yet loaded
-        debug_log("SD2: Script call DoUseDoorOrButton(by Entry), but no gameobject of entry %u was created yet, or it was not stored by script for map %u.", uiEntry, instance->GetId());
+        debug_log("SD0: Script call DoUseDoorOrButton(by Entry), but no gameobject of entry %u was created yet, or it was not stored by script for map %u.", uiEntry, instance->GetId());
 }
 
 /**
    Function that respawns a despawned GameObject with given time
 
-   @param   guid The ObjectGuid of the GO that shall be respawned
+   @param   guid The ObjectGuid of the GO that will be respawned
    @param   uiTimeToDespawn (in seconds) Despawn the GO after this time, default is a minute
  */
 void ScriptedInstance::DoRespawnGameObject(ObjectGuid guid, uint32 uiTimeToDespawn)
@@ -77,8 +55,8 @@ void ScriptedInstance::DoRespawnGameObject(ObjectGuid guid, uint32 uiTimeToDespa
     if (GameObject* pGo = instance->GetGameObject(guid))
     {
         //not expect any of these should ever be handled
-        if (pGo->GetGoType()==GAMEOBJECT_TYPE_FISHINGNODE || pGo->GetGoType() == GAMEOBJECT_TYPE_DOOR ||
-            pGo->GetGoType()==GAMEOBJECT_TYPE_BUTTON || pGo->GetGoType() == GAMEOBJECT_TYPE_TRAP)
+        if (pGo->GetGoType() == GAMEOBJECT_TYPE_FISHINGNODE || pGo->GetGoType() == GAMEOBJECT_TYPE_DOOR ||
+            pGo->GetGoType() == GAMEOBJECT_TYPE_BUTTON || pGo->GetGoType() == GAMEOBJECT_TYPE_TRAP)
             return;
 
         if (pGo->isSpawned())
@@ -90,21 +68,14 @@ void ScriptedInstance::DoRespawnGameObject(ObjectGuid guid, uint32 uiTimeToDespa
 }
 
 /// Function that respawns a despawned GO that is stored in m_mGoEntryGuidStore
-void ScriptedInstance::DoRespawnGameObject(uint64 uiEntry, uint32 uiTimeToDespawn)
+void ScriptedInstance::DoRespawnGameObject(uint32 uiEntry, uint32 uiTimeToDespawn)
 {
-    // FIXME REMOVE when no more GO-Guids are stored as uint64
-    if (uiEntry > (uint64(HIGHGUID_GAMEOBJECT) << 48))
-    {
-        DoRespawnGameObject(ObjectGuid(uiEntry), uiTimeToDespawn);
-        return;
-    }
-
     EntryGuidMap::iterator find = m_mGoEntryGuidStore.find(uiEntry);
     if (find != m_mGoEntryGuidStore.end())
         DoRespawnGameObject(find->second, uiTimeToDespawn);
     else
         // Output log, possible reason is not added GO to storage, or not yet loaded;
-        debug_log("SD2: Script call DoRespawnGameObject(by Entry), but no gameobject of entry %u was created yet, or it was not stored by script for map %u.", uiEntry, instance->GetId());
+        debug_log("SD0: Script call DoRespawnGameObject(by Entry), but no gameobject of entry %u was created yet, or it was not stored by script for map %u.", uiEntry, instance->GetId());
 }
 
 /**
@@ -152,7 +123,7 @@ GameObject* ScriptedInstance::GetSingleGameObjectFromStorage(uint32 uiEntry)
         return instance->GetGameObject(find->second);
 
     // Output log, possible reason is not added GO to map, or not yet loaded;
-    debug_log("SD2: Script requested gameobject with entry %u, but no gameobject of this entry was created yet, or it was not stored by script for map %u.", uiEntry, instance->GetId());
+    debug_log("SD0: Script requested gameobject with entry %u, but no gameobject of this entry was created yet, or it was not stored by script for map %u.", uiEntry, instance->GetId());
 
     return NULL;
 }
@@ -166,7 +137,98 @@ Creature* ScriptedInstance::GetSingleCreatureFromStorage(uint32 uiEntry, bool bS
 
     // Output log, possible reason is not added GO to map, or not yet loaded;
     if (!bSkipDebugLog)
-        debug_log("SD2: Script requested creature with entry %u, but no npc of this entry was created yet, or it was not stored by script for map %u.", uiEntry, instance->GetId());
+        debug_log("SD0: Script requested creature with entry %u, but no npc of this entry was created yet, or it was not stored by script for map %u.", uiEntry, instance->GetId());
 
     return NULL;
+}
+
+void ScriptedInstance::HandleGameObject(ObjectGuid guid, bool open)
+{
+    if (GameObject* pGo = instance->GetGameObject(guid))
+        pGo->SetGoState(open ? GO_STATE_ACTIVE : GO_STATE_READY);
+    else
+        debug_log("SD0: InstanceData: HandleGameObject failed");
+}
+
+/// Function that uses a door or button that is stored in m_mGoEntryGuidStore
+void ScriptedInstance::HandleGameObject(uint32 uiEntry, bool open)
+{
+    EntryGuidMap::iterator find = m_mGoEntryGuidStore.find(uiEntry);
+    if (find != m_mGoEntryGuidStore.end())
+        HandleGameObject(find->second, open);
+    else
+        // Output log, possible reason is not added GO to storage, or not yet loaded
+        debug_log("SD0: Script call HandleGameObject(by Entry), but no gameobject of entry %u was created yet, or it was not stored by script for map %u.", uiEntry, instance->GetId());
+}
+
+void ScriptedInstance::InteractWithGo(ObjectGuid guid, bool state)
+{
+    if (GameObject* pGo = instance->GetGameObject(guid))
+	{
+		if (state)
+			pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND + GO_FLAG_NO_INTERACT);
+		else
+			pGo->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND + GO_FLAG_NO_INTERACT);
+	}
+}
+
+void ScriptedInstance::InteractWithGo(uint32 uiEntry, bool state)
+{
+    EntryGuidMap::iterator find = m_mGoEntryGuidStore.find(uiEntry);
+    if (find != m_mGoEntryGuidStore.end())
+        InteractWithGo(find->second, state);
+    else
+        // Output log, possible reason is not added GO to storage, or not yet loaded
+        debug_log("SD0: Script call InteractWithGo(by Entry), but no gameobject of entry %u was created yet, or it was not stored by script for map %u.", uiEntry, instance->GetId());
+}
+
+bool ScriptedInstance::SetRareBoss(Creature* pCreature, uint32 uiChance)
+{
+    if (uiChance < urand(0,100))
+    {
+        pCreature->setFaction(35);
+        pCreature->SetVisibility(VISIBILITY_OFF);
+        pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+        return false;
+    }
+    else
+    {
+        pCreature->setFaction(pCreature->GetCreatureInfo()->faction_A);
+        pCreature->SetVisibility(VISIBILITY_ON);
+        pCreature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+        return true;
+    }
+}
+
+void ScriptedInstance::SetLavaState(Player* pPlayer, bool enter)
+{
+    if (!pPlayer)
+        return;
+
+    if (enter)
+        pPlayer->m_LavaTimer = LAVA_DAMAGE_PERIOD;
+    else
+        pPlayer->m_LavaTimer = DISABLED_MIRROR_TIMER;
+}
+
+void ScriptedInstance::DoLavaDamage(const uint32 uiDiff)
+{
+    Map::PlayerList const& lPlayers = instance->GetPlayers();
+    if (lPlayers.isEmpty())
+        return;
+
+    for(Map::PlayerList::const_iterator itr = lPlayers.begin(); itr != lPlayers.end(); ++itr)
+    {
+        Player* pPlayer = itr->getSource();
+        if (pPlayer && ((pPlayer->m_LavaActive == true && !pPlayer->IsInWater()) || pPlayer->IsInWater()))
+        {
+            if (pPlayer->m_LavaTimer < uiDiff)
+            {
+                pPlayer->m_LavaTimer = LAVA_DAMAGE_PERIOD;
+                pPlayer->EnvironmentalDamage(DAMAGE_LAVA, urand(600, 700));
+            }
+            else
+                pPlayer->m_LavaTimer -= uiDiff;
+        }
+    }
 }

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,7 +16,7 @@
 
 /* ScriptData
 SDName: Instance_Blackfathom_Deeps
-SD%Complete: 50
+SD%Complete: 95%
 SDComment:
 SDCategory: Blackfathom Deeps
 EndScriptData */
@@ -27,13 +24,13 @@ EndScriptData */
 #include "precompiled.h"
 #include "blackfathom_deeps.h"
 
-/* Encounter 0 = Twilight Lord Kelris
-   Encounter 1 = Shrine event
-   Must kill twilight lord for shrine event to be possible
- */
+/* Encounter 0 = Gelihast
+   Encounter 1 = Twilight Lord Kelris
+   Encounter 2 = Shrine event
+   Encounter 3 = Aku'Mai
+*/
 
-instance_blackfathom_deeps::instance_blackfathom_deeps(Map* pMap) : ScriptedInstance(pMap),
-    m_uiWaveCounter(0)
+instance_blackfathom_deeps::instance_blackfathom_deeps(Map* pMap) : ScriptedInstance(pMap)
 {
     Initialize();
 }
@@ -41,92 +38,67 @@ instance_blackfathom_deeps::instance_blackfathom_deeps(Map* pMap) : ScriptedInst
 void instance_blackfathom_deeps::Initialize()
 {
     memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
-    memset(&m_uiSpawnMobsTimer, 0, sizeof(m_uiSpawnMobsTimer));
-}
 
-void instance_blackfathom_deeps::OnCreatureCreate(Creature* pCreature)
-{
-    if (pCreature->GetEntry() == NPC_KELRIS)
-        m_mNpcEntryGuidStore[NPC_KELRIS] = pCreature->GetObjectGuid();
+    m_uiFireGUID.clear();
 }
 
 void instance_blackfathom_deeps::OnObjectCreate(GameObject* pGo)
 {
     switch(pGo->GetEntry())
     {
-        case GO_PORTAL_DOOR:
-            if (m_auiEncounter[1] == DONE)
-                pGo->SetGoState(GO_STATE_ACTIVE);
-
-            m_mGoEntryGuidStore[GO_PORTAL_DOOR] = pGo->GetObjectGuid();
+        case GO_SHRINE_OF_GELIHAST:
+            if (m_auiEncounter[0] != DONE)
+                InteractWithGo(GO_SHRINE_OF_GELIHAST, false);
             break;
-        case GO_SHRINE_1:
-        case GO_SHRINE_2:
-        case GO_SHRINE_3:
-        case GO_SHRINE_4:
-            if (m_auiEncounter[1] == DONE)
+        case GO_FIRE_OF_AKU_MAI_1:
+        case GO_FIRE_OF_AKU_MAI_2:
+        case GO_FIRE_OF_AKU_MAI_3:
+        case GO_FIRE_OF_AKU_MAI_4:
+			m_uiFireGUID.push_back(pGo->GetObjectGuid());
+            InteractWithGo(pGo->GetEntry(), m_auiEncounter[1] == DONE ? true : false);
+            return;
+        case GO_AKU_MAI_DOOR:
+            if (m_auiEncounter[2] == DONE) 
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
+        case GO_ALTAR_OF_THE_DEEPS:
+            if (m_auiEncounter[3] != DONE)
+                pGo->SetGoState(GO_STATE_ACTIVE);
+            break;
+		default:
+			return;
     }
-}
 
-void instance_blackfathom_deeps::DoSpawnMobs(uint8 uiWaveIndex)
-{
-    Creature* pKelris = GetSingleCreatureFromStorage(NPC_KELRIS);
-    if (!pKelris)
-        return;
-
-    float fX_resp, fY_resp, fZ_resp;
-
-    pKelris->GetRespawnCoord(fX_resp, fY_resp, fZ_resp);
-
-    for (uint8 i = 0; i < sizeof(aWaveSummonInformation) / sizeof(SummonInformation); ++i)
-    {
-        if (aWaveSummonInformation[i].m_uiWaveIndex != uiWaveIndex)
-            continue;
-
-        // Summon mobs at positions
-        for (uint8 j = 0; j < MAX_COUNT_POS; ++j)
-        {
-            for (uint8 k = 0; k < aWaveSummonInformation[i].m_aCountAndPos[j].m_uiCount; ++k)
-            {
-                uint8 uiPos = aWaveSummonInformation[i].m_aCountAndPos[j].m_uiSummonPosition;
-                float fPosX = aSpawnLocations[uiPos].m_fX;
-                float fPosY = aSpawnLocations[uiPos].m_fY;
-                float fPosZ = aSpawnLocations[uiPos].m_fZ;
-                float fPosO = aSpawnLocations[uiPos].m_fO;
-
-                // Adapt fPosY slightly in case of higher summon-counts
-                if (aWaveSummonInformation[i].m_aCountAndPos[j].m_uiCount > 1)
-                    fPosY = fPosY - INTERACTION_DISTANCE / 2 + k * INTERACTION_DISTANCE / aWaveSummonInformation[i].m_aCountAndPos[j].m_uiCount;
-
-                if (Creature* pSummoned = pKelris->SummonCreature(aWaveSummonInformation[i].m_uiNpcEntry, fPosX, fPosY, fPosZ, fPosO, TEMPSUMMON_DEAD_DESPAWN, 0))
-                {
-                    pSummoned->GetMotionMaster()->MovePoint(0, fX_resp, fY_resp, fZ_resp);
-                    m_lWaveMobsGuids[uiWaveIndex].push_back(pSummoned->GetGUIDLow());
-                }
-            }
-        }
-    }
+	m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
 }
 
 void instance_blackfathom_deeps::SetData(uint32 uiType, uint32 uiData)
 {
     switch(uiType)
     {
-        case TYPE_KELRIS:                                   // EventAI must set instance data (1,3) at his death
-            if (m_auiEncounter[0] != DONE && uiData == DONE)
-                m_auiEncounter[0] = uiData;
+        case TYPE_GELIHAST:
+            if (uiData == DONE)
+                InteractWithGo(GO_SHRINE_OF_GELIHAST, true);
+            m_auiEncounter[0] = uiData;
+            break;
+        case TYPE_KELRIS:
+            if (uiData == DONE)
+                SetFires(true);
+            else
+                SetFires(false);
+            m_auiEncounter[1] = uiData;
             break;
         case TYPE_SHRINE:
-            m_auiEncounter[1] = uiData;
             if (uiData == IN_PROGRESS)
-            {
-                m_uiSpawnMobsTimer[m_uiWaveCounter] = 3000;
-                ++m_uiWaveCounter;
-            }
-            else if (uiData == DONE)
-                DoUseDoorOrButton(GO_PORTAL_DOOR);
+                CheckFires();
+            if (uiData == DONE)
+                HandleGameObject(GO_AKU_MAI_DOOR, true);
+            m_auiEncounter[2] = uiData;
+            break;
+        case TYPE_AKU_MAI:
+            if (uiData == DONE)
+                InteractWithGo(GO_ALTAR_OF_THE_DEEPS, true);
+            m_auiEncounter[3] = uiData;
             break;
     }
 
@@ -135,10 +107,10 @@ void instance_blackfathom_deeps::SetData(uint32 uiType, uint32 uiData)
         OUT_SAVE_INST_DATA;
 
         std::ostringstream saveStream;
+        saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " " << m_auiEncounter[3];
 
-        saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1];
+        strInstData = saveStream.str();
 
-        m_strInstData = saveStream.str();
         SaveToDB();
         OUT_SAVE_INST_DATA_COMPLETE;
     }
@@ -146,27 +118,41 @@ void instance_blackfathom_deeps::SetData(uint32 uiType, uint32 uiData)
 
 uint32 instance_blackfathom_deeps::GetData(uint32 uiType)
 {
-    switch(uiType)
-    {
-        case TYPE_KELRIS: return m_auiEncounter[0];
-        case TYPE_SHRINE: return m_auiEncounter[1];
-        default:
-            return 0;
-    }
+    if (uiType < MAX_ENCOUNTER)
+        return m_auiEncounter[uiType];
+
+    return 0;
 }
 
-void instance_blackfathom_deeps::Load(const char* chrIn)
+void instance_blackfathom_deeps::SetFires(bool bState)
 {
-    if (!chrIn)
+    for(GUIDList::iterator itr = m_uiFireGUID.begin(); itr != m_uiFireGUID.end(); ++itr)
+		InteractWithGo(*itr, bState);
+}
+
+void instance_blackfathom_deeps::CheckFires()
+{
+    for(GUIDList::iterator itr = m_uiFireGUID.begin(); itr != m_uiFireGUID.end(); ++itr)
+    {
+        GameObject* pFire = instance->GetGameObject(*itr);
+        if (!pFire || pFire->GetGoState() != GO_STATE_ACTIVE)
+            return;
+    }
+    SetData(TYPE_SHRINE, DONE);
+}
+
+void instance_blackfathom_deeps::Load(const char* in)
+{
+    if (!in)
     {
         OUT_LOAD_INST_DATA_FAIL;
         return;
     }
 
-    OUT_LOAD_INST_DATA(chrIn);
+    OUT_LOAD_INST_DATA(in);
 
-    std::istringstream loadStream(chrIn);
-    loadStream >> m_auiEncounter[0] >> m_auiEncounter[1];
+    std::istringstream loadStream(in);
+    loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3];
 
     for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
     {
@@ -177,105 +163,17 @@ void instance_blackfathom_deeps::Load(const char* chrIn)
     OUT_LOAD_INST_DATA_COMPLETE;
 }
 
-void instance_blackfathom_deeps::OnCreatureDeath(Creature* pCreature)
-{
-    // Only use this function if shrine event is in progress
-    if (m_auiEncounter[1] != IN_PROGRESS)
-        return;
-
-    switch (pCreature->GetEntry())
-    {
-        case NPC_AKUMAI_SERVANT:
-            m_lWaveMobsGuids[1].remove(pCreature->GetGUIDLow());
-            break;
-        case NPC_AKUMAI_SNAPJAW:
-            m_lWaveMobsGuids[0].remove(pCreature->GetGUIDLow());
-            break;
-        case NPC_BARBED_CRUSTACEAN:
-            m_lWaveMobsGuids[2].remove(pCreature->GetGUIDLow());
-            break;
-        case NPC_MURKSHALLOW_SOFTSHELL:
-            m_lWaveMobsGuids[3].remove(pCreature->GetGUIDLow());
-            break;
-    }
-
-    if (IsWaveEventFinished())
-        SetData(TYPE_SHRINE, DONE);
-}
-
-// Check if all the summoned event mobs are dead
-bool instance_blackfathom_deeps::IsWaveEventFinished()
-{
-    // If not all fires are lighted return
-    if (m_uiWaveCounter < MAX_FIRES)
-        return false;
-
-    // Check if all mobs are dead
-    for (uint8 i = 0; i < MAX_FIRES; ++i)
-    {
-        if (!m_lWaveMobsGuids[i].empty())
-            return false;
-    }
-
-    return true;
-}
-
-void instance_blackfathom_deeps::Update(uint32 uiDiff)
-{
-    // Only use this function if shrine event is in progress
-    if (m_auiEncounter[1] != IN_PROGRESS)
-        return;
-
-    for (uint8 i = 0; i < MAX_FIRES; ++i)
-    {
-        if (m_uiSpawnMobsTimer[i])
-        {
-            if (m_uiSpawnMobsTimer[i] <= uiDiff)
-            {
-                DoSpawnMobs(i);
-                m_uiSpawnMobsTimer[i] = 0;
-            }
-            else
-                m_uiSpawnMobsTimer[i] -= uiDiff;
-        }
-    }
-}
-
 InstanceData* GetInstanceData_instance_blackfathom_deeps(Map* pMap)
 {
     return new instance_blackfathom_deeps(pMap);
 }
 
-bool GOUse_go_fire_of_akumai(Player* pPlayer, GameObject* pGo)
-{
-    instance_blackfathom_deeps* pInstance = (instance_blackfathom_deeps*)pGo->GetInstanceData();
-
-    if (!pInstance)
-        return true;
-
-    if (pInstance->GetData(TYPE_SHRINE) == DONE)
-        return true;
-
-    if (pInstance->GetData(TYPE_KELRIS) == DONE)
-    {
-        pInstance->SetData(TYPE_SHRINE, IN_PROGRESS);
-        return false;
-    }
-
-    return true;
-}
-
 void AddSC_instance_blackfathom_deeps()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "instance_blackfathom_deeps";
-    pNewScript->GetInstanceData = &GetInstanceData_instance_blackfathom_deeps;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "go_fire_of_akumai";
-    pNewScript->pGOUse = &GOUse_go_fire_of_akumai;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "instance_blackfathom_deeps";
+    pNewscript->GetInstanceData = &GetInstanceData_instance_blackfathom_deeps;
+    pNewscript->RegisterSelf();
 }

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,8 +16,8 @@
 
 /* ScriptData
 SDName: Boss_Razuvious
-SD%Complete: 85%
-SDComment: TODO: Timers and sounds need confirmation - orb handling for normal-mode is missing
+SD%Complete: 75%
+SDComment: TODO: Timers and sounds need confirmation, implement spell Hopeless
 SDCategory: Naxxramas
 EndScriptData */
 
@@ -41,7 +38,9 @@ enum
     SAY_DEATH                = -1533129,
 
     SPELL_UNBALANCING_STRIKE = 26613,
-    SPELL_DISRUPTING_SHOUT   = 29107,
+    SPELL_DISRUPTING_SHOUT   = 55543,
+    SPELL_DISRUPTING_SHOUT_H = 29107,
+    SPELL_JAGGED_KNIFE       = 55550,
     SPELL_HOPELESS           = 29125
 };
 
@@ -57,12 +56,14 @@ struct MANGOS_DLL_DECL boss_razuviousAI : public ScriptedAI
 
     uint32 m_uiUnbalancingStrikeTimer;
     uint32 m_uiDisruptingShoutTimer;
+    uint32 m_uiJaggedKnifeTimer;
     uint32 m_uiCommandSoundTimer;
 
     void Reset()
     {
         m_uiUnbalancingStrikeTimer = 30000;                 // 30 seconds
         m_uiDisruptingShoutTimer   = 15000;                 // 15 seconds
+        m_uiJaggedKnifeTimer       = urand(10000, 15000);
         m_uiCommandSoundTimer      = 40000;                 // 40 seconds
     }
 
@@ -78,17 +79,15 @@ struct MANGOS_DLL_DECL boss_razuviousAI : public ScriptedAI
         }
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/)
     {
         DoScriptText(SAY_DEATH, m_creature);
-
-        DoCastSpellIfCan(m_creature, SPELL_HOPELESS, CAST_TRIGGERED);
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_RAZUVIOUS, DONE);
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/)
     {
         switch(urand(0, 2))
         {
@@ -101,12 +100,6 @@ struct MANGOS_DLL_DECL boss_razuviousAI : public ScriptedAI
             m_pInstance->SetData(TYPE_RAZUVIOUS, IN_PROGRESS);
     }
 
-    void JustReachedHome()
-    {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_RAZUVIOUS, FAIL);
-    }
-
     void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
@@ -115,8 +108,8 @@ struct MANGOS_DLL_DECL boss_razuviousAI : public ScriptedAI
         // Unbalancing Strike
         if (m_uiUnbalancingStrikeTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_UNBALANCING_STRIKE) == CAST_OK)
-                m_uiUnbalancingStrikeTimer = 30000;
+            DoCastSpellIfCan(m_creature->getVictim(),SPELL_UNBALANCING_STRIKE);
+            m_uiUnbalancingStrikeTimer = 30000;
         }
         else
             m_uiUnbalancingStrikeTimer -= uiDiff;
@@ -124,11 +117,21 @@ struct MANGOS_DLL_DECL boss_razuviousAI : public ScriptedAI
         // Disrupting Shout
         if (m_uiDisruptingShoutTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_DISRUPTING_SHOUT) == CAST_OK)
-                m_uiDisruptingShoutTimer = 25000;
+            DoCastSpellIfCan(m_creature->getVictim(),SPELL_DISRUPTING_SHOUT);
+            m_uiDisruptingShoutTimer = 25000;
         }
         else
             m_uiDisruptingShoutTimer -= uiDiff;
+
+        // Jagged Knife
+        if (m_uiJaggedKnifeTimer < uiDiff)
+        {
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                DoCastSpellIfCan(pTarget, SPELL_JAGGED_KNIFE);
+            m_uiJaggedKnifeTimer = 10000;
+        }
+        else
+            m_uiJaggedKnifeTimer -= uiDiff;
 
         // Random say
         if (m_uiCommandSoundTimer < uiDiff)
@@ -156,10 +159,9 @@ CreatureAI* GetAI_boss_razuvious(Creature* pCreature)
 
 void AddSC_boss_razuvious()
 {
-    Script* pNewScript;
-
-    pNewScript = new Script;
-    pNewScript->Name = "boss_razuvious";
-    pNewScript->GetAI = &GetAI_boss_razuvious;
-    pNewScript->RegisterSelf();
+    Script* pNewscript;
+    pNewscript = new Script;
+    pNewscript->Name = "boss_razuvious";
+    pNewscript->GetAI = &GetAI_boss_razuvious;
+    pNewscript->RegisterSelf();
 }

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -37,11 +34,11 @@ EndContentData */
 
 enum
 {
-    SAY_AT_HOME         = -1000323,
-    EMOTE_AT_HOME       = -1000324,
-    QUEST_MIST          = 938,
-    NPC_ARYNIA          = 3519,
-    FACTION_DARNASSUS   = 79
+    SAY_AT_HOME             = -1000323,
+    EMOTE_AT_HOME           = -1000324,
+    QUEST_MIST              = 938,
+    NPC_ARYNIA              = 3519,
+    FACTION_DARNASSUS       = 79
 };
 
 struct MANGOS_DLL_DECL npc_mistAI : public FollowerAI
@@ -106,11 +103,11 @@ bool QuestAccept_npc_mist(Player* pPlayer, Creature* pCreature, const Quest* pQu
 
 void AddSC_teldrassil()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_mist";
-    pNewScript->GetAI = &GetAI_npc_mist;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_mist;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_mist";
+    pNewscript->GetAI = &GetAI_npc_mist;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_mist;
+    pNewscript->RegisterSelf();
 }

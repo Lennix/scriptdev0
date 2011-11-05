@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,56 +23,64 @@ EndScriptData */
 
 #include "precompiled.h"
 
-#define SPELL_CALLOFTHEGRAVE            17831
-#define SPELL_TERRIFY                   7399
-#define SPELL_SOULSIPHON                7290
+enum eAzshirTheSleepless
+{
+    SPELL_CALL_OF_THE_GRAVE         = 17831,
+    SPELL_TERRIFY                   = 7399,
+    SPELL_SOUL_SIPHON               = 7290,
+};
 
 struct MANGOS_DLL_DECL boss_azshir_the_sleeplessAI : public ScriptedAI
 {
     boss_azshir_the_sleeplessAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 SoulSiphon_Timer;
-    uint32 CallOftheGrave_Timer;
-    uint32 Terrify_Timer;
+    uint32 m_uiSoulSiphonTimer;
+    uint32 m_uiCallOftheGraveTimer;
+    uint32 m_uiTerrifyTimer;
 
     void Reset()
     {
-        SoulSiphon_Timer = 1;
-        CallOftheGrave_Timer = 30000;
-        Terrify_Timer = 20000;
+        m_uiSoulSiphonTimer = 1;
+        m_uiCallOftheGraveTimer = 30000;
+        m_uiTerrifyTimer = 20000;
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //If we are <50% hp cast Soul Siphon rank 1
-        if (m_creature->GetHealthPercent() <= 50.0f && !m_creature->IsNonMeleeSpellCasted(false))
+        // If we are <50% hp cast Soul Siphon rank 1
+        if (HealthBelowPct(50) && !m_creature->IsNonMeleeSpellCasted(false))
         {
-            //SoulSiphon_Timer
-            if (SoulSiphon_Timer < diff)
+            // Soul Siphon
+            if (m_uiSoulSiphonTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_SOULSIPHON);
-                // return;                                  // Why was this return here?
-
-                SoulSiphon_Timer = 20000;
-            }else SoulSiphon_Timer -= diff;
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_SOUL_SIPHON);
+                m_uiSoulSiphonTimer = 20000;
+                return;
+            }
+            else 
+                m_uiSoulSiphonTimer -= uiDiff;
         }
 
-        //CallOfTheGrave_Timer
-        if (CallOftheGrave_Timer < diff)
+        // Call of the Grave
+        if (m_uiCallOftheGraveTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_CALLOFTHEGRAVE);
-            CallOftheGrave_Timer = 30000;
-        }else CallOftheGrave_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_CALL_OF_THE_GRAVE);
+            m_uiCallOftheGraveTimer = 30000;
+        }
+        else 
+            m_uiCallOftheGraveTimer -= uiDiff;
 
-        //Terrify_Timer
-        if (Terrify_Timer < diff)
+        // Terrify
+        if (m_uiTerrifyTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_TERRIFY);
-            Terrify_Timer = 20000;
-        }else Terrify_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_TERRIFY);
+            m_uiTerrifyTimer = 20000;
+        }
+        else 
+            m_uiTerrifyTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -88,9 +93,9 @@ CreatureAI* GetAI_boss_azshir_the_sleepless(Creature* pCreature)
 
 void AddSC_boss_azshir_the_sleepless()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_azshir_the_sleepless";
-    newscript->GetAI = &GetAI_boss_azshir_the_sleepless;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+    pNewScript = new Script;
+    pNewScript->Name = "boss_azshir_the_sleepless";
+    pNewScript->GetAI = &GetAI_boss_azshir_the_sleepless;
+    pNewScript->RegisterSelf();
 }

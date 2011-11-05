@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,112 +23,108 @@ EndScriptData */
 
 #include "precompiled.h"
 
-enum
+enum eSpells
 {
-    SPELL_TOXICVOLLEY   = 21687,
-    SPELL_UPPERCUT      = 22916
+	SPELL_TOXICVOLLEY			= 21687,
+	SPELL_UPPERCUT				= 22916
 };
 
 struct MANGOS_DLL_DECL boss_noxxionAI : public ScriptedAI
 {
-    boss_noxxionAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    boss_noxxionAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_bInvisible = false;
+        Reset();
+    }
 
-    uint32 ToxicVolley_Timer;
-    uint32 Uppercut_Timer;
-    uint32 Adds_Timer;
-    uint32 Invisible_Timer;
-    bool Invisible;
-    int Rand;
-    int RandX;
-    int RandY;
-    Creature* Summoned;
+    uint32 m_uiToxicVolleyTimer;
+    uint32 m_uiUppercutTimer;
+    uint32 m_uiAddsTimer;
+    uint32 m_uiInvisibleTimer;
+    bool m_bInvisible;
 
     void Reset()
     {
-        ToxicVolley_Timer = 7000;
-        Uppercut_Timer = 16000;
-        Adds_Timer = 19000;
-        Invisible_Timer = 15000;                            //Too much too low?
-        Invisible = false;
-    }
-
-    void SummonAdds(Unit* victim)
-    {
-        Rand = rand()%8;
-        switch(urand(0, 1))
+        if (m_bInvisible)
         {
-            case 0: RandX = 0 - Rand; break;
-            case 1: RandX = 0 + Rand; break;
-        }
-        Rand = 0;
-        Rand = rand()%8;
-        switch(urand(0, 1))
-        {
-            case 0: RandY = 0 - Rand; break;
-            case 1: RandY = 0 + Rand; break;
-        }
-        Rand = 0;
-        Summoned = DoSpawnCreature(13456, RandX, RandY, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 90000);
-        if (Summoned)
-            Summoned->AI()->AttackStart(victim);
-    }
-
-    void UpdateAI(const uint32 diff)
-    {
-        if (Invisible && Invisible_Timer < diff)
-        {
-            //Become visible again
-            m_creature->setFaction(14);
+            m_bInvisible = false;
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-            //Noxxion model
-            m_creature->SetDisplayId(11172);
-            Invisible = false;
-            //m_creature->m_canMove = true;
-        } else if (Invisible)
+            m_creature->SetVisibility(VISIBILITY_ON);
+        }
+        m_uiToxicVolleyTimer = 7000;
+        m_uiUppercutTimer = 16000;
+        m_uiAddsTimer = 19000;
+        m_uiInvisibleTimer = 15000;                            //Too much too low?
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (m_bInvisible && m_uiInvisibleTimer <= uiDiff)
         {
-            Invisible_Timer -= diff;
-            //Do nothing while invisible
+            // Become visible again
+            m_bInvisible = false;
+            m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
+            m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+            // Noxxion model
+            //m_creature->SetDisplayId(11172);
+            m_creature->SetVisibility(VISIBILITY_ON);
+        }
+		else if (m_bInvisible)
+        {
+            m_uiInvisibleTimer -= uiDiff;
+            // Do nothing while invisible
             return;
         }
 
-        //Return since we have no target
+        // Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //ToxicVolley_Timer
-        if (ToxicVolley_Timer < diff)
+        // Toxic Volley
+        if (m_uiToxicVolleyTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_TOXICVOLLEY);
-            ToxicVolley_Timer = 9000;
-        }else ToxicVolley_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_TOXICVOLLEY);
+            m_uiToxicVolleyTimer = 9000;
+        }
+		else
+            m_uiToxicVolleyTimer -= uiDiff;
 
-        //Uppercut_Timer
-        if (Uppercut_Timer < diff)
+        // Uppercut
+        if (m_uiUppercutTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_UPPERCUT);
-            Uppercut_Timer = 12000;
-        }else Uppercut_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_UPPERCUT);
+            m_uiUppercutTimer = 12000;
+        }
+		else
+			m_uiUppercutTimer -= uiDiff;
 
-        //Adds_Timer
-        if (!Invisible && Adds_Timer < diff)
+        // Adds
+        if (!m_bInvisible && m_uiAddsTimer <= uiDiff)
         {
-            //Inturrupt any spell casting
-            //m_creature->m_canMove = true;
+            // Remove all auras
+            m_creature->RemoveAllAuras();
+
+            // Inturrupt any spell casting
             m_creature->InterruptNonMeleeSpells(false);
             m_creature->setFaction(35);
             m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
             // Invisible Model
-            m_creature->SetDisplayId(11686);
-            SummonAdds(m_creature->getVictim());
-            SummonAdds(m_creature->getVictim());
-            SummonAdds(m_creature->getVictim());
-            SummonAdds(m_creature->getVictim());
-            SummonAdds(m_creature->getVictim());
-            Invisible = true;
-            Invisible_Timer = 15000;
+            //m_creature->SetDisplayId(11686);
+            m_creature->SetVisibility(VISIBILITY_OFF);
 
-            Adds_Timer = 40000;
-        }else Adds_Timer -= diff;
+			for(uint8 itr = 0; itr < 5; ++itr)
+			{
+				if (Creature* pSummoned = DoSpawnCreature(13456, irand(-10,10), irand(-10,10), 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 90000))
+					pSummoned->AI()->AttackStart(m_creature->getVictim());
+			}
+
+            m_bInvisible = true;
+            m_uiInvisibleTimer = 15000;
+
+            m_uiAddsTimer = 40000;
+        }
+		else
+			m_uiAddsTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -143,10 +136,10 @@ CreatureAI* GetAI_boss_noxxion(Creature* pCreature)
 
 void AddSC_boss_noxxion()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "boss_noxxion";
-    pNewScript->GetAI = &GetAI_boss_noxxion;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "boss_noxxion";
+    pNewscript->GetAI = &GetAI_boss_noxxion;
+    pNewscript->RegisterSelf();
 }

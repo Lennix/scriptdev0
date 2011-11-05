@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,36 +16,61 @@
 
 /* ScriptData
 SDName: Boss_Vectus
-SD%Complete: 60
-SDComment: event not implemented
+SD%Complete: 90
+SDComment:
 SDCategory: Scholomance
 EndScriptData */
 
 #include "precompiled.h"
+#include "scholomance.h"
 
-enum
+enum Spells
 {
-    //EMOTE_GENERIC_FRENZY_KILL   = -1000001,
+    SAY_MARDUK                  = -1289000,
 
     SPELL_FLAMESTRIKE           = 18399,
-    SPELL_BLAST_WAVE            = 16046
-    //SPELL_FRENZY                = 28371                   //spell is used by Gluth, confirm this is for this boss too
-    //SPELL_FIRE_SHIELD           = 0                       //should supposedly have some aura, but proper spell not found
+    SPELL_BLAST_WAVE            = 16046    
 };
 
 struct MANGOS_DLL_DECL boss_vectusAI : public ScriptedAI
 {
-    boss_vectusAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    boss_vectusAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        Reset();
+    }
 
-    uint32 m_uiFlameStrike_Timer;
-    uint32 m_uiBlastWave_Timer;
-    uint32 m_uiFrenzy_Timer;
+    uint32 m_uiFlameStrikeTimer;
+    uint32 m_uiBlastWaveTimer;
 
     void Reset()
     {
-        m_uiFlameStrike_Timer = 2000;
-        m_uiBlastWave_Timer = 14000;
-        m_uiFrenzy_Timer = 0;
+        m_uiFlameStrikeTimer = urand(2000,4000);
+        m_uiBlastWaveTimer = urand(7000,10000);
+    }
+
+    void Aggro(Unit* pWho)
+    {
+        if (Creature* pMarduk = GetClosestCreatureWithEntry(m_creature, NPC_MARDUK_BLACKPOOL, 30.0f))
+        {
+            DoScriptText(SAY_MARDUK, pMarduk);
+            pMarduk->SetInCombatWithZone();
+            pMarduk->AI()->AttackStart(pWho);
+        }
+
+        std::list<Creature*> m_lStudent;
+        GetCreatureListWithEntryInGrid(m_lStudent, m_creature, NPC_SCHOLOMANCE_STUDENT, DEFAULT_VISIBILITY_INSTANCE);
+        if (!m_lStudent.empty())
+        {
+            for(std::list<Creature*>::iterator itr = m_lStudent.begin(); itr != m_lStudent.end(); ++itr)
+            {
+                if ((*itr) && (*itr)->isAlive())
+                {
+                    (*itr)->setFaction(FACTION_HOSTILE);
+                    (*itr)->SetInCombatWithZone();
+                    (*itr)->AI()->AttackStart(pWho);
+                }
+            }
+        }
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -56,36 +78,23 @@ struct MANGOS_DLL_DECL boss_vectusAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //m_uiFlameStrike_Timer
-        if (m_uiFlameStrike_Timer < uiDiff)
+        // Flame Strike
+        if (m_uiFlameStrikeTimer < uiDiff)
         {
             DoCastSpellIfCan(m_creature, SPELL_FLAMESTRIKE);
-            m_uiFlameStrike_Timer = 30000;
+            m_uiFlameStrikeTimer = urand(5000,8000);
         }
         else
-            m_uiFlameStrike_Timer -= uiDiff;
+            m_uiFlameStrikeTimer -= uiDiff;
 
-        //BlastWave_Timer
-        if (m_uiBlastWave_Timer < uiDiff)
+        // Blast Wave
+        if (m_uiBlastWaveTimer < uiDiff)
         {
             DoCastSpellIfCan(m_creature->getVictim(), SPELL_BLAST_WAVE);
-            m_uiBlastWave_Timer = 12000;
+            m_uiBlastWaveTimer = urand(10000,12000);
         }
         else
-            m_uiBlastWave_Timer -= uiDiff;
-
-        //Frenzy_Timer
-        /*if (m_creature->GetHealthPercent() < 25.0f)
-        {
-            if (m_uiFrenzy_Timer < uiDiff)
-            {
-                DoCastSpellIfCan(m_creature, SPELL_FRENZY);
-                DoScriptText(EMOTE_GENERIC_FRENZY_KILL, m_creature);
-                m_uiFrenzy_Timer = 24000;
-            }
-            else
-                m_uiFrenzy_Timer -= uiDiff;
-        }*/
+            m_uiBlastWaveTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -98,9 +107,10 @@ CreatureAI* GetAI_boss_vectus(Creature* pCreature)
 
 void AddSC_boss_vectus()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_vectus";
-    newscript->GetAI = &GetAI_boss_vectus;
-    newscript->RegisterSelf();
+    Script* pNewscript;
+
+    pNewscript = new Script;
+    pNewscript->Name = "boss_vectus";
+    pNewscript->GetAI = &GetAI_boss_vectus;
+    pNewscript->RegisterSelf();
 }

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -27,230 +24,295 @@ EndScriptData */
 #include "precompiled.h"
 #include "zulgurub.h"
 
-enum
+enum eThekal
 {
-    SAY_AGGRO               = -1309009,
-    SAY_DEATH               = -1309010,
+    SAY_TRANSFORM             = -1309010,
+    SAY_DEATH                 = -1309011,
 
-    SPELL_MORTAL_CLEAVE     = 22859,
-    SPELL_SILENCE           = 23207,
-    SPELL_FRENZY            = 22428,
-    SPELL_FORCE_PUNCH       = 24189,
-    SPELL_CHARGE            = 24193,
-    SPELL_ENRAGE            = 23537,
-    SPELL_SUMMON_TIGERS     = 24183,
-    SPELL_TIGER_FORM        = 24169,
-    SPELL_RESURRECT         = 24173,
+    SPELL_CHARGE              = 24408,      // wowhead 24193 - not working?
+    SPELL_FORCE_PUNCH         = 24189,
+    SPELL_FRENZY              = 8269,
+    SPELL_MORTAL_CLEAVE       = 22859,
+    SPELL_RESURRECTION        = 24173,
+    SPELL_SILENCE             = 22666,
+    SPELL_SPEED_SLASH         = 24192,
+    SPELL_SUMMON_TIGERS       = 24183,
+    SPELL_THEKAL_TRANSFORM    = 24169,
 
-    // Zealot Lor'Khan Spells
-    SPELL_SHIELD            = 20545,
-    SPELL_BLOODLUST         = 24185,
-    SPELL_GREATER_HEAL      = 24208,
-    SPELL_DISARM            = 6713,
+    //Zealot Lor'Khan Spells
+    SPELL_BLOODLUST           = 24185,
+    SPELL_DISARM              = 6713,
+    SPELL_DISPEL_MAGIC        = 17201,
+    SPELL_GREAT_HEAL          = 24208,
+    SPELL_LIGHTNING_SHIELD    = 20545,
 
-    // Zealot Zath Spells
-    SPELL_SWEEPING_STRIKES  = 18765,
-    SPELL_SINISTER_STRIKE   = 15581,
-    SPELL_GOUGE             = 12540,
-    SPELL_KICK              = 15614,
-    SPELL_BLIND             = 21060,
-
-    PHASE_NORMAL            = 1,
-    PHASE_FAKE_DEATH        = 2,
-    PHASE_WAITING           = 3,
-    PHASE_TIGER             = 4,
+    // Zealot Zath
+    SPELL_BLIND               = 21060,
+    SPELL_GOUGE               = 12540,
+    SPELL_KICK                = 15614,
+    SPELL_SINISTER_STRIKE     = 15581,
 };
 
-// abstract base class for faking death
-struct MANGOS_DLL_DECL boss_thekalBaseAI : public ScriptedAI
+struct MANGOS_DLL_DECL boss_thekalAI : public ScriptedAI
 {
-    boss_thekalBaseAI(Creature* pCreature) : ScriptedAI(pCreature)
+    boss_thekalAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_uiPhase = PHASE_NORMAL;
-    }
-
-    uint8 m_uiPhase;
-
-    virtual void OnFakeingDeath() {}
-    virtual void OnRevive() {}
-
-    void DamageTaken(Unit* pKiller, uint32& uiDamage)
-    {
-        if (uiDamage < m_creature->GetHealth())
-            return;
-
-        // Prevent glitch if in fake death
-        if (m_uiPhase == PHASE_FAKE_DEATH || m_uiPhase == PHASE_WAITING)
-        {
-            uiDamage = 0;
-            return;
-        }
-
-        // Only init fake in normal phase
-        if (m_uiPhase != PHASE_NORMAL)
-            return;
-
-        uiDamage = 0;
-
-        m_creature->InterruptNonMeleeSpells(true);
-        m_creature->SetHealth(0);
-        m_creature->StopMoving();
-        m_creature->ClearComboPointHolders();
-        m_creature->RemoveAllAurasOnDeath();
-        m_creature->ModifyAuraState(AURA_STATE_HEALTHLESS_20_PERCENT, false);
-        //m_creature->ModifyAuraState(AURA_STATE_HEALTHLESS_35_PERCENT, false);
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-        m_creature->ClearAllReactives();
-        m_creature->GetMotionMaster()->Clear();
-        m_creature->GetMotionMaster()->MoveIdle();
-        m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
-
-        m_uiPhase = PHASE_FAKE_DEATH;
-
-        OnFakeingDeath();
-    }
-
-    void Revive(bool bOnlyFlags = false)
-    {
-        m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-        m_creature->SetStandState(UNIT_STAND_STATE_STAND);
-
-        if (bOnlyFlags)
-            return;
-
-        m_creature->SetHealth(m_creature->GetMaxHealth());
-        m_uiPhase = PHASE_NORMAL;
-
-        DoResetThreat();
-        Reset();
-
-        // Assume Attack
-        if (m_creature->getVictim())
-            m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
-
-        OnRevive();
-    }
-
-    void PreventRevive()
-    {
-        if (m_creature->IsNonMeleeSpellCasted(true))
-            m_creature->InterruptNonMeleeSpells(true);
-
-        m_uiPhase = PHASE_WAITING;
-    }
-};
-
-struct MANGOS_DLL_DECL boss_thekalAI : public boss_thekalBaseAI
-{
-    boss_thekalAI(Creature* pCreature) : boss_thekalBaseAI(pCreature)
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_zulgurub*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_zulgurub* m_pInstance;
 
+    bool m_bFakingDeath;
+    bool m_bPhaseTwo;
+
+    uint32 m_uiChargeTimer;
+    uint32 m_uiForcePunchTimer;
+    uint32 m_uiFrenzyTimer;
     uint32 m_uiMortalCleaveTimer;
     uint32 m_uiSilenceTimer;
-    uint32 m_uiFrenzyTimer;
-    uint32 m_uiForcePunchTimer;
-    uint32 m_uiChargeTimer;
+    uint32 m_uiSpeedSlashTimer;
     uint32 m_uiSummonTigersTimer;
-    uint32 m_uiResurrectTimer;
-
-    bool m_bEnraged;
 
     void Reset()
     {
-        m_uiMortalCleaveTimer   = 4000;
-        m_uiSilenceTimer        = 9000;
-        m_uiFrenzyTimer         = 30000;
-        m_uiForcePunchTimer     = 4000;
-        m_uiChargeTimer         = 12000;
-        m_uiSummonTigersTimer   = 25000;
-        m_uiResurrectTimer      = 10000;
-        m_uiPhase               = PHASE_NORMAL;
+        m_bFakingDeath = false;
+        m_bPhaseTwo = false;
 
-        m_bEnraged              = false;
+        m_uiChargeTimer = 15000;
+        m_uiForcePunchTimer = 8000;
+        m_uiFrenzyTimer = 30000;
+        m_uiMortalCleaveTimer = 4000;
+        m_uiSilenceTimer = 8000;
+        m_uiSpeedSlashTimer = 4000;
+        m_uiSummonTigersTimer = 20000;
 
-        // remove fake death
-        Revive(true);
+        // Set proper stats
+        m_creature->clearUnitState(UNIT_STAT_CAN_NOT_MOVE);
+        m_creature->SetStandState(UNIT_STAND_STATE_STAND);
+        m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
+        m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, 1.0f);
+    }
+
+    void JustReachedHome()
+    {
+        // Respawn Zulian Tigers in cage
+        std::list<Creature*> m_lTigers;
+        GetCreatureListWithEntryInGrid(m_lTigers, m_creature, NPC_ZULIAN_TIGER, 40.0f);
+
+        if (!m_lTigers.empty())
+            for(std::list<Creature*>::iterator itr = m_lTigers.begin(); itr != m_lTigers.end(); ++itr)
+                if ((*itr) && !(*itr)->isAlive())
+                    (*itr)->Respawn();
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_THEKAL, FAIL);
     }
 
     void Aggro(Unit* pWho)
     {
-        DoScriptText(SAY_AGGRO, m_creature);
     }
 
-    void JustDied(Unit* pKiller)
+    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
     {
-        DoScriptText(SAY_DEATH, m_creature);
-
-        if (!m_pInstance)
+        if (m_bPhaseTwo)
             return;
 
-        m_pInstance->SetData(TYPE_THEKAL, DONE);
+        if (uiDamage >= m_creature->GetHealth() || HealthBelowPct(5))
+        {
+            uiDamage = 0;
 
-        // remove the two adds
-        if (Creature* pZath = m_pInstance->GetSingleCreatureFromStorage(NPC_ZATH))
-            pZath->ForcedDespawn();
-        if (Creature* pLorkhan = m_pInstance->GetSingleCreatureFromStorage(NPC_LORKHAN))
-            pLorkhan->ForcedDespawn();
+            if (!m_bFakingDeath && m_pInstance)
+            {
+                m_bFakingDeath = true;
+                m_creature->RemoveAllAuras();
+                m_creature->AttackStop();
+                m_creature->StopMoving();
+                m_creature->addUnitState(UNIT_STAT_CAN_NOT_MOVE);
+                m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
+                m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
+
+                m_creature->SetHealth(m_creature->GetMaxHealth());
+                m_pInstance->SetData(TYPE_THEKAL, IN_PROGRESS);
+            }
+        }
+    }
+
+    void JustDied(Unit* /*pKiller*/)
+    {
+        if (m_pInstance && m_pInstance->GetData(TYPE_THEKAL) == SPECIAL)
+        {
+            m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, 1.0f);
+            DoScriptText(SAY_DEATH, m_creature);
+            m_pInstance->SetData(TYPE_THEKAL, DONE);
+        }
+    }
+
+    void JustSummoned(Creature* pSummoned)
+    {
+        Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+        if (!m_creature->getVictim() && !pTarget)
+            return;
+
+        pSummoned->AI()->AttackStart(pTarget ? pTarget : m_creature->getVictim());
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        // Start Phase Two
+        if (m_bFakingDeath)
+        {
+            if (m_pInstance && m_pInstance->GetData(TYPE_THEKAL) == SPECIAL)
+            {
+                m_bFakingDeath = false;
+                m_bPhaseTwo = true;
+
+                m_creature->clearUnitState(UNIT_STAT_CAN_NOT_MOVE);
+                m_creature->SetStandState(UNIT_STAND_STATE_STAND);
+                m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
+                DoCastSpellIfCan(m_creature, SPELL_THEKAL_TRANSFORM, CAST_TRIGGERED + CAST_FORCE_TARGET_SELF);
+
+                m_creature->SetHealth(m_creature->GetMaxHealth());
+                m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, 3.0f);
+                const CreatureInfo* cinfo = m_creature->GetCreatureInfo();
+                m_creature->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, (cinfo->mindmg +((cinfo->mindmg/100) * 40)));
+                m_creature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, (cinfo->maxdmg +((cinfo->maxdmg/100) * 40)));
+                m_creature->UpdateDamagePhysical(BASE_ATTACK);
+
+                DoResetThreat();
+                DoScriptText(SAY_TRANSFORM, m_creature);
+
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                    m_creature->AI()->AttackStart(pTarget);
+                else
+                    m_creature->SetInCombatWithZone();
+            }
+        }
+
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        if (!m_bPhaseTwo)
+        {
+            // Mortal Cleave
+            if (m_uiMortalCleaveTimer <= uiDiff)
+            {
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_MORTAL_CLEAVE);
+                m_uiMortalCleaveTimer = urand(10000, 15000);
+            }
+            else
+                m_uiMortalCleaveTimer -= uiDiff;
+
+            // Silence
+            if (m_uiSilenceTimer <= uiDiff)
+            {
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_SILENCE);
+                m_uiSilenceTimer = urand(15000, 20000);
+            }
+            else
+                m_uiSilenceTimer -= uiDiff;
+        }
+        else
+        {
+            // Charge
+            if (m_uiChargeTimer <= uiDiff)
+            {
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
+                    DoCastSpellIfCan(pTarget, SPELL_CHARGE);
+
+                m_uiChargeTimer = urand(15000, 22000);
+            }
+            else
+                m_uiChargeTimer -= uiDiff;
+
+            // Force Puch
+            if (m_uiForcePunchTimer <= uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FORCE_PUNCH) == CAST_OK)
+                {
+                    Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);                    
+                    DoResetThreat();
+                    AttackStart(pTarget ? pTarget : m_creature->getVictim());
+                }
+                m_uiForcePunchTimer = urand(12000, 16000);
+            }
+            else
+                m_uiForcePunchTimer -= uiDiff;
+
+            // Frenzy
+            if (m_uiFrenzyTimer <= uiDiff)
+            {
+                DoCastSpellIfCan(m_creature, SPELL_FRENZY);
+                m_uiFrenzyTimer = urand(25000, 35000);
+            }
+            else
+                m_uiFrenzyTimer -= uiDiff;
+
+            // Speed Slash
+            if (m_uiSpeedSlashTimer <= uiDiff)
+            {
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_SPEED_SLASH);
+                m_uiSpeedSlashTimer = urand(10000, 15000);
+            }
+            else
+                m_uiSpeedSlashTimer -= uiDiff;
+
+            // Summon Tigers
+            if (m_uiSummonTigersTimer <= uiDiff)
+            {
+                for(uint8 i = 0; i < 2; ++i)
+                    DoSpawnCreature(NPC_ZULIAN_GUARDIAN, irand(-10,10), irand(-10,10), 0, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10000);
+
+                m_uiSummonTigersTimer = 20000;
+            }
+            else
+                m_uiSummonTigersTimer -= uiDiff;
+        }
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_boss_thekal(Creature* pCreature)
+{
+    return new boss_thekalAI(pCreature);
+}
+
+struct MANGOS_DLL_DECL mob_zealot_lorkhanAI : public ScriptedAI
+{
+    mob_zealot_lorkhanAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_pInstance = (instance_zulgurub*)pCreature->GetInstanceData();
+        Reset();
+    }
+
+    instance_zulgurub* m_pInstance;
+
+    uint32 m_uiBloodlustTimer;
+    uint32 m_uiDisarmTimer;
+    uint32 m_uiDispelMagicTimer;
+    uint32 m_uiGreatHealTimer;
+    uint32 m_uiLightningShieldTimer;
+
+    void Reset()
+    {
+        m_uiBloodlustTimer = 4000;
+        m_uiDisarmTimer = 6000;
+        m_uiDispelMagicTimer = 16000;
+        m_uiGreatHealTimer = 32000;
+        m_uiLightningShieldTimer = 1000;
     }
 
     void JustReachedHome()
     {
         if (m_pInstance)
-            m_pInstance->SetData(TYPE_THEKAL, FAIL);
+            m_pInstance->SetData(TYPE_LORKHAN, FAIL);
     }
 
-    // Only call in context where m_pInstance is valid
-    bool CanPreventAddsResurrect()
+    void JustDied(Unit* /*pKiller*/)
     {
-        // If any add is alive, return false
-        if (m_pInstance->GetData(TYPE_ZATH) != SPECIAL || m_pInstance->GetData(TYPE_LORKHAN) != SPECIAL)
-            return false;
-
-        // Else Prevent them Resurrecting
-        if (Creature* pLorkhan = m_pInstance->GetSingleCreatureFromStorage(NPC_LORKHAN))
-        {
-            if (boss_thekalBaseAI* pFakerAI = dynamic_cast<boss_thekalBaseAI*>(pLorkhan->AI()))
-                pFakerAI->PreventRevive();
-        }
-        if (Creature* pZath = m_pInstance->GetSingleCreatureFromStorage(NPC_ZATH))
-        {
-            if (boss_thekalBaseAI* pFakerAI = dynamic_cast<boss_thekalBaseAI*>(pZath->AI()))
-                pFakerAI->PreventRevive();
-        }
-
-        return true;
-    }
-
-    void OnFakeingDeath()
-    {
-        m_uiResurrectTimer = 10000;
-
         if (m_pInstance)
-        {
-            m_pInstance->SetData(TYPE_THEKAL, SPECIAL);
-
-            // If both Adds are already dead, don't wait 10 seconds
-            if (CanPreventAddsResurrect())
-                m_uiResurrectTimer = 1000;
-        }
-    }
-
-    void OnRevive()
-    {
-        if (!m_pInstance)
-            return;
-
-        // Both Adds are 'dead' enter tiger phase
-        if (CanPreventAddsResurrect())
-        {
-            DoCastSpellIfCan(m_creature, SPELL_TIGER_FORM, CAST_TRIGGERED);
-            m_uiPhase = PHASE_TIGER;
-        }
+            m_pInstance->SetData(TYPE_LORKHAN, IN_PROGRESS);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -258,416 +320,153 @@ struct MANGOS_DLL_DECL boss_thekalAI : public boss_thekalBaseAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        switch (m_uiPhase)
+        // Disarm
+        if (m_uiDisarmTimer <= uiDiff)
         {
-            case PHASE_FAKE_DEATH:
-                if (m_uiResurrectTimer < uiDiff)
-                {
-                    // resurrect him in any case
-                    DoCastSpellIfCan(m_creature, SPELL_RESURRECT);
-
-                    m_uiPhase = PHASE_WAITING;
-                    if (m_pInstance)
-                    {
-                        CanPreventAddsResurrect();
-                        m_pInstance->SetData(TYPE_THEKAL, IN_PROGRESS);
-                    }
-                }
-                else
-                    m_uiResurrectTimer -= uiDiff;
-
-                // No break needed here
-            case PHASE_WAITING:
-                return;
-
-            case PHASE_NORMAL:
-                if (m_uiMortalCleaveTimer < uiDiff)
-                {
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_MORTAL_CLEAVE) == CAST_OK)
-                        m_uiMortalCleaveTimer = urand(15000, 20000);
-                }
-                else
-                    m_uiMortalCleaveTimer -= uiDiff;
-
-                if (m_uiSilenceTimer < uiDiff)
-                {
-                    if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                    {
-                        if (DoCastSpellIfCan(pTarget, SPELL_SILENCE) == CAST_OK)
-                            m_uiSilenceTimer = urand(20000, 25000);
-                    }
-                }
-                else
-                    m_uiSilenceTimer -= uiDiff;
-
-                break;
-            case PHASE_TIGER:
-                if (m_uiChargeTimer < uiDiff)
-                {
-                    if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                    {
-                        if (DoCastSpellIfCan(pTarget, SPELL_CHARGE) == CAST_OK)
-                        {
-                            DoResetThreat();
-                            AttackStart(pTarget);
-                            m_uiChargeTimer = urand(15000, 22000);
-                        }
-                    }
-                }
-                else
-                    m_uiChargeTimer -= uiDiff;
-
-                if (m_uiFrenzyTimer < uiDiff)
-                {
-                    if (DoCastSpellIfCan(m_creature, SPELL_FRENZY) == CAST_OK)
-                        m_uiFrenzyTimer = 30000;
-                }
-                else
-                    m_uiFrenzyTimer -= uiDiff;
-
-                if (m_uiForcePunchTimer < uiDiff)
-                {
-                    if (DoCastSpellIfCan(m_creature, SPELL_FORCE_PUNCH) == CAST_OK)
-                        m_uiForcePunchTimer = urand(21000, 28000);
-                }
-                else
-                    m_uiForcePunchTimer -= uiDiff;
-
-                if (m_uiSummonTigersTimer < uiDiff)
-                {
-                    if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_TIGERS) == CAST_OK)
-                        m_uiSummonTigersTimer = urand(10000, 14000);
-                }
-                else
-                    m_uiSummonTigersTimer -= uiDiff;
-
-                if (!m_bEnraged && m_creature->GetHealthPercent() <= 15.0f)
-                {
-                    if (DoCastSpellIfCan(m_creature, SPELL_ENRAGE) == CAST_OK)
-                        m_bEnraged = true;
-                }
-
-                break;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_DISARM);
+            m_uiDisarmTimer = urand(15000, 25000);
         }
+        else
+            m_uiDisarmTimer -= uiDiff;
+
+        // Bloodlust
+        if (m_uiBloodlustTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_BLOODLUST);
+            m_uiBloodlustTimer = urand(25000, 45000);
+        }
+        else
+            m_uiBloodlustTimer -= uiDiff;
+
+        // Dispel Magic
+        if (m_uiDispelMagicTimer <= uiDiff)
+        {
+            if (m_pInstance)
+            {
+                Creature* pTarget = m_pInstance->GetSingleCreatureFromStorage(urand(0,1) ? NPC_THEKAL : NPC_ZATH);
+                if (pTarget && m_creature->IsWithinDistInMap(pTarget, 15.0f))
+                    DoCastSpellIfCan(pTarget, SPELL_DISPEL_MAGIC);
+            }
+            m_uiDispelMagicTimer = urand(15000, 25000);
+        }
+        else
+            m_uiDispelMagicTimer -= uiDiff;
+
+        // Great heal
+        if (m_uiGreatHealTimer <= uiDiff)
+        {
+            if (m_pInstance)
+            {
+                Creature* pTarget = m_pInstance->GetSingleCreatureFromStorage(urand(0,1) ? NPC_THEKAL : NPC_ZATH);
+                if (pTarget && m_creature->IsWithinDistInMap(pTarget, 15.0f))
+                    DoCastSpellIfCan(pTarget, SPELL_GREAT_HEAL);
+            }
+            m_uiGreatHealTimer = urand(15000, 20000);
+        }
+        else
+            m_uiGreatHealTimer -= uiDiff;
+
+        // Lightning Shield
+        if (m_uiLightningShieldTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature, SPELL_LIGHTNING_SHIELD);
+            m_uiLightningShieldTimer = 61000;
+        }
+        else
+            m_uiLightningShieldTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
-
-/*######
-## mob_zealot_lorkhan
-######*/
-
-struct MANGOS_DLL_DECL mob_zealot_lorkhanAI : public boss_thekalBaseAI
-{
-    mob_zealot_lorkhanAI(Creature* pCreature) : boss_thekalBaseAI(pCreature)
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        Reset();
-    }
-
-    ScriptedInstance* m_pInstance;
-
-    uint32 m_uiShieldTimer;
-    uint32 m_uiBloodLustTimer;
-    uint32 m_uiGreaterHealTimer;
-    uint32 m_uiDisarmTimer;
-    uint32 m_uiResurrectTimer;
-
-    void Reset()
-    {
-        m_uiShieldTimer         = 1000;
-        m_uiBloodLustTimer      = 16000;
-        m_uiGreaterHealTimer    = 32000;
-        m_uiDisarmTimer         = 6000;
-        m_uiPhase               = PHASE_NORMAL;
-
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_LORKHAN, NOT_STARTED);
-
-        Revive(true);
-    }
-
-    void Aggro(Unit* pWho)
-    {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_LORKHAN, IN_PROGRESS);
-    }
-
-    void OnFakeingDeath()
-    {
-        m_uiResurrectTimer = 10000;
-
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_LORKHAN, SPECIAL);
-    }
-
-    void UpdateAI (const uint32 uiDiff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        switch (m_uiPhase)
-        {
-            case PHASE_FAKE_DEATH:
-                if (m_uiResurrectTimer < uiDiff)
-                {
-                    if (!m_pInstance)
-                        return;
-
-                    if (m_pInstance->GetData(TYPE_THEKAL) != SPECIAL || m_pInstance->GetData(TYPE_ZATH) != SPECIAL)
-                    {
-                        DoCastSpellIfCan(m_creature, SPELL_RESURRECT);
-                        m_pInstance->SetData(TYPE_LORKHAN, IN_PROGRESS);
-                    }
-
-                    m_uiPhase = PHASE_WAITING;
-                }
-                else
-                    m_uiResurrectTimer -= uiDiff;
-
-                // no break needed here
-            case PHASE_WAITING:
-                return;
-
-            case PHASE_NORMAL:
-                // Shield_Timer
-                if (m_uiShieldTimer < uiDiff)
-                {
-                    if (DoCastSpellIfCan(m_creature, SPELL_SHIELD) == CAST_OK)
-                        m_uiShieldTimer = 61000;
-                }
-                else
-                    m_uiShieldTimer -= uiDiff;
-
-                // BloodLust_Timer
-                if (m_uiBloodLustTimer < uiDiff)
-                {
-                    if (m_pInstance)
-                    {
-                        Creature* pThekal = m_pInstance->GetSingleCreatureFromStorage(NPC_THEKAL);
-                        Creature* pZath = m_pInstance->GetSingleCreatureFromStorage(NPC_ZATH);
-
-                        switch(urand(0, 1))
-                        {
-                            case 0:
-                                if (pZath)
-                                    DoCastSpellIfCan(pZath, SPELL_BLOODLUST);
-                                break;
-                            case 1:
-                                DoCastSpellIfCan(m_creature, SPELL_BLOODLUST);
-                                break;
-                        }
-                    }
-
-                    m_uiBloodLustTimer = urand(16000, 28000);
-                }
-                else
-                    m_uiBloodLustTimer -= uiDiff;
-
-                // Casting Greaterheal to Thekal or Zath if they are in meele range.
-                // TODO - why this range check?
-                if (m_uiGreaterHealTimer < uiDiff)
-                {
-                    if (m_pInstance)
-                    {
-                        Creature* pThekal = m_creature->GetMap()->GetCreature(m_pInstance->GetData64(NPC_THEKAL));
-                        Creature* pZath = m_creature->GetMap()->GetCreature(m_pInstance->GetData64(NPC_ZATH));
-
-                        switch(urand(0, 1))
-                        {
-                            case 0:
-                                if (pThekal && m_creature->IsWithinDistInMap(pThekal, 3*ATTACK_DISTANCE))
-                                    DoCastSpellIfCan(pThekal, SPELL_GREATER_HEAL);
-                                break;
-                            case 1:
-                                if (pZath && m_creature->IsWithinDistInMap(pZath, 3*ATTACK_DISTANCE))
-                                    DoCastSpellIfCan(pZath, SPELL_GREATER_HEAL);
-                                break;
-                        }
-                    }
-
-                    m_uiGreaterHealTimer = urand(15000, 20000);
-                }
-                else
-                    m_uiGreaterHealTimer -= uiDiff;
-
-                // Disarm_Timer
-                if (m_uiDisarmTimer < uiDiff)
-                {
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_DISARM) == CAST_OK)
-                        m_uiDisarmTimer = urand(15000, 25000);
-                }
-                else
-                    m_uiDisarmTimer -= uiDiff;
-
-                break;
-        }
-
-        DoMeleeAttackIfReady();
-    }
-};
-
-/*######
-## npc_zealot_zath
-######*/
-
-struct MANGOS_DLL_DECL mob_zealot_zathAI : public boss_thekalBaseAI
-{
-    mob_zealot_zathAI(Creature* pCreature) : boss_thekalBaseAI(pCreature)
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        Reset();
-    }
-
-    ScriptedInstance* m_pInstance;
-
-    uint32 m_uiSweepingStrikesTimer;
-    uint32 m_uiSinisterStrikeTimer;
-    uint32 m_uiGougeTimer;
-    uint32 m_uiKickTimer;
-    uint32 m_uiBlindTimer;
-    uint32 m_uiResurrectTimer;
-
-    void Reset()
-    {
-        m_uiSweepingStrikesTimer    = 13000;
-        m_uiSinisterStrikeTimer     = 8000;
-        m_uiGougeTimer              = 25000;
-        m_uiKickTimer               = 18000;
-        m_uiBlindTimer              = 5000;
-        m_uiPhase                   = PHASE_NORMAL;
-
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_ZATH, NOT_STARTED);
-
-        Revive(true);
-    }
-
-    void Aggro(Unit* pWho)
-    {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_ZATH, IN_PROGRESS);
-    }
-
-    void OnFakeingDeath()
-    {
-        m_uiResurrectTimer = 10000;
-
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_ZATH, SPECIAL);
-    }
-
-    void UpdateAI (const uint32 uiDiff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        switch (m_uiPhase)
-        {
-            case PHASE_FAKE_DEATH:
-                if (m_uiResurrectTimer < uiDiff)
-                {
-                    if (!m_pInstance)
-                        return;
-
-                    if (m_pInstance->GetData(TYPE_THEKAL) != SPECIAL || m_pInstance->GetData(TYPE_LORKHAN) != SPECIAL)
-                    {
-                        DoCastSpellIfCan(m_creature, SPELL_RESURRECT);
-                        m_pInstance->SetData(TYPE_ZATH, IN_PROGRESS);
-                    }
-
-                    m_uiPhase = PHASE_WAITING;
-                }
-                else
-                    m_uiResurrectTimer -= uiDiff;
-
-                // no break needed here
-            case PHASE_WAITING:
-                return;
-
-            case PHASE_NORMAL:
-                // SweepingStrikes_Timer
-                if (m_uiSweepingStrikesTimer < uiDiff)
-                {
-                    if (DoCastSpellIfCan(m_creature, SPELL_SWEEPING_STRIKES) == CAST_OK)
-                        m_uiSweepingStrikesTimer = urand(22000, 26000);
-                }
-                else
-                    m_uiSweepingStrikesTimer -= uiDiff;
-
-                // SinisterStrike_Timer
-                if (m_uiSinisterStrikeTimer < uiDiff)
-                {
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SINISTER_STRIKE) == CAST_OK)
-                        m_uiSinisterStrikeTimer = urand(8000, 16000);
-                }
-                else
-                    m_uiSinisterStrikeTimer -= uiDiff;
-
-                // Gouge_Timer
-                if (m_uiGougeTimer < uiDiff)
-                {
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_GOUGE) == CAST_OK)
-                    {
-                        if (m_creature->getThreatManager().getThreat(m_creature->getVictim()))
-                            m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(),-100);
-
-                        m_uiGougeTimer = urand(17000, 27000);
-                    }
-                }
-                else
-                    m_uiGougeTimer -= uiDiff;
-
-                // Kick_Timer
-                if (m_uiKickTimer < uiDiff)
-                {
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_KICK) == CAST_OK)
-                        m_uiKickTimer = urand(15000, 25000);
-                }
-                else
-                    m_uiKickTimer -= uiDiff;
-
-                // Blind_Timer
-                if (m_uiBlindTimer < uiDiff)
-                {
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_BLIND) == CAST_OK)
-                        m_uiBlindTimer = urand(10000, 20000);
-                }
-                else
-                    m_uiBlindTimer -= uiDiff;
-
-                break;
-        }
-
-        DoMeleeAttackIfReady();
-    }
-};
-
-bool EffectDummyCreature_thekal_resurrection(Unit* pCaster, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget)
-{
-    //always check spellid and effectindex
-    if (uiSpellId == SPELL_RESURRECT && uiEffIndex == EFFECT_INDEX_0)
-    {
-        if (boss_thekalBaseAI* pFakerAI = dynamic_cast<boss_thekalBaseAI*>(pCreatureTarget->AI()))
-            pFakerAI->Revive();
-
-        //always return true when we are handling this spell and effect
-        return true;
-    }
-
-    return false;
-}
-
-CreatureAI* GetAI_boss_thekal(Creature* pCreature)
-{
-    return new boss_thekalAI(pCreature);
-}
 
 CreatureAI* GetAI_mob_zealot_lorkhan(Creature* pCreature)
 {
     return new mob_zealot_lorkhanAI(pCreature);
 }
+
+struct MANGOS_DLL_DECL mob_zealot_zathAI : public ScriptedAI
+{
+    mob_zealot_zathAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_pInstance = (instance_zulgurub*)pCreature->GetInstanceData();
+        Reset();
+    }
+
+    instance_zulgurub* m_pInstance;
+
+    uint32 m_uiBlindTimer;
+    uint32 m_uiGougeTimer;
+    uint32 m_uiKickTimer;
+    uint32 m_uiSinisterStrikeTimer;
+
+    void Reset()
+    {
+        m_uiBlindTimer = 5000;
+        m_uiGougeTimer = 25000;
+        m_uiKickTimer = 18000;
+        m_uiSinisterStrikeTimer = 8000;
+    }
+
+    void JustReachedHome()
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_ZATH, FAIL);
+    }
+
+    void JustDied(Unit* /*pKiller*/)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_ZATH, IN_PROGRESS);
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        // Blind
+        if (m_uiBlindTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_BLIND);
+            m_uiBlindTimer = urand(10000, 20000);
+        }
+        else
+            m_uiBlindTimer -= uiDiff;
+
+        // Gouge
+        if (m_uiGougeTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_GOUGE);
+
+            if (m_creature->getThreatManager().getThreat(m_creature->getVictim()))
+                m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(),-100);
+
+            m_uiGougeTimer = urand(17000, 27000);
+        }
+        else
+            m_uiGougeTimer -= uiDiff;
+
+        // Kick
+        if (m_uiKickTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_KICK);
+            m_uiKickTimer = urand(15000, 25000);
+        }
+        else
+            m_uiKickTimer -= uiDiff;
+
+        // Sinister Strike
+        if (m_uiSinisterStrikeTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_SINISTER_STRIKE);
+            m_uiSinisterStrikeTimer = urand(8000, 16000);
+        }
+        else
+            m_uiSinisterStrikeTimer -= uiDiff;
+
+        DoMeleeAttackIfReady();
+    }
+};
 
 CreatureAI* GetAI_mob_zealot_zath(Creature* pCreature)
 {
@@ -681,18 +480,15 @@ void AddSC_boss_thekal()
     pNewScript = new Script;
     pNewScript->Name = "boss_thekal";
     pNewScript->GetAI = &GetAI_boss_thekal;
-    pNewScript->pEffectDummyNPC = &EffectDummyCreature_thekal_resurrection;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
     pNewScript->Name = "mob_zealot_lorkhan";
     pNewScript->GetAI = &GetAI_mob_zealot_lorkhan;
-    pNewScript->pEffectDummyNPC = &EffectDummyCreature_thekal_resurrection;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
     pNewScript->Name = "mob_zealot_zath";
     pNewScript->GetAI = &GetAI_mob_zealot_zath;
-    pNewScript->pEffectDummyNPC = &EffectDummyCreature_thekal_resurrection;
     pNewScript->RegisterSelf();
 }

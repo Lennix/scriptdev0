@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,24 +17,23 @@
 /* ScriptData
 SDName: Thunder_Bluff
 SD%Complete: 100
-SDComment: Quest support: 925
+SDComment: Quest support: 925, 772
 SDCategory: Thunder Bluff
 EndScriptData */
 
 #include "precompiled.h"
+#include "escort_ai.h"
 
 /*#####
-# npc_cairne_bloodhoof
+npc_cairne_bloodhoof
+npc_plains_vision
 ######*/
 
-enum
-{
-    SPELL_BERSERKER_CHARGE   = 16636,
-    SPELL_CLEAVE             = 16044,
-    SPELL_MORTAL_STRIKE      = 16856,
-    SPELL_THUNDERCLAP        = 23931,
-    SPELL_UPPERCUT           = 22916
-};
+#define SPELL_BERSERKER_CHARGE  16636
+#define SPELL_CLEAVE            16044
+#define SPELL_MORTAL_STRIKE     16856
+#define SPELL_THUNDERCLAP       23931
+#define SPELL_UPPERCUT          22916
 
 //TODO: verify abilities/timers
 struct MANGOS_DLL_DECL npc_cairne_bloodhoofAI : public ScriptedAI
@@ -99,7 +95,6 @@ struct MANGOS_DLL_DECL npc_cairne_bloodhoofAI : public ScriptedAI
         DoMeleeAttackIfReady();
     }
 };
-
 CreatureAI* GetAI_npc_cairne_bloodhoof(Creature* pCreature)
 {
     return new npc_cairne_bloodhoofAI(pCreature);
@@ -128,6 +123,31 @@ bool GossipSelect_npc_cairne_bloodhoof(Player* pPlayer, Creature* pCreature, uin
     return true;
 }
 
+/*######
+## npc_plains_vision
+######*/
+
+struct MANGOS_DLL_DECL npc_plains_visionAI : public npc_escortAI
+{
+    npc_plains_visionAI(Creature* pCreature) : npc_escortAI(pCreature)
+    {
+        Start(true);
+        Reset();
+    }
+
+    void Reset() {}
+    void WaypointReached(uint32 uiPointId)
+    {
+        if (uiPointId == 19)
+            SetRun(false);
+    }
+};
+
+CreatureAI* GetAI_npc_plains_vision(Creature* pCreature)
+{
+    return new npc_plains_visionAI(pCreature);
+}
+
 void AddSC_thunder_bluff()
 {
     Script* pNewScript;
@@ -137,5 +157,10 @@ void AddSC_thunder_bluff()
     pNewScript->GetAI = &GetAI_npc_cairne_bloodhoof;
     pNewScript->pGossipHello = &GossipHello_npc_cairne_bloodhoof;
     pNewScript->pGossipSelect = &GossipSelect_npc_cairne_bloodhoof;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_plains_vision";
+    pNewScript->GetAI = &GetAI_npc_plains_vision;
     pNewScript->RegisterSelf();
 }

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -42,70 +39,78 @@ struct MANGOS_DLL_DECL boss_bloodmage_thalnosAI : public ScriptedAI
 {
     boss_bloodmage_thalnosAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    bool HpYell;
-    uint32 FlameShock_Timer;
-    uint32 ShadowBolt_Timer;
-    uint32 FlameSpike_Timer;
-    uint32 FireNova_Timer;
+    bool bHpYell;
+    uint32 m_uiFlameShockTimer;
+    uint32 m_uiShadowBoltTimer;
+    uint32 m_uiFlameSpikeTimer;
+    uint32 m_uiFireNovaTimer;
 
     void Reset()
     {
-        HpYell = false;
-        FlameShock_Timer = 10000;
-        ShadowBolt_Timer = 2000;
-        FlameSpike_Timer = 8000;
-        FireNova_Timer = 40000;
+        bHpYell = false;
+        m_uiFlameShockTimer = 10000;
+        m_uiShadowBoltTimer = 2000;
+        m_uiFlameSpikeTimer = 8000;
+        m_uiFireNovaTimer = 40000;
     }
 
-    void Aggro(Unit *who)
+    void Aggro(Unit* /*pWho*/)
     {
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
-    void KilledUnit(Unit* Victim)
+    void KilledUnit(Unit* pVictim)
     {
         DoScriptText(SAY_KILL, m_creature);
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //If we are <35% hp
-        if (!HpYell && m_creature->GetHealthPercent() <= 35.0f)
+        // If we are <35% hp
+        if (!bHpYell && HealthBelowPct(35))
         {
             DoScriptText(SAY_HEALTH, m_creature);
-            HpYell = true;
+            bHpYell = true;
         }
 
-        //FlameShock_Timer
-        if (FlameShock_Timer < diff)
+        // Flame Shock
+        if (m_uiFlameShockTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_FLAMESHOCK);
-            FlameShock_Timer = urand(10000, 15000);
-        }else FlameShock_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAMESHOCK);
+            m_uiFlameShockTimer = urand(10000, 15000);
+        }
+        else 
+            m_uiFlameShockTimer -= uiDiff;
 
-        //FlameSpike_Timer
-        if (FlameSpike_Timer < diff)
+        // Flame Spike
+        if (m_uiFlameSpikeTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_FLAMESPIKE);
-            FlameSpike_Timer = 30000;
-        }else FlameSpike_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAMESPIKE);
+            m_uiFlameSpikeTimer = 30000;
+        }
+        else 
+            m_uiFlameSpikeTimer -= uiDiff;
 
-        //FireNova_Timer
-        if (FireNova_Timer < diff)
+        // Fire Nova
+        if (m_uiFireNovaTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_FIRENOVA);
-            FireNova_Timer = 40000;
-        }else FireNova_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIRENOVA);
+            m_uiFireNovaTimer = 40000;
+        }
+        else 
+            m_uiFireNovaTimer -= uiDiff;
 
-        //ShadowBolt_Timer
-        if (ShadowBolt_Timer < diff)
+        // Shadow Bolt
+        if (m_uiShadowBoltTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_SHADOWBOLT);
-            ShadowBolt_Timer = 2000;
-        }else ShadowBolt_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOWBOLT);
+            m_uiShadowBoltTimer = 2000;
+        }
+        else 
+            m_uiShadowBoltTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -118,9 +123,9 @@ CreatureAI* GetAI_boss_bloodmage_thalnos(Creature* pCreature)
 
 void AddSC_boss_bloodmage_thalnos()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_bloodmage_thalnos";
-    newscript->GetAI = &GetAI_boss_bloodmage_thalnos;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+    pNewScript = new Script;
+    pNewScript->Name = "boss_bloodmage_thalnos";
+    pNewScript->GetAI = &GetAI_boss_bloodmage_thalnos;
+    pNewScript->RegisterSelf();
 }

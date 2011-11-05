@@ -1,21 +1,6 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+ * This program is free software licensed under GPL version 2
+ * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef SC_SCRIPTMGR_H
 #define SC_SCRIPTMGR_H
@@ -40,14 +25,15 @@ class ObjectGuid;
 
 // *********************************************************
 // ************** Some defines used globally ***************
-// Basic defines
-#define VISIBLE_RANGE       (166.0f)                        //MAX visible range (size of grid)
-#define DEFAULT_TEXT        "<ScriptDev0 Text Entry Missing!>"
 
-// Some typedefs for storing GUIDs
-typedef std::list<uint64> GUIDList;
-typedef std::set<uint64> GUIDSet;
-typedef std::vector<uint64> GUIDVector;
+// Basic defines
+#define VISIBLE_RANGE       (166.0f)                        // MAX visible range (size of grid)
+#define DEFAULT_TEXT        "<ScriptDev2 Text Entry Missing!>"
+
+// Some typedefs for storing Guids
+typedef std::list<ObjectGuid> GUIDList;
+typedef std::set<ObjectGuid> GUIDSet;
+typedef std::vector<ObjectGuid> GUIDVector;
 typedef std::map<uint32, ObjectGuid> EntryGuidMap;
 
 /* Escort Factions
@@ -70,7 +56,10 @@ enum EscortFaction
     FACTION_ESCORT_N_FRIEND_ACTIVE      = 495,
 
     FACTION_ESCORT_A_PASSIVE            = 774,
-    FACTION_ESCORT_H_PASSIVE            = 775
+    FACTION_ESCORT_H_PASSIVE            = 775,
+
+    FACTION_ESCORT_N_ACTIVE             = 1986,
+    FACTION_ESCORT_H_ACTIVE             = 2046
 };
 
 // *********************************************************
@@ -123,7 +112,7 @@ struct Script
 // ************* Some functions used globally **************
 
 // Generic scripting text function
-void DoScriptText(int32 textEntry, WorldObject* pSource, Unit* target = NULL);
+void DoScriptText(int32 iTextEntry, WorldObject* pSource, Unit* pTarget = NULL);
 void DoOrSimulateScriptTextForMap(int32 iTextEntry, uint32 uiCreatureEntry, Map* pMap, Creature* pCreatureSource = NULL, Unit* pTarget = NULL);
 
 // *********************************************************

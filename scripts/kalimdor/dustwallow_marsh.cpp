@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,7 +17,7 @@
 /* ScriptData
 SDName: Dustwallow_Marsh
 SD%Complete: 95
-SDComment: Quest support: 558, 1173, 1273, 1324. Vendor Nat Pagle
+SDComment: Quest support: 558, 1173, 1222, 1270, 1273, 1324. Vendor Nat Pagle
 SDCategory: Dustwallow Marsh
 EndScriptData */
 
@@ -30,6 +27,7 @@ npc_morokk
 npc_nat_pagle
 npc_ogron
 npc_private_hendel
+npc_stinky_ignatz
 EndContentData */
 
 #include "precompiled.h"
@@ -41,8 +39,8 @@ EndContentData */
 
 enum
 {
-    QUEST_JAINAS_AUTOGRAPH    = 558,
-    SPELL_JAINAS_AUTOGRAPH    = 23122
+    QUEST_JAINAS_AUTOGRAPH = 558,
+    SPELL_JAINAS_AUTOGRAPH = 23122
 };
 
 #define GOSSIP_ITEM_JAINA "I know this is rather silly but i have a young ward who is a bit shy and would like your autograph."
@@ -76,13 +74,13 @@ bool GossipSelect_npc_lady_jaina_proudmoore(Player* pPlayer, Creature* pCreature
 
 enum
 {
-    SAY_MOR_CHALLENGE        = -1000499,
-    SAY_MOR_SCARED           = -1000500,
+    SAY_MOR_CHALLENGE               = -1000499,
+    SAY_MOR_SCARED                  = -1000500,
 
-    QUEST_CHALLENGE_MOROKK   = 1173,
+    QUEST_CHALLENGE_MOROKK          = 1173,
 
-    FACTION_MOR_HOSTILE      = 168,
-    FACTION_MOR_RUNNING      = 35
+    FACTION_MOR_HOSTILE             = 168,
+    FACTION_MOR_RUNNING             = 35
 };
 
 struct MANGOS_DLL_DECL npc_morokkAI : public npc_escortAI
@@ -131,7 +129,7 @@ struct MANGOS_DLL_DECL npc_morokkAI : public npc_escortAI
     {
         if (HasEscortState(STATE_ESCORT_ESCORTING))
         {
-            if (m_creature->GetHealthPercent() < 30.0f)
+            if (HealthBelowPct(30))
             {
                 if (Player* pPlayer = GetPlayerForEscort())
                     pPlayer->GroupEventHappens(QUEST_CHALLENGE_MOROKK, m_creature);
@@ -226,47 +224,47 @@ bool GossipSelect_npc_nat_pagle(Player* pPlayer, Creature* pCreature, uint32 uiS
 
 enum
 {
-    SAY_OGR_START              = -1000452,
-    SAY_OGR_SPOT               = -1000453,
-    SAY_OGR_RET_WHAT           = -1000454,
-    SAY_OGR_RET_SWEAR          = -1000455,
-    SAY_OGR_REPLY_RET          = -1000456,
-    SAY_OGR_RET_TAKEN          = -1000457,
-    SAY_OGR_TELL_FIRE          = -1000458,
-    SAY_OGR_RET_NOCLOSER       = -1000459,
-    SAY_OGR_RET_NOFIRE         = -1000460,
-    SAY_OGR_RET_HEAR           = -1000461,
-    SAY_OGR_CAL_FOUND          = -1000462,
-    SAY_OGR_CAL_MERCY          = -1000463,
-    SAY_OGR_HALL_GLAD          = -1000464,
-    EMOTE_OGR_RET_ARROW        = -1000465,
-    SAY_OGR_RET_ARROW          = -1000466,
-    SAY_OGR_CAL_CLEANUP        = -1000467,
-    SAY_OGR_NODIE              = -1000468,
-    SAY_OGR_SURVIVE            = -1000469,
-    SAY_OGR_RET_LUCKY          = -1000470,
-    SAY_OGR_THANKS             = -1000471,
+    SAY_OGR_START                       = -1000452,
+    SAY_OGR_SPOT                        = -1000453,
+    SAY_OGR_RET_WHAT                    = -1000454,
+    SAY_OGR_RET_SWEAR                   = -1000455,
+    SAY_OGR_REPLY_RET                   = -1000456,
+    SAY_OGR_RET_TAKEN                   = -1000457,
+    SAY_OGR_TELL_FIRE                   = -1000458,
+    SAY_OGR_RET_NOCLOSER                = -1000459,
+    SAY_OGR_RET_NOFIRE                  = -1000460,
+    SAY_OGR_RET_HEAR                    = -1000461,
+    SAY_OGR_CAL_FOUND                   = -1000462,
+    SAY_OGR_CAL_MERCY                   = -1000463,
+    SAY_OGR_HALL_GLAD                   = -1000464,
+    EMOTE_OGR_RET_ARROW                 = -1000465,
+    SAY_OGR_RET_ARROW                   = -1000466,
+    SAY_OGR_CAL_CLEANUP                 = -1000467,
+    SAY_OGR_NODIE                       = -1000468,
+    SAY_OGR_SURVIVE                     = -1000469,
+    SAY_OGR_RET_LUCKY                   = -1000470,
+    SAY_OGR_THANKS                      = -1000471,
 
-    QUEST_QUESTIONING          = 1273,
+    QUEST_QUESTIONING                   = 1273,
 
-    FACTION_GENERIC_FRIENDLY   = 35,
-    FACTION_THER_HOSTILE       = 151,
+    FACTION_GENERIC_FRIENDLY            = 35,
+    FACTION_THER_HOSTILE                = 151,
 
-    NPC_REETHE                 = 4980,
-    NPC_CALDWELL               = 5046,
-    NPC_HALLAN                 = 5045,
-    NPC_SKIRMISHER             = 5044,
+    NPC_REETHE                          = 4980,
+    NPC_CALDWELL                        = 5046,
+    NPC_HALLAN                          = 5045,
+    NPC_SKIRMISHER                      = 5044,
 
-    SPELL_FAKE_SHOT            = 7105,
+    SPELL_FAKE_SHOT                     = 7105,
 
-    PHASE_INTRO                = 0,
-    PHASE_GUESTS               = 1,
-    PHASE_FIGHT                = 2,
-    PHASE_COMPLETE             = 3
+    PHASE_INTRO                         = 0,
+    PHASE_GUESTS                        = 1,
+    PHASE_FIGHT                         = 2,
+    PHASE_COMPLETE                      = 3
 };
 
-static float m_afSpawn[] = {-3383.501953f, -3203.383301f, 36.149f};
-static float m_afMoveTo[] = {-3371.414795f, -3212.179932f, 34.210f};
+static float m_afSpawn[]= {-3383.501953f, -3203.383301f, 36.149f};
+static float m_afMoveTo[]= {-3371.414795f, -3212.179932f, 34.210f};
 
 struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
 {
@@ -530,21 +528,21 @@ CreatureAI* GetAI_npc_ogron(Creature* pCreature)
 
 enum
 {
-    SAY_PROGRESS_1_TER         = -1000411,
-    SAY_PROGRESS_2_HEN         = -1000412,
-    SAY_PROGRESS_3_TER         = -1000413,
-    SAY_PROGRESS_4_TER         = -1000414,
-    EMOTE_SURRENDER            = -1000415,
+    SAY_PROGRESS_1_TER          = -1000411,
+    SAY_PROGRESS_2_HEN          = -1000412,
+    SAY_PROGRESS_3_TER          = -1000413,
+    SAY_PROGRESS_4_TER          = -1000414,
+    EMOTE_SURRENDER             = -1000415,
 
-    QUEST_MISSING_DIPLO_PT16   = 1324,
-    FACTION_HOSTILE            = 168, // guessed, may be different
+    QUEST_MISSING_DIPLO_PT16    = 1324,
+    FACTION_HOSTILE             = 168,                      //guessed, may be different
 
-    NPC_SENTRY                 = 5184, // helps hendel
-    NPC_JAINA                  = 4968, // appears once hendel gives up
-    NPC_TERVOSH                = 4967
+    NPC_SENTRY                  = 5184,                     //helps hendel
+    NPC_JAINA                   = 4968,                     //appears once hendel gives up
+    NPC_TERVOSH                 = 4967
 };
 
-// TODO: develop this further, end event not created
+//TODO: develop this further, end event not created
 struct MANGOS_DLL_DECL npc_private_hendelAI : public ScriptedAI
 {
     npc_private_hendelAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
@@ -568,7 +566,7 @@ struct MANGOS_DLL_DECL npc_private_hendelAI : public ScriptedAI
 
     void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
     {
-        if (uiDamage > m_creature->GetHealth() || m_creature->GetHealthPercent() < 20.0f)
+        if (uiDamage > m_creature->GetHealth() || HealthBelowPct(20))
         {
             uiDamage = 0;
 
@@ -593,6 +591,130 @@ CreatureAI* GetAI_npc_private_hendel(Creature* pCreature)
 {
     return new npc_private_hendelAI(pCreature);
 }
+
+/*######
+## npc_stinky_ignatz
+######*/
+
+enum eStinkyIgnatz
+{
+    QUEST_STINKYS_ESCAPE_A          = 1222,
+    QUEST_STINKYS_ESCAPE_H          = 1270,
+
+    NPC_STINKYS_AMBUSHER            = 4352,         // probably wrong npc entry
+
+    SAY_STINKY_NOPE_ITS_NOT_HERE    = -1000696,
+    SAY_STINKY_FOUND_BOBGEAN_PLANT  = -1000697,
+    SAY_STINKY_THANKS_COMPLETE_A    = -1000698,
+    SAY_STINKY_THANKS_COMPLETE_H    = -1000699
+};
+
+struct MANGOS_DLL_DECL npc_stinky_ignatzAI : public npc_escortAI
+{
+    npc_stinky_ignatzAI(Creature* pCreature) : npc_escortAI(pCreature) {Reset();}
+
+    uint32 m_uiWaitTimer;
+    bool m_bBobgeanPlant;
+
+    void Reset()
+    {
+        if (HasEscortState(STATE_ESCORT_ESCORTING))
+            return;
+
+        m_uiWaitTimer = 0;
+        m_bBobgeanPlant = false;
+
+        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+    }
+
+    void JustSummoned(Creature* pSummoned)
+    {
+        if (pSummoned->GetEntry() == NPC_STINKYS_AMBUSHER)
+            if (Player* pPlayer = GetPlayerForEscort())
+                pSummoned->AI()->AttackStart(pPlayer);
+    }
+
+    void WaypointReached(uint32 uiPointId)
+    {
+        Player* pPlayer = GetPlayerForEscort();
+        if (!pPlayer)
+            return;
+
+        switch(uiPointId)
+        {
+            case 8:
+            case 9:
+            case 10:
+            case 11:
+                m_creature->SetStandState(UNIT_STAND_STATE_KNEEL);
+                m_uiWaitTimer = 3000;
+                break;
+            case 12:
+                m_creature->SetStandState(UNIT_STAND_STATE_KNEEL);
+                m_bBobgeanPlant = true;
+                m_uiWaitTimer = 3000;
+                break;
+            case 15:
+                m_creature->SummonCreature(NPC_STINKYS_AMBUSHER, -2856.17f, -3622.6f, 34.16f, 1.38f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+                m_creature->SummonCreature(NPC_STINKYS_AMBUSHER, -2878.99f, -3575.56f, 37.95f, 5.46f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+                break;
+            case 18:
+                pPlayer->GroupEventHappens(pPlayer->GetTeam() == ALLIANCE ? QUEST_STINKYS_ESCAPE_A : QUEST_STINKYS_ESCAPE_H, m_creature);
+                m_creature->SetFacingToObject(pPlayer);
+                DoScriptText(pPlayer->GetTeam() == ALLIANCE ? SAY_STINKY_THANKS_COMPLETE_A : SAY_STINKY_THANKS_COMPLETE_H, m_creature, pPlayer);
+                m_creature->HandleEmoteCommand(EMOTE_ONESHOT_TALK);
+                SetRun(false);
+                break;
+        }
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (m_uiWaitTimer)
+        {
+            if (m_uiWaitTimer <= uiDiff)
+            {
+                Player* pPlayer = GetPlayerForEscort();
+                DoScriptText(m_bBobgeanPlant ? SAY_STINKY_FOUND_BOBGEAN_PLANT : SAY_STINKY_NOPE_ITS_NOT_HERE, m_creature);
+                if (m_bBobgeanPlant && pPlayer)
+                    m_creature->SetFacingToObject(pPlayer);
+                m_creature->SetStandState(UNIT_STAND_STATE_STAND);
+                m_uiWaitTimer = 0;
+            }
+            else
+                m_uiWaitTimer -= uiDiff;
+        }
+
+        npc_escortAI::UpdateAI(uiDiff);
+
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_npc_stinky_ignatz(Creature* pCreature)
+{
+    return new npc_stinky_ignatzAI(pCreature);
+}
+
+bool QuestAccept_npc_stinky_ignatz(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+{
+    if (pPlayer->GetTeam() == ALLIANCE && pQuest->GetQuestId() == QUEST_STINKYS_ESCAPE_A ||
+        pPlayer->GetTeam() == HORDE && pQuest->GetQuestId() == QUEST_STINKYS_ESCAPE_H)
+    {
+        if (npc_stinky_ignatzAI* pEscortAI = dynamic_cast<npc_stinky_ignatzAI*>(pCreature->AI()))
+        {
+            pCreature->SetStandState(UNIT_STAND_STATE_STAND);
+            pCreature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+            pEscortAI->Start(false, pPlayer, pQuest);
+        }
+    }
+    return true;
+}
+
+/* AddSC */
 
 void AddSC_dustwallow_marsh()
 {
@@ -626,5 +748,11 @@ void AddSC_dustwallow_marsh()
     pNewScript->Name = "npc_private_hendel";
     pNewScript->GetAI = &GetAI_npc_private_hendel;
     pNewScript->pQuestAcceptNPC = &QuestAccept_npc_private_hendel;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_stinky_ignatz";
+    pNewScript->GetAI = &GetAI_npc_stinky_ignatz;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_stinky_ignatz;
     pNewScript->RegisterSelf();
 }

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -106,7 +103,7 @@ struct MANGOS_DLL_DECL boss_gothikAI : public ScriptedAI
         m_uiShadowboltTimer = 2500;
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/)
     {
         DoScriptText(SAY_SPEECH_1, m_creature);
 
@@ -143,7 +140,7 @@ struct MANGOS_DLL_DECL boss_gothikAI : public ScriptedAI
             DoScriptText(SAY_KILL, m_creature);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/)
     {
         DoScriptText(SAY_DEATH, m_creature);
 
@@ -408,7 +405,7 @@ bool EffectDummyCreature_spell_anchor(Unit* pCaster, uint32 uiSpellId, SpellEffe
                 uint32 uiNpcEntry = NPC_SPECT_TRAINEE;
 
                 if (uiSpellId == SPELL_B_TO_SKULL)
-                    uiNpcEntry = NPC_SPECT_DEATH_KNIGHT;
+                    uiNpcEntry = NPC_SPECT_DEATH_KNIGTH;
                 else if (uiSpellId == SPELL_C_TO_SKULL)
                     uiNpcEntry = NPC_SPECT_RIDER;
 
@@ -426,15 +423,15 @@ bool EffectDummyCreature_spell_anchor(Unit* pCaster, uint32 uiSpellId, SpellEffe
 
 void AddSC_boss_gothik()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_gothik";
-    newscript->GetAI = &GetAI_boss_gothik;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_gothik";
+    pNewScript->GetAI = &GetAI_boss_gothik;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "spell_anchor";
-    newscript->pEffectDummyNPC = &EffectDummyCreature_spell_anchor;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "spell_anchor";
+    pNewScript->pEffectDummyNPC = &EffectDummyCreature_spell_anchor;
+    pNewScript->RegisterSelf();
 }

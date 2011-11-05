@@ -1,24 +1,10 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+* This program is free software licensed under GPL version 2
+* Please see the included DOCS/LICENSE.TXT for more information */
 
 #include "precompiled.h"
 #include "system.h"
+#include "../config.h"
 #include "ProgressBar.h"
 #include "ObjectMgr.h"
 #include "Database/DatabaseEnv.h"
@@ -47,16 +33,19 @@ void SystemMgr::LoadVersion()
 
         strSD0Version = pFields[0].GetCppString();
 
-        outstring_log("Loading %s", strSD0Version.c_str());
-        outstring_log("");
-
         delete pResult;
     }
     else
-    {
         error_log("SD0: Missing `sd0_db_version` information.");
-        outstring_log("");
-    }
+
+    // Setup version info and display it
+    if (strSD0Version.empty())
+        strSD0Version.append("ScriptDev0 ");
+
+    strSD0Version.append(_FULLVERSION);
+
+    outstring_log("Loading %s", strSD0Version.c_str());
+    outstring_log("");
 }
 
 void SystemMgr::LoadScriptTexts()
@@ -106,9 +95,9 @@ void SystemMgr::LoadScriptTexts()
             m_mTextDataMap[iId] = pTemp;
             ++uiCount;
         } while (pResult->NextRow());
-
+        
         delete pResult;
-
+        
         outstring_log("");
         outstring_log(">> Loaded %u additional Script Texts data.", uiCount);
     }
@@ -168,9 +157,9 @@ void SystemMgr::LoadScriptTextsCustom()
             m_mTextDataMap[iId] = pTemp;
             ++uiCount;
         } while (pResult->NextRow());
-
+        
         delete pResult;
-
+        
         outstring_log("");
         outstring_log(">> Loaded %u additional Custom Texts data.", uiCount);
     }

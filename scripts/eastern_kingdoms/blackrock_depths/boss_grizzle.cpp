@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -35,12 +32,12 @@ struct MANGOS_DLL_DECL boss_grizzleAI : public ScriptedAI
 {
     boss_grizzleAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 GroundTremor_Timer;
+	uint32 GroundTremor_Timer;
     uint32 Frenzy_Timer;
 
     void Reset()
     {
-        GroundTremor_Timer = 12000;
+		GroundTremor_Timer = 12000;
         Frenzy_Timer =0;
     }
 
@@ -49,8 +46,8 @@ struct MANGOS_DLL_DECL boss_grizzleAI : public ScriptedAI
         //Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
-
-        //GroundTremor_Timer
+		
+		//GroundTremor_Timer
         if (GroundTremor_Timer < diff)
         {
             DoCastSpellIfCan(m_creature->getVictim(),SPELL_GROUNDTREMOR);
@@ -58,7 +55,7 @@ struct MANGOS_DLL_DECL boss_grizzleAI : public ScriptedAI
         }else GroundTremor_Timer -= diff;
 
         //Frenzy_Timer
-        if (m_creature->GetHealthPercent() < 51.0f)
+        if (HealthBelowPct(51))
         {
             if (Frenzy_Timer < diff)
             {
@@ -80,9 +77,9 @@ CreatureAI* GetAI_boss_grizzle(Creature* pCreature)
 
 void AddSC_boss_grizzle()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_grizzle";
-    newscript->GetAI = &GetAI_boss_grizzle;
-    newscript->RegisterSelf();
+    Script* pNewscript;
+    pNewscript = new Script;
+    pNewscript->Name = "boss_grizzle";
+    pNewscript->GetAI = &GetAI_boss_grizzle;
+    pNewscript->RegisterSelf();
 }

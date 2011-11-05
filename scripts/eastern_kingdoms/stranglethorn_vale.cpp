@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -36,7 +33,7 @@ EndContentData */
 
 struct MANGOS_DLL_DECL mob_yennikuAI : public ScriptedAI
 {
-    mob_yennikuAI(Creature *c) : ScriptedAI(c)
+    mob_yennikuAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         bReset = false;
         Reset();
@@ -48,7 +45,7 @@ struct MANGOS_DLL_DECL mob_yennikuAI : public ScriptedAI
     void Reset()
     {
         Reset_Timer = 0;
-        m_creature->HandleEmote(EMOTE_STATE_NONE);
+        m_creature->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_NONE);
     }
 
     void SpellHit(Unit *caster, const SpellEntry *spell)
@@ -56,9 +53,9 @@ struct MANGOS_DLL_DECL mob_yennikuAI : public ScriptedAI
         if (caster->GetTypeId() == TYPEID_PLAYER)
         {
                                                             //Yenniku's Release
-            if (!bReset && ((Player*)caster)->GetQuestStatus(592) == QUEST_STATUS_INCOMPLETE && spell->Id == 3607)
+            if(!bReset && ((Player*)caster)->GetQuestStatus(592) == QUEST_STATUS_INCOMPLETE && spell->Id == 3607)
             {
-                m_creature->HandleEmote(EMOTE_STATE_STUN);
+                m_creature->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_STUN);
                 m_creature->CombatStop();                   //stop combat
                 m_creature->DeleteThreatList();             //unsure of this
                 m_creature->setFaction(83);                 //horde generic
@@ -70,18 +67,21 @@ struct MANGOS_DLL_DECL mob_yennikuAI : public ScriptedAI
         return;
     }
 
-    void Aggro(Unit *who) {}
+    void Aggro(Unit* pWho)
+    {
+    }
 
     void UpdateAI(const uint32 diff)
     {
         if (bReset)
-            if (Reset_Timer < diff)
-        {
-            EnterEvadeMode();
-            bReset = false;
-            m_creature->setFaction(28);                     //troll, bloodscalp
-        }
-        else Reset_Timer -= diff;
+            if(Reset_Timer < diff)
+            {
+                EnterEvadeMode();
+                bReset = false;
+                m_creature->setFaction(28);                     //troll, bloodscalp
+            }
+            else
+                Reset_Timer -= diff;
 
         //Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
@@ -90,17 +90,18 @@ struct MANGOS_DLL_DECL mob_yennikuAI : public ScriptedAI
         DoMeleeAttackIfReady();
     }
 };
-CreatureAI* GetAI_mob_yenniku(Creature *_Creature)
+
+CreatureAI* GetAI_mob_yenniku(Creature* pCreature)
 {
-    return new mob_yennikuAI (_Creature);
+    return new mob_yennikuAI(pCreature);
 }
 
 void AddSC_stranglethorn_vale()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "mob_yenniku";
-    pNewScript->GetAI = &GetAI_mob_yenniku;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "mob_yenniku";
+    pNewscript->GetAI = &GetAI_mob_yenniku;
+    pNewscript->RegisterSelf();
 }

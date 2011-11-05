@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,80 +17,54 @@
 /* ScriptData
 SDName: Razorfen_Downs
 SD%Complete: 100
-SDComment: Support for Henry Stern(2 recipes), Extinguishing the Idol Escort Event
+SDComment: Support for Henry Stern(2 recipes), Gong of Razorfen Downs (Tuten'Kash Event)
 SDCategory: Razorfen Downs
 EndScriptData */
 
 /* ContentData
-npc_henry_stern
+go_gong_of_downs
 npc_belnistrasz
+npc_henry_stern
 EndContentData */
 
 #include "precompiled.h"
 #include "escort_ai.h"
+#include "razorfen_downs.h"
 
 /*###
-# npc_henry_stern
+# go_gong_of_downs
 ####*/
 
-enum
+bool GOUse_go_gong_of_downs(Player* pPlayer, GameObject* pGo)
 {
-    SPELL_GOLDTHORN_TEA                         = 13028,
-    SPELL_TEACHING_GOLDTHORN_TEA                = 13029,
-    SPELL_MIGHT_TROLLS_BLOOD_POTION             = 3451,
-    SPELL_TEACHING_MIGHTY_TROLLS_BLOOD_POTION   = 13030,
-    GOSSIP_TEXT_TEA_ANSWER                      = 2114,
-    GOSSIP_TEXT_POTION_ANSWER                   = 2115,
-};
-
-#define GOSSIP_ITEM_TEA     "Teach me the cooking recipe"
-#define GOSSIP_ITEM_POTION  "Teach me the alchemy recipe"
-
-bool GossipHello_npc_henry_stern (Player* pPlayer, Creature* pCreature)
-{
-    if (pPlayer->GetBaseSkillValue(SKILL_COOKING) >= 175 && !pPlayer->HasSpell(SPELL_GOLDTHORN_TEA))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_TEA, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-
-    if (pPlayer->GetBaseSkillValue(SKILL_ALCHEMY) >= 180 && !pPlayer->HasSpell(SPELL_MIGHT_TROLLS_BLOOD_POTION))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_POTION, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-    return true;
-}
-
-bool GossipSelect_npc_henry_stern (Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
+    instance_razorfen_downs* m_pInstance = (instance_razorfen_downs*)pGo->GetInstanceData();
+    if (m_pInstance)
     {
-        pCreature->CastSpell(pPlayer, SPELL_TEACHING_GOLDTHORN_TEA, true);
-        pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_TEA_ANSWER, pCreature->GetObjectGuid());
+        if (m_pInstance->GetData(TYPE_TUTENKASH) == NOT_STARTED || m_pInstance->GetData(TYPE_TUTENKASH) == IN_PROGRESS)
+        {
+            m_pInstance->SetData(DATA_GONG_USE, m_pInstance->GetData(DATA_GONG_USE) + 1);
+            return true;
+        }
     }
-
-    if (uiAction == GOSSIP_ACTION_INFO_DEF + 2)
-    {
-        pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_POTION_ANSWER, pCreature->GetObjectGuid());
-        pCreature->CastSpell(pPlayer, SPELL_TEACHING_MIGHTY_TROLLS_BLOOD_POTION, true);
-    }
-
-    return true;
+    return false;
 }
 
 /*###
 # npc_belnistrasz
 ####*/
 
-enum
+enum eBelistrasz
 {
     QUEST_EXTINGUISHING_THE_IDOL    = 3525,
 
-    SAY_BELNISTRASZ_READY           = -1129005,
-    SAY_BELNISTRASZ_START_RIT       = -1129006,
-    SAY_BELNISTRASZ_AGGRO_1         = -1129007,
-    SAY_BELNISTRASZ_AGGRO_2         = -1129008,
-    SAY_BELNISTRASZ_3_MIN           = -1129009,
-    SAY_BELNISTRASZ_2_MIN           = -1129010,
-    SAY_BELNISTRASZ_1_MIN           = -1129011,
-    SAY_BELNISTRASZ_FINISH          = -1129012,
+    SAY_BELNISTRASZ_READY           = -1000700,
+    SAY_BELNISTRASZ_START_RIT       = -1000701,
+    SAY_BELNISTRASZ_AGGRO_1         = -1000702,
+    SAY_BELNISTRASZ_AGGRO_2         = -1000703,
+    SAY_BELNISTRASZ_3_MIN           = -1000704,
+    SAY_BELNISTRASZ_2_MIN           = -1000705,
+    SAY_BELNISTRASZ_1_MIN           = -1000706,
+    SAY_BELNISTRASZ_FINISH          = -1000707,
 
     NPC_IDOL_ROOM_SPAWNER           = 8611,
 
@@ -337,19 +308,69 @@ bool QuestAccept_npc_belnistrasz(Player* pPlayer, Creature* pCreature, const Que
     return true;
 }
 
+/*###
+# npc_henry_stern
+####*/
+
+enum eHenryStern
+{
+    SPELL_GOLDTHORN_TEA                         = 13028,
+    SPELL_TEACHING_GOLDTHORN_TEA                = 13029,
+    SPELL_MIGHT_TROLLS_BLOOD_POTION             = 3451,
+    SPELL_TEACHING_MIGHTY_TROLLS_BLOOD_POTION   = 13030,
+    GOSSIP_TEXT_TEA_ANSWER                      = 2114,
+    GOSSIP_TEXT_POTION_ANSWER                   = 2115,
+};
+
+#define GOSSIP_ITEM_TEA     "Teach me the cooking recipe"
+#define GOSSIP_ITEM_POTION  "Teach me the alchemy recipe"
+
+bool GossipHello_npc_henry_stern(Player* pPlayer, Creature* pCreature)
+{
+    if (pPlayer->GetBaseSkillValue(SKILL_COOKING) >= 175 && !pPlayer->HasSpell(SPELL_GOLDTHORN_TEA))
+        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_TEA, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+    if (pPlayer->GetBaseSkillValue(SKILL_ALCHEMY) >= 180 && !pPlayer->HasSpell(SPELL_MIGHT_TROLLS_BLOOD_POTION))
+        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_POTION, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+
+	pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
+    return true;
+}
+
+bool GossipSelect_npc_henry_stern(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+{
+    switch (uiAction)
+	{
+		case GOSSIP_ACTION_INFO_DEF + 1:
+			pCreature->CastSpell(pPlayer, SPELL_TEACHING_GOLDTHORN_TEA, true);
+			pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_TEA_ANSWER, pCreature->GetObjectGuid());
+			break;
+		case GOSSIP_ACTION_INFO_DEF + 2:
+			pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_POTION_ANSWER, pCreature->GetObjectGuid());
+			pCreature->CastSpell(pPlayer, SPELL_TEACHING_MIGHTY_TROLLS_BLOOD_POTION, true);
+			break;
+	}
+    return true;
+}
+
 void AddSC_razorfen_downs()
 {
     Script* pNewScript;
 
     pNewScript = new Script;
-    pNewScript->Name = "npc_henry_stern";
-    pNewScript->pGossipHello = &GossipHello_npc_henry_stern;
-    pNewScript->pGossipSelect = &GossipSelect_npc_henry_stern;
+    pNewScript->Name = "go_gong_of_downs";
+    pNewScript->pGOUse = &GOUse_go_gong_of_downs;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
     pNewScript->Name = "npc_belnistrasz";
     pNewScript->GetAI = &GetAI_npc_belnistrasz;
     pNewScript->pQuestAcceptNPC = &QuestAccept_npc_belnistrasz;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_henry_stern";
+    pNewScript->pGossipHello = &GossipHello_npc_henry_stern;
+    pNewScript->pGossipSelect = &GossipSelect_npc_henry_stern;
     pNewScript->RegisterSelf();
 }

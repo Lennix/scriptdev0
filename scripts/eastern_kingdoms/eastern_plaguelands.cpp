@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,21 +16,24 @@
 
 /* ScriptData
 SDName: Eastern_Plaguelands
-SD%Complete: 80
-SDComment: Quest support: 5211, 5742, 7622. Special vendor Augustus the Touched
+SD%Complete: 100
+SDComment: Quest support: 5211, 5742. Argent Medic, Special vendor Augustus the Touched, Wind Master William Kielar
 SDCategory: Eastern Plaguelands
 EndScriptData */
 
 /* ContentData
 mobs_ghoul_flayer
+npc_argent_medic
 npc_augustus_the_touched
+npc_betina_bigglezink
 npc_darrowshire_spirit
 npc_tirion_fordring
-npc_infected_peasant
-npc_eris_havenfire
+npc_highlord_taelan_fordring
+npc_william_kielar
 EndContentData */
 
 #include "precompiled.h"
+#include "escort_ai.h"
 
 //id8530 - cannibal ghoul
 //id8531 - gibbering ghoul
@@ -45,10 +45,10 @@ struct MANGOS_DLL_DECL mobs_ghoul_flayerAI : public ScriptedAI
 
     void Reset() { }
 
-    void JustDied(Unit* Killer)
+    void JustDied(Unit* pKiller)
     {
-        if (Killer->GetTypeId() == TYPEID_PLAYER)
-            m_creature->SummonCreature(11064, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN, 60000);
+        if (pKiller->GetTypeId() == TYPEID_PLAYER)
+            m_creature->SummonCreature(11064, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN, 40000);
     }
 
 };
@@ -56,6 +56,54 @@ struct MANGOS_DLL_DECL mobs_ghoul_flayerAI : public ScriptedAI
 CreatureAI* GetAI_mobs_ghoul_flayer(Creature* pCreature)
 {
     return new mobs_ghoul_flayerAI(pCreature);
+}
+
+/*######
+## npc_argent_medic
+######*/
+
+enum eArgentMedic
+{
+    FACTION_ARGENT_DAWN     = 529,
+
+    GOSSIP_BASE             = 8454,
+    GOSSIP_HONORED          = 8455,
+
+    SPELL_GHOUL_ROT         = 12541,
+    SPELL_MAGGOT_SLIME      = 16449
+};
+
+bool GossipHello_npc_argent_medic(Player* pPlayer, Creature* pCreature)
+{
+    if (pCreature->isQuestGiver())
+        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
+
+    if (pPlayer->GetReputationRank(FACTION_ARGENT_DAWN) >= REP_HONORED)
+    {
+        if (pPlayer->HasAura(SPELL_GHOUL_ROT) || pPlayer->HasAura(SPELL_MAGGOT_SLIME))
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "I'm infected, help me please!", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+        pPlayer->SEND_GOSSIP_MENU(GOSSIP_HONORED, pCreature->GetObjectGuid());
+    }
+    else
+        pPlayer->SEND_GOSSIP_MENU(GOSSIP_BASE, pCreature->GetObjectGuid());
+
+    return true;
+}
+
+bool GossipSelect_npc_argent_medic(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+{
+    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
+    {
+        pPlayer->CLOSE_GOSSIP_MENU();
+
+        if (pPlayer->HasAura(SPELL_GHOUL_ROT))
+            pPlayer->RemoveAurasDueToSpell(SPELL_GHOUL_ROT);
+
+        if (pPlayer->HasAura(SPELL_MAGGOT_SLIME))
+            pPlayer->RemoveAurasDueToSpell(SPELL_MAGGOT_SLIME);
+    }
+    return true;
 }
 
 /*######
@@ -82,10 +130,49 @@ bool GossipSelect_npc_augustus_the_touched(Player* pPlayer, Creature* pCreature,
 }
 
 /*######
+## npc_betina_bigglezink
+######*/
+
+#define GOSSIP_GAMBIT     "Could you give me one more Dawn's Gambit?"
+
+enum eBetina
+{
+    ITEM_DAWNS_GAMBIT                 = 12368,
+    SPELL_CREATE_ITEM_DAWNS_GAMBIT    = 18367,
+    QUEST_DAWNS_GAMBIT                = 4771
+};
+
+bool GossipHello_npc_betina_bigglezink(Player* pPlayer, Creature* pCreature)
+{
+    if (pCreature->isQuestGiver())
+        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
+
+    if (!pPlayer->HasItemCount(ITEM_DAWNS_GAMBIT, 1, true) && pPlayer->GetQuestRewardStatus(QUEST_DAWNS_GAMBIT))
+        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_GAMBIT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
+    return true;
+}
+
+bool GossipSelect_npc_betina_bigglezink(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+{
+    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
+    {
+        pPlayer->CLOSE_GOSSIP_MENU();
+        pCreature->CastSpell(pPlayer, SPELL_CREATE_ITEM_DAWNS_GAMBIT, false);
+    }
+    return true;
+}
+
+/*######
 ## npc_darrowshire_spirit
 ######*/
 
-#define SPELL_SPIRIT_SPAWNIN    17321
+enum eSpirit
+{
+    SPELL_SPIRIT_SPAWNIN      = 17321,
+    GOSSIP_SPIRIT             = 3873
+};
 
 struct MANGOS_DLL_DECL npc_darrowshire_spiritAI : public ScriptedAI
 {
@@ -93,8 +180,8 @@ struct MANGOS_DLL_DECL npc_darrowshire_spiritAI : public ScriptedAI
 
     void Reset()
     {
-        DoCastSpellIfCan(m_creature,SPELL_SPIRIT_SPAWNIN);
-        m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+        DoCastSpellIfCan(m_creature, SPELL_SPIRIT_SPAWNIN);
+        m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
     }
 };
 
@@ -105,9 +192,19 @@ CreatureAI* GetAI_npc_darrowshire_spirit(Creature* pCreature)
 
 bool GossipHello_npc_darrowshire_spirit(Player* pPlayer, Creature* pCreature)
 {
-    pPlayer->SEND_GOSSIP_MENU(3873, pCreature->GetObjectGuid());
-    pPlayer->TalkedToCreature(pCreature->GetEntry(), pCreature->GetObjectGuid());
-    pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Farewell, my friend.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+    pPlayer->SEND_GOSSIP_MENU(GOSSIP_SPIRIT, pCreature->GetObjectGuid());
+    return true;
+}
+
+bool GossipSelect_npc_darrowshire_spirit(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+{
+    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
+    {
+        pPlayer->TalkedToCreature(pCreature->GetEntry(), pCreature->GetObjectGuid());
+        pPlayer->CLOSE_GOSSIP_MENU();
+        pCreature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+    }
     return true;
 }
 
@@ -115,22 +212,78 @@ bool GossipHello_npc_darrowshire_spirit(Player* pPlayer, Creature* pCreature)
 ## npc_tirion_fordring
 ######*/
 
-enum
+enum eTirionFordring
 {
-    QUEST_REDEMPTION             = 5742,
+    SPELL_DEVOTION_AURA     = 8285,
+    SPELL_EXORCISM          = 17149,
+    SPELL_HAMMER_OF_JUSTICE = 13005,
 
-    TIRION_GOSSIP_ITEM_1         = -3000106,
-    TIRION_GOSSIP_ITEM_2         = -3000107,
-    TIRION_GOSSIP_ITEM_3         = -3000108,
-    TIRION_GOSSIP_ITEM_4         = -3000109,
+    NPC_TAELAN              = 1842
 };
+
+struct MANGOS_DLL_DECL npc_tirion_fordringAI : public ScriptedAI
+{
+    npc_tirion_fordringAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+
+    uint32 m_uiExorcismTimer;
+    uint32 m_uiHammerOfJusticeTimer;
+
+    void Reset()
+    {
+        m_uiExorcismTimer = 7000;
+        m_uiHammerOfJusticeTimer = 4000;
+    }
+
+    void Aggro(Unit* /*pWho*/)
+    {
+        DoCastSpellIfCan(m_creature, SPELL_DEVOTION_AURA);
+    }
+
+    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
+    {
+        if (GetClosestCreatureWithEntry(m_creature, NPC_TAELAN, 40.0f))
+            if (pDoneBy->GetTypeId() == TYPEID_UNIT)
+                uiDamage = (uiDamage >= m_creature->GetHealth() ? 0 : urand(8,12));
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        // Exorcism
+        if (m_uiHammerOfJusticeTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_HAMMER_OF_JUSTICE);
+            m_uiHammerOfJusticeTimer = 10000;
+        }
+        else
+            m_uiHammerOfJusticeTimer -= uiDiff;
+
+        // Hammer of Justice
+        if (m_uiHammerOfJusticeTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_HAMMER_OF_JUSTICE);
+            m_uiHammerOfJusticeTimer = 18000;
+        }
+        else
+            m_uiHammerOfJusticeTimer -= uiDiff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+CreatureAI* GetAI_npc_tirion_fordring(Creature* pCreature)
+{
+    return new npc_tirion_fordringAI(pCreature);
+}
 
 bool GossipHello_npc_tirion_fordring(Player* pPlayer, Creature* pCreature)
 {
-    if (pPlayer->GetQuestStatus(QUEST_REDEMPTION) == QUEST_STATUS_INCOMPLETE && pPlayer->getStandState() == UNIT_STAND_STATE_SIT)
-        pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, TIRION_GOSSIP_ITEM_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-    else
+    if (pCreature->isQuestGiver())
         pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
+
+    if (pPlayer->GetQuestStatus(5742) == QUEST_STATUS_INCOMPLETE && pPlayer->getStandState() == UNIT_STAND_STATE_SIT)
+        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "I am ready to hear your tale, Tirion.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
 
     pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
 
@@ -142,33 +295,61 @@ bool GossipSelect_npc_tirion_fordring(Player* pPlayer, Creature* pCreature, uint
     switch(uiAction)
     {
         case GOSSIP_ACTION_INFO_DEF+1:
-            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, TIRION_GOSSIP_ITEM_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Thank you, Tirion.  What of your identity?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
             pPlayer->SEND_GOSSIP_MENU(4493, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, TIRION_GOSSIP_ITEM_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "That is terrible.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
             pPlayer->SEND_GOSSIP_MENU(4494, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+3:
-            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, TIRION_GOSSIP_ITEM_4, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 4);
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "I will, Tirion.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 4);
             pPlayer->SEND_GOSSIP_MENU(4495, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+4:
             pPlayer->CLOSE_GOSSIP_MENU();
-            pPlayer->AreaExploredOrEventHappens(QUEST_REDEMPTION);
+            pPlayer->AreaExploredOrEventHappens(5742);
             break;
     }
     return true;
 }
 
 /*######
-## npc_taelan_fordring
+## npc_william_kielar
 ######*/
 
-enum
+bool GossipHello_npc_william_kielar(Player* pPlayer, Creature* pCreature)
 {
-    QUEST_IN_DREAMS              = 5944,
-};
+    if (pCreature->isQuestGiver())
+        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
+
+    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Take me to Northpass Tower!", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Take me to Eastwall Tower!", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Take me to Crown Guard Tower!", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
+
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
+    return true;
+}
+
+bool GossipSelect_npc_william_kielar(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+{
+    switch(uiAction)
+    {
+        case GOSSIP_ACTION_INFO_DEF + 1:
+            pPlayer->CLOSE_GOSSIP_MENU();
+            pPlayer->ActivateTaxiPathTo(494);
+            break;
+        case GOSSIP_ACTION_INFO_DEF + 2:
+            pPlayer->CLOSE_GOSSIP_MENU();
+            pPlayer->ActivateTaxiPathTo(495);
+            break;
+        case GOSSIP_ACTION_INFO_DEF + 3:
+            pPlayer->CLOSE_GOSSIP_MENU();
+            pPlayer->ActivateTaxiPathTo(496);
+            break;
+    }    
+    return true;
+}
 
 /*######
 ## npc_infected_peasant
@@ -176,13 +357,13 @@ enum
 
 enum
 {
-    SPELL_DEATHS_DOOR           = 23127, // Green (weak)
-    SPELL_SEETHING_PLAGUE       = 23072, // Purple (strong)
+    SPELL_DEATHS_DOOR = 23127, // Green (weak)
+    SPELL_SEETHING_PLAGUE = 23072, // Purple (strong)
 
-    NPC_INJURED_PEASANT         = 14484,
-    NPC_PLAGUED_PEASANT         = 14485,
+    NPC_INJURED_PEASANT = 14484,
+    NPC_PLAGUED_PEASANT = 14485,
 
-    SPELL_ENTER_THE_LIGHT_DND   = 23107
+    SPELL_ENTER_THE_LIGHT_DND = 23107
 };
 
 struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
@@ -273,12 +454,12 @@ static const uint32 aPeasantSaveSay[] = {-1000702, -1000703, -1000704, -1000705}
 
 enum
 {
-    QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW    = 7622,
+    QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW = 7622,
 
-    NPC_SCOURGE_ARCHER                       = 14489,
-    NPC_SCOURGE_FOOTSOLDIER                  = 14486,
+    NPC_SCOURGE_ARCHER = 14489,
+    NPC_SCOURGE_FOOTSOLDIER = 14486,
 
-    SPELL_BLESSING_OF_NORDRASSIL             = 23108
+    SPELL_BLESSING_OF_NORDRASSIL = 23108
 };
 
 // Never show this code to your friends. It's Super-Duper!!
@@ -377,7 +558,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
             {
                 if (Creature* pTemp = m_creature->SummonCreature(NPC_SCOURGE_ARCHER, aArcherSpawn[i][0], aArcherSpawn[i][1], aArcherSpawn[i][2], 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 360000))
                 {
-                    m_lSummonedGUIDList.push_back(pTemp->GetObjectGuid());
+                    m_lSummonedGUIDList.push_back(pTemp->GetGUID());
                     pTemp->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                 }
             }
@@ -435,9 +616,9 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
     void SummonedCreatureJustDied(Creature* pSummoned)
     {
        /* We do not want to count staying peasants.
-        * It means that they are saved. Saved peasants are ForcedDespawn(),
-        * which triggers SummonedCreatureJustDied.
-        */
+* It means that they are saved. Saved peasants are ForcedDespawn(),
+* which triggers SummonedCreatureJustDied.
+*/
         if (pSummoned->GetMotionMaster()->GetCurrentMovementGeneratorType() != IDLE_MOTION_TYPE &&
            (pSummoned->GetEntry() == NPC_INJURED_PEASANT || pSummoned->GetEntry() == NPC_PLAGUED_PEASANT))
         {
@@ -460,7 +641,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
                 pPlayer->GetRandomPoint(pPlayer->GetPositionX(), pPlayer->GetPositionY(), pPlayer->GetPositionZ(), 15.0f, fX, fY, fZ);
 
                 if (Creature* pTemp = m_creature->SummonCreature(NPC_SCOURGE_FOOTSOLDIER, fX, fY, fZ, 0, TEMPSUMMON_DEAD_DESPAWN, 0))
-                    m_lSummonedGUIDList.push_back(pTemp->GetObjectGuid());
+                    m_lSummonedGUIDList.push_back(pTemp->GetGUID());
             }
         }
     }
@@ -526,10 +707,10 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
                         float fRange = 59.9f; // Range above 60 yd is not valid, because ACID recognizes it as out of range
 
                        /* Make the chance of being a victim equal for each peasant.
-                        * I mean that now NPC_INJURED_PEASANT has now a bigger chance to be a target,
-                        * because it is checked in the first place. On the second is NPC_PLAGUED_PEASANT.
-                        * So this is needed to be solved.
-                        */
+* I mean that now NPC_INJURED_PEASANT has now a bigger chance to be a target,
+* because it is checked in the first place. On the second is NPC_PLAGUED_PEASANT.
+* So this is needed to be solved.
+*/
 
                         Creature* pPeasant = GetClosestCreatureWithEntry(pArcher, NPC_INJURED_PEASANT, fRange);
                         if (!pPeasant)
@@ -610,16 +791,16 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
                 }
 
                /* Just a note:
-                * Phase is NOT Wave. Phase means a part of this event in this script.
-                * Wave means a wave of peasants. We have maximum of 5 waves. You never can be clear enough :P
-                */
+* Phase is NOT Wave. Phase means a part of this event in this script.
+* Wave means a wave of peasants. We have maximum of 5 waves. You never can be clear enough :P
+*/
                 ++m_uiPhase;
             }
             else
                 m_uiMainTimer -= uiDiff;
         }
         else // Impossible to have m_bIsQuestInProgress and !m_uiPhase
-            debug_log("SD0: npc_eris_havenfire: No phase detected!");
+debug_log("SD0: npc_eris_havenfire: No phase detected!");
 
     }
 };
@@ -646,45 +827,145 @@ CreatureAI* GetAI_npc_eris_havenfire(Creature* pCreature)
     return new npc_eris_havenfireAI(pCreature);
 }
 
+/*######
+## mob_scourge_archer
+######*/
+
+struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
+{
+    mob_scourge_archerAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        SetCombatMovement(false);
+        //pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_ATTACKABLE_1);
+        pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+        Reset();
+    }
+
+    uint32 m_uiShotTimer;
+    bool m_bSkippedFirstShot;
+
+    void Reset()
+    {
+        m_uiShotTimer = 0;
+        m_bSkippedFirstShot = false;
+    }
+
+    void MoveInLineOfSight(Unit* pWho)
+    {
+        if (!pWho)
+            return;
+
+        switch(pWho->GetEntry())
+        {
+        case NPC_INJURED_PEASANT:
+        case NPC_PLAGUED_PEASANT:
+            if (!m_bSkippedFirstShot)
+            {
+                m_bSkippedFirstShot = true;
+                m_uiShotTimer = urand(2000, 3000);
+                break;
+            }
+            if (!m_uiShotTimer && pWho->IsWithinDist(m_creature, 40.0f))
+            {
+                m_creature->SetFacingToObject(pWho);
+                if (DoCastSpellIfCan(pWho, 7105) == CAST_OK)
+                    m_uiShotTimer = 2000;
+            }
+            break;
+        }
+    }
+
+    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
+    {
+        if (pDoneBy->IsCharmerOrOwnerPlayerOrPlayerItself())
+            if (!((Player*)pDoneBy)->isGameMaster())
+                uiDamage = 0;
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (m_uiShotTimer)
+        {
+            if (m_uiShotTimer <= uiDiff)
+                m_uiShotTimer = 0;
+            else
+                m_uiShotTimer -= uiDiff;
+        }
+
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        EnterEvadeMode();
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_mob_scourge_archer(Creature* pCreature)
+{
+    return new mob_scourge_archerAI(pCreature);
+}
+
 void AddSC_eastern_plaguelands()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "mobs_ghoul_flayer";
-    pNewScript->GetAI = &GetAI_mobs_ghoul_flayer;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "mobs_ghoul_flayer";
+    pNewscript->GetAI = &GetAI_mobs_ghoul_flayer;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_augustus_the_touched";
-    pNewScript->pGossipHello = &GossipHello_npc_augustus_the_touched;
-    pNewScript->pGossipSelect = &GossipSelect_npc_augustus_the_touched;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_argent_medic";
+    pNewscript->pGossipHello = &GossipHello_npc_argent_medic;
+    pNewscript->pGossipSelect = &GossipSelect_npc_argent_medic;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_darrowshire_spirit";
-    pNewScript->GetAI = &GetAI_npc_darrowshire_spirit;
-    pNewScript->pGossipHello = &GossipHello_npc_darrowshire_spirit;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_augustus_the_touched";
+    pNewscript->pGossipHello = &GossipHello_npc_augustus_the_touched;
+    pNewscript->pGossipSelect = &GossipSelect_npc_augustus_the_touched;
+    pNewscript->RegisterSelf();
+    
+    pNewscript = new Script;
+    pNewscript->Name = "npc_betina_bigglezink";
+    pNewscript->pGossipHello = &GossipHello_npc_betina_bigglezink;
+    pNewscript->pGossipSelect = &GossipSelect_npc_betina_bigglezink;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_tirion_fordring";
-    pNewScript->pGossipHello = &GossipHello_npc_tirion_fordring;
-    pNewScript->pGossipSelect = &GossipSelect_npc_tirion_fordring;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_darrowshire_spirit";
+    pNewscript->pGossipHello = &GossipHello_npc_darrowshire_spirit;
+    pNewscript->pGossipSelect = &GossipSelect_npc_darrowshire_spirit;
+    pNewscript->GetAI = &GetAI_npc_darrowshire_spirit;
+    pNewscript->RegisterSelf();
 
-    /*pNewScript = new Script;
-    pNewScript->Name = "npc_taelan_fordring";
-    pNewScript->RegisterSelf();*/
+    pNewscript = new Script;
+    pNewscript->Name = "npc_tirion_fordring";
+    pNewscript->GetAI = &GetAI_npc_tirion_fordring;
+    pNewscript->pGossipHello = &GossipHello_npc_tirion_fordring;
+    pNewscript->pGossipSelect = &GossipSelect_npc_tirion_fordring;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_infected_peasant";
-    pNewScript->GetAI = &GetAI_npc_infected_peasant;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_william_kielar";
+    pNewscript->pGossipHello = &GossipHello_npc_william_kielar;
+    pNewscript->pGossipSelect = &GossipSelect_npc_william_kielar;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_eris_havenfire";
-    pNewScript->GetAI = &GetAI_npc_eris_havenfire;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_eris_havenfire;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_eris_havenfire";
+    pNewscript->GetAI = &GetAI_npc_eris_havenfire;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_eris_havenfire;
+    pNewscript->RegisterSelf();
+
+    pNewscript = new Script;
+    pNewscript->Name = "npc_infected_peasant";
+    pNewscript->GetAI = &GetAI_npc_infected_peasant;
+    pNewscript->RegisterSelf();
+
+    pNewscript = new Script;
+    pNewscript->Name = "mob_scourge_archer";
+    pNewscript->GetAI = &GetAI_mob_scourge_archer;
+    pNewscript->RegisterSelf();
 }

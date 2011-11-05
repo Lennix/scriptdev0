@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -9,99 +6,118 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 /* ScriptData
 SDName: Instance_Onyxias_Lair
-SD%Complete: 50%
-SDComment:
+SD%Complete: 80
+SDComment: 
 SDCategory: Onyxia's Lair
 EndScriptData */
 
 #include "precompiled.h"
 #include "onyxias_lair.h"
 
+/* Onyxia's Lair encounters:
+0 - Onyxia */
+
 instance_onyxias_lair::instance_onyxias_lair(Map* pMap) : ScriptedInstance(pMap)
 {
-    Initialize();
+	Initialize();
 }
 
 void instance_onyxias_lair::Initialize()
-{
-    m_uiEncounter = NOT_STARTED;
-    m_tPhaseTwoStart = time(NULL);
+{   
+    memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
+    m_uiOnyxiaWarderGUID.clear();
 }
 
 bool instance_onyxias_lair::IsEncounterInProgress() const
 {
-    return m_uiEncounter == IN_PROGRESS || m_uiEncounter >= DATA_LIFTOFF;
+    for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+        if (m_auiEncounter[i] == IN_PROGRESS)
+            return true;
+    return false;
 }
 
 void instance_onyxias_lair::OnCreatureCreate(Creature* pCreature)
 {
     switch(pCreature->GetEntry())
     {
-        case NPC_ONYXIA_TRIGGER:
-            m_mNpcEntryGuidStore[NPC_ONYXIA_TRIGGER] = pCreature->GetObjectGuid();
+        case NPC_ONYXIA:
+            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
             break;
         case NPC_ONYXIA_WARDER:
-            m_uiOnyxianWarderGuids.push_back(pCreature->GetObjectGuid());
-            break;
-    }
-}
-
-void instance_onyxias_lair::OnCreatureDeath(Creature* pCreature)
-{
-    switch (pCreature->GetEntry())
-    {
-        case NPC_ONYXIA:
-            if(!m_uiOnyxianWarderGuids.empty())
-            {
-                for (std::list<ObjectGuid>::iterator itr = m_uiOnyxianWarderGuids.begin(); itr != m_uiOnyxianWarderGuids.end(); ++itr)
-                {
-                    Creature* pWarder = instance->GetCreature(*itr);
-                    if (pWarder)
-                        pWarder->ForcedDespawn();
-                }
-            }
-            break;
-    }
-}
-
-void instance_onyxias_lair::OnCreatureEnterCombat(Creature* pCreature)
-{
-    switch (pCreature->GetEntry())
-    {
-        case NPC_ONYXIA:
-            if(!m_uiOnyxianWarderGuids.empty())
-            {
-                for (std::list<ObjectGuid>::iterator itr = m_uiOnyxianWarderGuids.begin(); itr != m_uiOnyxianWarderGuids.end(); ++itr)
-                {
-                    Creature* pWarder = instance->GetCreature(*itr);
-                    if (pWarder)
-                        pWarder->Respawn();
-                }
-            }
+            m_uiOnyxiaWarderGUID.push_back(pCreature->GetObjectGuid());
             break;
     }
 }
 
 void instance_onyxias_lair::SetData(uint32 uiType, uint32 uiData)
 {
-    if (uiType != TYPE_ONYXIA)
+    switch(uiType)
+    {
+        case TYPE_ONYXIA:
+            m_auiEncounter[0] = uiData;
+            if (uiData == DONE)
+            {
+                // Despawn Onyxia Warders
+                if (!m_uiOnyxiaWarderGUID.empty())
+                    for (GUIDList::iterator itr = m_uiOnyxiaWarderGUID.begin(); itr != m_uiOnyxiaWarderGUID.end(); ++itr)
+                        if (Creature* pWarder = instance->GetCreature(*itr))
+                            pWarder->ForcedDespawn();
+            }
+            break;
+    }
+
+    if (uiData == DONE)
+    {
+        OUT_SAVE_INST_DATA;
+
+        std::ostringstream saveStream;
+        saveStream << m_auiEncounter[0];
+
+        strInstData = saveStream.str();
+
+        SaveToDB();
+        OUT_SAVE_INST_DATA_COMPLETE;
+    }
+}
+
+uint32 instance_onyxias_lair::GetData(uint32 uiType)
+{
+    if (uiType < MAX_ENCOUNTER)
+        return m_auiEncounter[uiType];
+
+    return 0;
+}
+
+void instance_onyxias_lair::Load(const char* chrIn)
+{
+    if (!chrIn)
+    {
+        OUT_LOAD_INST_DATA_FAIL;
         return;
+    }
 
-    m_uiEncounter = uiData;
-    if (uiData == DATA_LIFTOFF)
-        m_tPhaseTwoStart = time(NULL);
+    OUT_LOAD_INST_DATA(chrIn);
 
-    // Currently no reason to save anything
+    std::istringstream loadStream(chrIn);
+    loadStream >> m_auiEncounter[0];
+
+    for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+    {
+        if (m_auiEncounter[i] == IN_PROGRESS)
+            m_auiEncounter[i] = NOT_STARTED;
+    }
+
+    OUT_LOAD_INST_DATA_COMPLETE;
 }
 
 InstanceData* GetInstanceData_instance_onyxias_lair(Map* pMap)

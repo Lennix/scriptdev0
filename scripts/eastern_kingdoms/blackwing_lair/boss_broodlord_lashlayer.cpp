@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -27,58 +24,40 @@ EndScriptData */
 #include "precompiled.h"
 #include "blackwing_lair.h"
 
-enum
+enum Broodlord
 {
-    SAY_AGGRO                   = -1469000,
-    SAY_LEASH                   = -1469001,
+    SAY_AGGRO               = -1469000,
+    SAY_LEASH               = -1469001,
 
-    SPELL_CLEAVE                = 26350,
-    SPELL_BLAST_WAVE            = 23331,
-    SPELL_MORTAL_STRIKE         = 24573,
-    SPELL_KNOCK_AWAY            = 25778
+    SPELL_BLAST_WAVE        = 23331,
+    SPELL_CLEAVE            = 15284,        // 26350,
+    SPELL_KNOCK_AWAY        = 18670,        // 25778,
+    SPELL_MORTAL_STRIKE     = 24573,
 };
 
 struct MANGOS_DLL_DECL boss_broodlordAI : public ScriptedAI
 {
     boss_broodlordAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
-
-    uint32 m_uiCleaveTimer;
     uint32 m_uiBlastWaveTimer;
-    uint32 m_uiMortalStrikeTimer;
+    uint32 m_uiCleaveTimer;
     uint32 m_uiKnockAwayTimer;
+    uint32 m_uiMortalStrikeTimer;
 
     void Reset()
     {
-        m_uiCleaveTimer         = 8000;                     // These times are probably wrong
-        m_uiBlastWaveTimer      = 12000;
-        m_uiMortalStrikeTimer   = 20000;
-        m_uiKnockAwayTimer      = 30000;
+        m_uiBlastWaveTimer = 12000;
+        m_uiCleaveTimer = 8000;
+        m_uiKnockAwayTimer = 30000;
+        m_uiMortalStrikeTimer = 20000;
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/)
     {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_LASHLAYER, IN_PROGRESS);
-
         DoScriptText(SAY_AGGRO, m_creature);
-    }
-
-    void JustDied(Unit* pKiller)
-    {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_LASHLAYER, DONE);
-    }
-
-    void JustReachedHome()
-    {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_LASHLAYER, FAIL);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -86,7 +65,16 @@ struct MANGOS_DLL_DECL boss_broodlordAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        // Cleave Timer
+        // Blast Wave
+        if (m_uiBlastWaveTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_BLAST_WAVE) == CAST_OK)
+                m_uiBlastWaveTimer = urand(8000, 16000);
+        }
+        else
+            m_uiBlastWaveTimer -= uiDiff;
+
+        // Cleave
         if (m_uiCleaveTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
@@ -95,16 +83,22 @@ struct MANGOS_DLL_DECL boss_broodlordAI : public ScriptedAI
         else
             m_uiCleaveTimer -= uiDiff;
 
-        // Blast Wave
-        if (m_uiBlastWaveTimer < uiDiff)
+        if (m_uiKnockAwayTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_BLAST_WAVE) == CAST_OK)
-                m_uiBlastWaveTimer = urand(8000, 16000);
+            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0);
+            if (DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_KNOCK_AWAY) == CAST_OK)
+            {
+                // Drop 50% aggro
+                if (m_creature->getThreatManager().getThreat(pTarget))
+                    m_creature->getThreatManager().modifyThreatPercent(pTarget, -50);
+
+                m_uiKnockAwayTimer = urand(15000, 30000);
+            }
         }
         else
-            m_uiBlastWaveTimer -= uiDiff;
+            m_uiKnockAwayTimer -= uiDiff;
 
-        // Mortal Strike Timer
+        // Mortal Strike
         if (m_uiMortalStrikeTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_MORTAL_STRIKE) == CAST_OK)
@@ -112,18 +106,6 @@ struct MANGOS_DLL_DECL boss_broodlordAI : public ScriptedAI
         }
         else
             m_uiMortalStrikeTimer -= uiDiff;
-
-        if (m_uiKnockAwayTimer < uiDiff)
-        {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_KNOCK_AWAY);
-            // Drop 50% aggro - TODO should be scriptedEffect?
-            if (m_creature->getThreatManager().getThreat(m_creature->getVictim()))
-                m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(), -50);
-
-            m_uiKnockAwayTimer = urand(15000, 30000);
-        }
-        else
-            m_uiKnockAwayTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
 

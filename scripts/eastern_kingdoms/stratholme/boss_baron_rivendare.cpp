@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,7 +16,7 @@
 
 /* ScriptData
 SDName: Boss_Baron_Rivendare
-SD%Complete: 70
+SD%Complete: 90
 SDComment: aura applied/defined in database
 SDCategory: Stratholme
 EndScriptData */
@@ -27,62 +24,93 @@ EndScriptData */
 #include "precompiled.h"
 #include "stratholme.h"
 
-enum
+static Locations Skeleton[]=
 {
-    SPELL_SHADOW_BOLT   = 17393,
-    SPELL_CLEAVE        = 15284,
-    SPELL_MORTAL_STRIKE = 15708,
+    {4017.40f,-3339.70f,115.05f},
+    {4013.18f,-3351.80f,115.05f},
+    {4017.73f,-3363.47f,115.05f},
+    {4048.87f,-3363.22f,115.05f},
+    {4051.77f,-3350.89f,115.05f},
+    {4048.37f,-3339.96f,115.05f}
+};
 
-    SPELL_RAISE_DEAD    = 17473,                           //triggers death pact (17471)
+enum Spells
+{
+    SPELL_CLEAVE            = 15284,
+    SPELL_DEATH_PACT        = 17471,
+    SPELL_SHADOW_BOLT       = 17393,
+    SPELL_MORTAL_STRIKE     = 15708,
+    SPELL_UNHOLY_AURA       = 17467,
 
-    SPELL_RAISE_DEAD_1  = 17475,
-    SPELL_RAISE_DEAD_2  = 17476,
-    SPELL_RAISE_DEAD_3  = 17477,
-    SPELL_RAISE_DEAD_4  = 17478,
-    SPELL_RAISE_DEAD_5  = 17479,
-    SPELL_RAISE_DEAD_6  = 17480
+    SPELL_RAISE_DEAD        = 17473,
+    SPELL_RAISE_DEAD1       = 17475,
+    SPELL_RAISE_DEAD2       = 17476,
+    SPELL_RAISE_DEAD3       = 17477,
+    SPELL_RAISE_DEAD4       = 17478,
+    SPELL_RAISE_DEAD5       = 17479,
+    SPELL_RAISE_DEAD6       = 17480,
 };
 
 struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
 {
     boss_baron_rivendareAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_stratholme*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_stratholme* m_pInstance;
 
-    uint32 m_uiShadowBoltTimer;
+    bool m_bAuriusArrived;
+
     uint32 m_uiCleaveTimer;
+    uint32 m_uiDeathPactTimer;
     uint32 m_uiMortalStrikeTimer;
-    uint32 m_uiRaiseDeadTimer;
+    uint32 m_uiShadowBoltTimer;
+    uint32 m_uiSummonSkeletonsTimer;
+
+    GUIDList m_uiSkeletonGUID;
 
     void Reset()
     {
-        m_uiShadowBoltTimer     = 5000;
-        m_uiCleaveTimer         = 8000;
-        m_uiMortalStrikeTimer   = 12000;
-        m_uiRaiseDeadTimer      = 30000;
+        m_bAuriusArrived = false;
+
+        m_uiCleaveTimer = urand(6000,8000);
+        m_uiDeathPactTimer = 0;
+        m_uiMortalStrikeTimer = urand(10000,12000);
+        m_uiShadowBoltTimer = urand(2000,4000);
+        m_uiSummonSkeletonsTimer = urand(15000,20000);
+
+        m_uiSkeletonGUID.clear();
+    }
+
+    void JustReachedHome()
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_BARON_RIVENDARE, FAIL);
+    }
+
+    void Aggro(Unit* /*pWho*/)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_BARON_RIVENDARE, IN_PROGRESS);
+    }
+
+    void JustDied(Unit* /*pKiller*/)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_BARON_RIVENDARE, DONE);
     }
 
     void JustSummoned(Creature* pSummoned)
     {
-        if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-            pSummoned->AI()->AttackStart(pTarget);
-    }
+		m_uiSkeletonGUID.push_back(pSummoned->GetObjectGuid());
 
-    void SpellHit(Unit* pWho, const SpellEntry* pSpell)
-    {
-        if (pSpell->Id == SPELL_RAISE_DEAD)
-        {
-            DoCastSpellIfCan(m_creature, SPELL_RAISE_DEAD_1, CAST_TRIGGERED);
-            DoCastSpellIfCan(m_creature, SPELL_RAISE_DEAD_2, CAST_TRIGGERED);
-            DoCastSpellIfCan(m_creature, SPELL_RAISE_DEAD_3, CAST_TRIGGERED);
-            DoCastSpellIfCan(m_creature, SPELL_RAISE_DEAD_4, CAST_TRIGGERED);
-            DoCastSpellIfCan(m_creature, SPELL_RAISE_DEAD_5, CAST_TRIGGERED);
-            DoCastSpellIfCan(m_creature, SPELL_RAISE_DEAD_6, CAST_TRIGGERED);
-        }
+        Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+        if (!pTarget && !m_creature->getVictim())
+            return;
+
+        pSummoned->AI()->AttackStart(pTarget ? pTarget : m_creature->getVictim());
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -90,44 +118,79 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        // ShadowBolt
-        if (m_uiShadowBoltTimer < uiDiff)
+        DoCastSpellIfCan(m_creature, SPELL_UNHOLY_AURA, CAST_AURA_NOT_PRESENT);
+
+        if (!m_bAuriusArrived && HealthBelowPct(70))
         {
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-            {
-                if (DoCastSpellIfCan(pTarget, SPELL_SHADOW_BOLT) == CAST_OK)
-                    m_uiShadowBoltTimer = 10000;
+            if (m_pInstance && m_pInstance->GetData(TYPE_AURIUS) == DONE)
+            { 
+                if (Creature* pAurius = m_creature->getVictim()->SummonCreature(NPC_AURIUS, 4048.37f, -3339.96f, 115.05f,  0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 180000))
+                {
+                    pAurius->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+                    pAurius->AI()->AttackStart(m_creature);
+                }
             }
+
+            m_bAuriusArrived = true;
         }
-        else
-            m_uiShadowBoltTimer -= uiDiff;
 
         // Cleave
-        if (m_uiCleaveTimer < uiDiff)
+        if (m_uiCleaveTimer <= uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
-                m_uiCleaveTimer = urand(7000, 17000);
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE);
+            m_uiCleaveTimer = urand(6000,9000);
         }
         else
             m_uiCleaveTimer -= uiDiff;
 
-        // MortalStrike
-        if (m_uiMortalStrikeTimer < uiDiff)
+        // Death Pact
+        if (m_uiDeathPactTimer)
+            if (m_uiDeathPactTimer <= uiDiff)
+            {
+                if (!m_uiSkeletonGUID.empty())
+                    for(GUIDList::iterator itr = m_uiSkeletonGUID.begin(); itr != m_uiSkeletonGUID.end(); ++itr)
+                    {
+                        if (Creature* pSkeleton = m_creature->GetMap()->GetCreature(*itr))
+                            if (pSkeleton->isAlive() && m_creature->GetHealth() < m_creature->GetMaxHealth())
+                                m_creature->SetHealth(m_creature->GetHealth()+2000);
+                    }
+
+                m_uiSkeletonGUID.clear();
+                m_uiDeathPactTimer = 0;
+            }
+            else
+                m_uiDeathPactTimer -= uiDiff;
+
+        // Mortal Strike
+        if (m_uiMortalStrikeTimer <= uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_MORTAL_STRIKE) == CAST_OK)
-                m_uiMortalStrikeTimer = urand(10000, 25000);
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_MORTAL_STRIKE);
+            m_uiMortalStrikeTimer = urand(5000,10000);
         }
         else
             m_uiMortalStrikeTimer -= uiDiff;
 
-        // RaiseDead
-        if (m_uiRaiseDeadTimer < uiDiff)
+        // Shadow Bolt
+        if (m_uiShadowBoltTimer <= uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_RAISE_DEAD) == CAST_OK)
-                m_uiRaiseDeadTimer = 45000;
+            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+            DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_SHADOW_BOLT);
+            m_uiShadowBoltTimer = urand(7000,12000);
         }
         else
-            m_uiRaiseDeadTimer -= uiDiff;
+            m_uiShadowBoltTimer -= uiDiff;
+
+        // Summon Skeletons
+        if (m_uiSummonSkeletonsTimer <= uiDiff)
+        {
+            for(uint32 i = 0; i < sizeof(Skeleton)/sizeof(Locations); ++i)
+                m_creature->SummonCreature(NPC_MINDLESS_SKELETON, Skeleton[i].x , Skeleton[i].y, Skeleton[i].z, 0, TEMPSUMMON_TIMED_DESPAWN, 14000);
+
+            m_uiDeathPactTimer = 12000;
+            m_uiSummonSkeletonsTimer = urand(25000,35000);
+        }
+        else
+            m_uiSummonSkeletonsTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -140,10 +203,10 @@ CreatureAI* GetAI_boss_baron_rivendare(Creature* pCreature)
 
 void AddSC_boss_baron_rivendare()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "boss_baron_rivendare";
-    pNewScript->GetAI = &GetAI_boss_baron_rivendare;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "boss_baron_rivendare";
+    pNewscript->GetAI = &GetAI_boss_baron_rivendare;
+    pNewscript->RegisterSelf();
 }

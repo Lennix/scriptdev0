@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -39,20 +36,13 @@ enum
     SAY_TAUNT4                  = -1533007,
     SAY_SLAY                    = -1533008,
 
-    EMOTE_CRYPT_GUARD           = -1533153,                 // NYI
-    EMOTE_INSECT_SWARM          = -1533154,                 // NYI
-    EMOTE_CORPSE_SCARABS        = -1533155,                 // NYI
-
     SPELL_IMPALE                = 28783,                    //May be wrong spell id. Causes more dmg than I expect
     SPELL_LOCUSTSWARM           = 28785,                    //This is a self buff that triggers the dmg debuff
-
-    //spellId invalid
-    SPELL_SUMMONGUARD           = 29508,                    //Summons 1 crypt guard at targeted location
 
     SPELL_SELF_SPAWN_5          = 29105,                    //This spawns 5 corpse scarabs ontop of us (most likely the pPlayer casts this on death)
     SPELL_SELF_SPAWN_10         = 28864,                    //This is used by the crypt guards when they die
 
-    NPC_CRYPT_GUARD             = 16573
+    MOB_CRYPT_GUARD             = 16573
 };
 
 struct MANGOS_DLL_DECL boss_anubrekhanAI : public ScriptedAI
@@ -90,7 +80,7 @@ struct MANGOS_DLL_DECL boss_anubrekhanAI : public ScriptedAI
         DoScriptText(SAY_SLAY, m_creature);
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/)
     {
         switch(urand(0, 2))
         {
@@ -103,16 +93,10 @@ struct MANGOS_DLL_DECL boss_anubrekhanAI : public ScriptedAI
             m_pInstance->SetData(TYPE_ANUB_REKHAN, IN_PROGRESS);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/)
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_ANUB_REKHAN, DONE);
-    }
-
-    void JustReachedHome()
-    {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_ANUB_REKHAN, FAIL);
     }
 
     void MoveInLineOfSight(Unit* pWho)
@@ -164,15 +148,40 @@ struct MANGOS_DLL_DECL boss_anubrekhanAI : public ScriptedAI
             m_uiLocustSwarmTimer -= uiDiff;
 
         // Summon
-        /*if (m_uiSummonTimer < uiDiff)
+        if (m_uiSummonTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature, SPELL_SUMMONGUARD);
-            Summon_Timer = 45000;
+            DoSpawnCreature(MOB_CRYPT_GUARD, 5, 5, 0, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 60000);
+            m_uiSummonTimer = 45000;
         }
         else
-            m_uiSummonTimer -= uiDiff;*/
+            m_uiSummonTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
+    }
+};
+
+struct MANGOS_DLL_DECL mob_cryptguardsAI : public ScriptedAI
+{
+    mob_cryptguardsAI(Creature* pCreature) : ScriptedAI(pCreature)
+	{
+	}
+	    void Reset()
+    {
+    } 
+		
+		void KilledUnit(Unit* pVictim)
+    {
+        //Force the player to spawn corpse scarabs via spell
+        if (pVictim->GetTypeId() == TYPEID_PLAYER)
+            pVictim->CastSpell(pVictim, SPELL_SELF_SPAWN_5, true);
+    }
+	
+	    void UpdateAI(const uint32 uiDiff)
+    {
+    }
+	    void JustDied(Unit* /*pKiller*/)
+    {
+        DoCastSpellIfCan(m_creature, SPELL_SELF_SPAWN_10);
     }
 };
 
@@ -181,11 +190,22 @@ CreatureAI* GetAI_boss_anubrekhan(Creature* pCreature)
     return new boss_anubrekhanAI(pCreature);
 }
 
+CreatureAI* GetAI_mob_cryptguards(Creature* pCreature)
+{
+    return new mob_cryptguardsAI(pCreature);
+}
+
 void AddSC_boss_anubrekhan()
 {
-    Script* NewScript;
-    NewScript = new Script;
-    NewScript->Name = "boss_anubrekhan";
-    NewScript->GetAI = &GetAI_boss_anubrekhan;
-    NewScript->RegisterSelf();
-}
+    Script* pNewscript;
+    
+	pNewscript = new Script;
+    pNewscript->Name = "boss_anubrekhan";
+    pNewscript->GetAI = &GetAI_boss_anubrekhan;
+    pNewscript->RegisterSelf();
+	
+	pNewscript = new Script;
+    pNewscript->Name = "mob_cryptguards";
+    pNewscript->GetAI = &GetAI_mob_cryptguards;
+    pNewscript->RegisterSelf();
+} 

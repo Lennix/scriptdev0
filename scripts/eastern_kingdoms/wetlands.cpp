@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,14 +16,14 @@
 
 /* ScriptData
 SDName: Wetlands
-SD%Complete: 100
+SD%Complete: 80
 SDComment: Quest support: 1249
 SDCategory: Wetlands
 EndScriptData */
 
 /* ContentData
-npc_mikhail
 npc_tapoke_slim_jahn
+npc_mikhail
 EndContentData */
 
 #include "precompiled.h"
@@ -38,53 +35,30 @@ EndContentData */
 
 enum
 {
-    QUEST_MISSING_DIPLO_PT11   = 1249,
-
-    FACTION_HOSTILE            = 168,
-
-    SPELL_STEALTH              = 1785,
-    SPELL_CALL_FRIENDS         = 16457,    // Summons one friend
-
-    SLIM_SAY_1                 = -1000676,
-    SLIM_SAY_2                 = -1000677,
-    MIKHAIL_SAY                = -1000678,
-
-    NPC_SLIMS_FRIEND           = 4971,
-    NPC_TAPOKE_SLIM_JAHN       = 4962,
-    NPC_MIKHAIL                = 4963
+    QUEST_MISSING_DIPLO_PT11    = 1249,
+    FACTION_ENEMY               = 168,
+    SPELL_STEALTH               = 1785,
+    SPELL_CALL_FRIENDS          = 16457,                    //summons 1x friend
+    NPC_SLIMS_FRIEND            = 4971,
+    NPC_TAPOKE_SLIM_JAHN        = 4962
 };
 
 struct MANGOS_DLL_DECL npc_tapoke_slim_jahnAI : public npc_escortAI
 {
-    npc_tapoke_slim_jahnAI(Creature* m_creature) : npc_escortAI(m_creature)
+    npc_tapoke_slim_jahnAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
+
+    bool m_bFriendSummoned;
+
+    GUIDList lSlimFriends;
+
+    void Reset()
     {
-        m_uiNormalFaction = m_creature->getFaction();
-        Reset();
-    }
+        if (HasEscortState(STATE_ESCORT_ESCORTING))
+            return;
 
-    uint32 m_uiNormalFaction;
-    uint32 m_uiTimer;
-    uint32 m_uiPhase;
-
-    bool m_bFriendSummoned, m_bIsBeaten;
-
-    void Reset() {}
-
-    void JustRespawned()
-    {
-        m_uiTimer = 0;
-        m_uiPhase = -1;
-        m_bIsBeaten = false;
         m_bFriendSummoned = false;
-        // Weird style, but works
-        Creature* pMikhail = GetClosestCreatureWithEntry(m_creature, NPC_MIKHAIL, 25.0f);
-        if (pMikhail && !pMikhail->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER))
-        {
-            pMikhail->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
-            DoScriptText(MIKHAIL_SAY, pMikhail);
-        }
 
-        npc_escortAI::JustRespawned();
+        lSlimFriends.clear();
     }
 
     void WaypointReached(uint32 uiPointId)
@@ -96,26 +70,7 @@ struct MANGOS_DLL_DECL npc_tapoke_slim_jahnAI : public npc_escortAI
                     m_creature->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
 
                 SetRun();
-                m_creature->setFaction(FACTION_HOSTILE);
-                break;
-            case 5:
-                Player* pPlayer = GetPlayerForEscort();
-
-                if (pPlayer)
-                {
-                    if (Group* pGroup = pPlayer->GetGroup())
-                    {
-                        for(GroupReference* itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
-                        {
-                            Player* pGroupie = itr->getSource();
-                            if (pGroupie && pGroupie->GetQuestStatus(QUEST_MISSING_DIPLO_PT11) == QUEST_STATUS_INCOMPLETE)
-                                pPlayer->SendQuestFailed(QUEST_MISSING_DIPLO_PT11);
-                        }
-                    }
-                    else if (pPlayer->GetQuestStatus(QUEST_MISSING_DIPLO_PT11) == QUEST_STATUS_INCOMPLETE)
-                        pPlayer->SendQuestFailed(QUEST_MISSING_DIPLO_PT11);
-                }
-
+                m_creature->setFaction(FACTION_ENEMY);
                 break;
         }
     }
@@ -127,7 +82,8 @@ struct MANGOS_DLL_DECL npc_tapoke_slim_jahnAI : public npc_escortAI
         if (HasEscortState(STATE_ESCORT_ESCORTING) && !m_bFriendSummoned && pPlayer)
         {
             for(uint8 i = 0; i < 3; ++i)
-                m_creature->CastSpell(m_creature, SPELL_CALL_FRIENDS, true);
+                //m_creature->CastSpell(m_creature, SPELL_CALL_FRIENDS, true);
+                DoSpawnCreature(NPC_SLIMS_FRIEND, irand(-3,3), irand(-3,3), 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
 
             m_bFriendSummoned = true;
         }
@@ -135,95 +91,66 @@ struct MANGOS_DLL_DECL npc_tapoke_slim_jahnAI : public npc_escortAI
 
     void JustSummoned(Creature* pSummoned)
     {
-        Player* pTarget = GetPlayerForEscort();
-
-        if (pTarget && HasEscortState(STATE_ESCORT_ESCORTING))
+        if (pSummoned->GetEntry() == NPC_SLIMS_FRIEND)
         {
-            pSummoned->AI()->AttackStart(pTarget);
-            pSummoned->ForcedDespawn(150000);
-        }
-    }
+			lSlimFriends.push_back(pSummoned->GetObjectGuid());
 
-    void DamageTaken(Unit* /*pDoneBy*/, uint32& uiDamage)
-    {
-        if (m_creature->getFaction() == m_uiNormalFaction)
-            return;
-
-        if (uiDamage > m_creature->GetHealth() || ((m_creature->GetHealth() - uiDamage) * 100 / m_creature->GetMaxHealth() <= 20))
-        {
-            uiDamage = 0;
-            m_uiTimer = 3000;
-            m_bIsBeaten = true;
             if (Player* pPlayer = GetPlayerForEscort())
             {
-                uiDamage = 0;
-
-                m_creature->setFaction(m_uiNormalFaction);
-
-                SetRun(false);
-                SetEscortPaused(true);
+                pSummoned->setFaction(FACTION_ENEMY);
+                pSummoned->AI()->AttackStart(pPlayer);
             }
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff)
+    void AttackedBy(Unit* pAttacker)
     {
-        npc_escortAI::UpdateEscortAI(uiDiff);
+        if (pAttacker->IsHostileTo(m_creature))
+            ScriptedAI::AttackedBy(pAttacker);
+    }
 
-        if (m_bIsBeaten)
-        {
-            if (m_uiPhase == -1)
-            {
-                m_uiPhase = 0;
-                EnterEvadeMode();
-            }
-
-            if (m_uiTimer < uiDiff)
-            {
-                ++m_uiPhase;
-
-                switch(m_uiPhase)
+    void DespawnSlimFriends()
+    {
+        if (!lSlimFriends.empty())
+            for(GUIDList::iterator itr = lSlimFriends.begin(); itr != lSlimFriends.end(); ++itr)
+                if (Creature* pSlimFriend = m_creature->GetMap()->GetCreature(*itr))
                 {
-                    case 1:
-                        DoScriptText(SLIM_SAY_1, m_creature);
-                        m_uiTimer = 4000;
-                        break;
-                    case 2:
-                        DoScriptText(SLIM_SAY_2, m_creature);
-                        m_uiTimer = 7000;
-                        break;
-                    case 3:
-                        if (Player* pPlayer = GetPlayerForEscort())
-                        {
-                            if (Group* pGroup = pPlayer->GetGroup())
-                            {
-                                for(GroupReference* itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
-                                {
-                                    Player* pGroupie = itr->getSource();
-                                    if (pGroupie && pGroupie->GetQuestStatus(QUEST_MISSING_DIPLO_PT11) == QUEST_STATUS_INCOMPLETE)
-                                        pGroupie->AreaExploredOrEventHappens(QUEST_MISSING_DIPLO_PT11);
-                                }
-                            }
-
-                            else if (pPlayer->GetQuestStatus(QUEST_MISSING_DIPLO_PT11) == QUEST_STATUS_INCOMPLETE)
-                                pPlayer->AreaExploredOrEventHappens(QUEST_MISSING_DIPLO_PT11);
-                        }
-
-                        m_creature->ForcedDespawn();
-                        m_uiTimer = 0;
-                        m_uiPhase = -1;
-                        m_bIsBeaten = false;
-                        break;
+                    if (pSlimFriend->isInCombat())
+                        pSlimFriend->AI()->EnterEvadeMode();
+                    pSlimFriend->setFaction(35);
                 }
-            }
-            else
-                m_uiTimer -= uiDiff;
+    }
+
+    void JustDied(Unit* pKiller)
+    {
+        if (GetPlayerForEscort())
+        {
+            GetPlayerForEscort()->GroupEventHappens(QUEST_MISSING_DIPLO_PT11, m_creature);
+            DespawnSlimFriends();
         }
+    }
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
+    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
+    {
+        // If new health will be lower than 20 percent, end fight and complete quest.
+        if ((((m_creature->GetHealth() - uiDamage) * 100) / m_creature->GetMaxHealth()) <= 20)
+        {
+            if (Player* pPlayer = GetPlayerForEscort())
+            {
+                pPlayer->GroupEventHappens(QUEST_MISSING_DIPLO_PT11, m_creature);
 
-        DoMeleeAttackIfReady();
+                uiDamage = 0;
+
+                DespawnSlimFriends();
+
+                m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
+                m_creature->RemoveAllAuras();
+                m_creature->DeleteThreatList();
+                m_creature->CombatStop(true);
+
+                SetRun(false);
+            }
+        }
     }
 };
 
@@ -245,33 +172,30 @@ bool QuestAccept_npc_mikhail(Player* pPlayer, Creature* pCreature, const Quest* 
         if (!pSlim)
             return false;
 
+        if (!pSlim->HasStealthAura())
+            pSlim->CastSpell(pSlim, SPELL_STEALTH, true);
+
         if (npc_tapoke_slim_jahnAI* pEscortAI = dynamic_cast<npc_tapoke_slim_jahnAI*>(pSlim->AI()))
-        {
-            if (pEscortAI->HasEscortState(STATE_ESCORT_ESCORTING))
-                return false;
-
-            if (!pSlim->HasStealthAura())
-                pSlim->CastSpell(pSlim, SPELL_STEALTH, true);
-
-            pCreature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
-            pEscortAI->Start(false, pPlayer);
-        }
+            pEscortAI->Start(false, pPlayer, pQuest);
     }
-
     return false;
 }
 
+/*######
+## AddSC
+######*/
+
 void AddSC_wetlands()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_tapoke_slim_jahn";
-    pNewScript->GetAI = &GetAI_npc_tapoke_slim_jahn;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_tapoke_slim_jahn";
+    pNewscript->GetAI = &GetAI_npc_tapoke_slim_jahn;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_mikhail";
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_mikhail;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_mikhail";
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_mikhail;
+    pNewscript->RegisterSelf();
 }

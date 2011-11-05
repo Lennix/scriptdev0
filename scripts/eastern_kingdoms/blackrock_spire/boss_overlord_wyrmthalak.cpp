@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -25,54 +22,38 @@ SDCategory: Blackrock Spire
 EndScriptData */
 
 #include "precompiled.h"
+#include "blackrock_spire.h"
 
-enum
+const uint32 aSummonEntry[3] = {NPC_SPIRESTONE_WARLORD, NPC_SMOLDERTHORN_BERSERKER, NPC_BLOODAXE_VETERAN};
+
+enum Spells
 {
-    SPELL_BLASTWAVE            = 11130,
-    SPELL_SHOUT                = 23511,
-    SPELL_CLEAVE               = 20691,
-    SPELL_KNOCKAWAY            = 20686,
-
-    NPC_SPIRESTONE_WARLORD     = 9216,
-    NPC_SMOLDERTHORN_BERSERKER = 9268
-
+    SPELL_CLEAVE              = 15284,
+    SPELL_DEMORALIZING_SHOUT  = 16244,
+    SPELL_SWEEPING_SLAM       = 12887
 };
 
-const float afLocations[2][4]=
+static Loc Spawn[]=
 {
-    {-39.355381f, -513.456482f, 88.472046f, 4.679872f},
-    {-49.875881f, -511.896942f, 88.195160f, 4.613114f}
+    {-39.35f,-513.45f,88.47f},
+    {-49.87f,-511.89f,88.19f}
 };
 
-struct MANGOS_DLL_DECL boss_overlordwyrmthalakAI : public ScriptedAI
+struct MANGOS_DLL_DECL boss_overlord_wyrmthalakAI : public ScriptedAI
 {
-    boss_overlordwyrmthalakAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    boss_overlord_wyrmthalakAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 m_uiBlastWaveTimer;
-    uint32 m_uiShoutTimer;
-    uint32 m_uiCleaveTimer;
-    uint32 m_uiKnockawayTimer;
     bool m_bSummoned;
+    uint32 m_uiCleaveTimer;
+    uint32 m_uiDemoralizingShoutTimer;
+    uint32 m_uiSweepingSlamTimer;
 
     void Reset()
     {
-        m_uiBlastWaveTimer = 20000;
-        m_uiShoutTimer     = 2000;
-        m_uiCleaveTimer    = 6000;
-        m_uiKnockawayTimer = 12000;
         m_bSummoned = false;
-    }
-
-    void JustSummoned(Creature* pSummoned)
-    {
-        if (pSummoned->GetEntry() != NPC_SPIRESTONE_WARLORD && pSummoned->GetEntry() != NPC_SMOLDERTHORN_BERSERKER)
-            return;
-
-        if (m_creature->getVictim())
-        {
-            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
-            pSummoned->AI()->AttackStart(pTarget ? pTarget : m_creature->getVictim());
-        }
+        m_uiCleaveTimer = urand(5000,6000);
+        m_uiDemoralizingShoutTimer = urand(1000,3000);
+        m_uiSweepingSlamTimer = urand(8000,10000);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -81,65 +62,59 @@ struct MANGOS_DLL_DECL boss_overlordwyrmthalakAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        // BlastWave
-        if (m_uiBlastWaveTimer < uiDiff)
-        {
-            DoCastSpellIfCan(m_creature, SPELL_BLASTWAVE);
-            m_uiBlastWaveTimer = 20000;
-        }
-        else
-            m_uiBlastWaveTimer -= uiDiff;
-
-        // Shout
-        if (m_uiShoutTimer < uiDiff)
-        {
-            DoCastSpellIfCan(m_creature, SPELL_SHOUT);
-            m_uiShoutTimer = 10000;
-        }
-        else
-            m_uiShoutTimer -= uiDiff;
-
         // Cleave
-        if (m_uiCleaveTimer < uiDiff)
+        if (m_uiCleaveTimer <= uiDiff)
         {
             DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE);
-            m_uiCleaveTimer = 7000;
+            m_uiCleaveTimer = urand(3000,6000);
         }
         else
             m_uiCleaveTimer -= uiDiff;
-
-        // Knockaway
-        if (m_uiKnockawayTimer < uiDiff)
+        
+        // Demoralizing Shout
+        if (m_uiDemoralizingShoutTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature, SPELL_KNOCKAWAY);
-            m_uiKnockawayTimer = 14000;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_DEMORALIZING_SHOUT);
+            m_uiDemoralizingShoutTimer = urand(15000,20000);
         }
         else
-            m_uiKnockawayTimer -= uiDiff;
+            m_uiDemoralizingShoutTimer -= uiDiff;
 
-        // Summon two Beserks
-        if (!m_bSummoned && m_creature->GetHealthPercent() < 51.0f)
+        // Sweeping Slam
+        if (m_uiSweepingSlamTimer <= uiDiff)
         {
-            m_creature->SummonCreature(NPC_SPIRESTONE_WARLORD, afLocations[0][0], afLocations[0][1], afLocations[0][2], afLocations[0][3], TEMPSUMMON_TIMED_DESPAWN, 300000);
-            m_creature->SummonCreature(NPC_SMOLDERTHORN_BERSERKER, afLocations[1][0], afLocations[1][1], afLocations[1][2], afLocations[1][3], TEMPSUMMON_TIMED_DESPAWN, 300000);
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_SWEEPING_SLAM);
+            m_uiSweepingSlamTimer = urand(6000,9000);
+        }
+        else
+            m_uiSweepingSlamTimer -= uiDiff;
 
+        // Summons
+        if (!m_bSummoned && HealthBelowPct(50))
+        {
+            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
+            for(uint32 i = 0; i < sizeof(Spawn)/sizeof(Loc); ++i)
+            {
+                if (Creature* pSpawn = m_creature->SummonCreature(aSummonEntry[urand(0,2)], Spawn[i].x, Spawn[i].y, Spawn[i].z, 4.61f, TEMPSUMMON_DEAD_DESPAWN, 30000))
+                    pSpawn->AI()->AttackStart(pTarget ? pTarget : m_creature->getVictim());
+            }
             m_bSummoned = true;
         }
 
         DoMeleeAttackIfReady();
     }
 };
-
-CreatureAI* GetAI_boss_overlordwyrmthalak(Creature* pCreature)
+CreatureAI* GetAI_boss_overlord_wyrmthalak(Creature* pCreature)
 {
-    return new boss_overlordwyrmthalakAI(pCreature);
+    return new boss_overlord_wyrmthalakAI(pCreature);
 }
 
-void AddSC_boss_overlordwyrmthalak()
+void AddSC_boss_overlord_wyrmthalak()
 {
-    Script* newscript;
-    newscript = new Script;
-    newscript->Name = "boss_overlord_wyrmthalak";
-    newscript->GetAI = &GetAI_boss_overlordwyrmthalak;
-    newscript->RegisterSelf();
+    Script* pNewscript;
+
+    pNewscript = new Script;
+    pNewscript->Name = "boss_overlord_wyrmthalak";
+    pNewscript->GetAI = &GetAI_boss_overlord_wyrmthalak;
+    pNewscript->RegisterSelf();
 }

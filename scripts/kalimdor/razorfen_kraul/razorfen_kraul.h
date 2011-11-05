@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,18 +14,29 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef DEF_RFK_H
-#define DEF_RFK_H
+#ifndef DEF_RAZORFEN_KRAUL_H
+#define DEF_RAZORFEN_KRAUL_H
 
-enum
+enum Data
 {
-    MAX_ENCOUNTER     = 1,
+    TYPE_AGATHELOS,
+	MAX_ENCOUNTER
+};
 
-    TYPE_AGATHELOS    = 1,
+enum Creatures
+{
+    NPC_EARTHCALLER_HALMGAR         = 4842,
+    NPC_BLIND_HUNTER                = 4425,
+    NPC_DEATHS_HEAD_WARD_KEEPER     = 4625,
+    NPC_RAGING_AGAMAR               = 4514,
+	NPC_WARD_KEEPER					= 4625
+};
 
-    GO_AGATHELOS_WARD = 21099,
-
-    NPC_WARD_KEEPER   = 4625
+enum Misc
+{
+    QUEST_WILLIX_THE_IMPORTER       = 1144,
+    GO_AGATHELOS_WARD				= 21099,
+    FACTION_FRIENDLY                = 35
 };
 
 class MANGOS_DLL_DECL instance_razorfen_kraul : public ScriptedInstance
@@ -39,19 +47,20 @@ class MANGOS_DLL_DECL instance_razorfen_kraul : public ScriptedInstance
 
         void Initialize();
 
-        void OnObjectCreate(GameObject* pGo);
         void OnCreatureCreate(Creature* pCreature);
+		void OnCreatureDeath(Creature* pCreature);
+		void OnObjectCreate(GameObject* pGo);
 
         void SetData(uint32 uiType, uint32 uiData);
         uint32 GetData(uint32 uiType);
 
-        const char* Save() { return m_strInstData.c_str(); }
+        const char* Save() { return strInstData.c_str(); }
         void Load(const char* chrIn);
-
     protected:
         uint32 m_auiEncounter[MAX_ENCOUNTER];
-        std::string m_strInstData;
+        std::string strInstData;
 
-        uint8 m_uiWardKeepersRemaining;
+		uint32 m_uiWardKeepersRemaining;
 };
+
 #endif

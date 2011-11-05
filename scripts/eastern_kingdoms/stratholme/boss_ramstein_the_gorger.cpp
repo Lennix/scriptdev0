@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -18,8 +15,8 @@
  */
 
 /* ScriptData
-SDName: boss_ramstein_the_gorger
-SD%Complete: 70
+SDName: Boss_Ramstein_the_Gorger
+SD%Complete: 90
 SDComment:
 SDCategory: Stratholme
 EndScriptData */
@@ -27,29 +24,41 @@ EndScriptData */
 #include "precompiled.h"
 #include "stratholme.h"
 
-enum
+enum Spells
 {
-   SPELL_TRAMPLE    = 5568,
-   SPELL_KNOCKOUT   = 17307
+    SPELL_KNOCKOUT        = 17307,
+    SPELL_TRAMPLE         = 5568
 };
 
 struct MANGOS_DLL_DECL boss_ramstein_the_gorgerAI : public ScriptedAI
 {
     boss_ramstein_the_gorgerAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_stratholme*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_stratholme* m_pInstance;
 
-    uint32 m_uiTrample_Timer;
-    uint32 m_uiKnockout_Timer;
+    uint32 m_uiTrampleTimer;
+    uint32 m_uiKnockoutTimer;
 
     void Reset()
     {
-        m_uiTrample_Timer    = 3000;
-        m_uiKnockout_Timer   = 12000;
+        m_uiTrampleTimer = urand(3000,4000);
+        m_uiKnockoutTimer = urand(8000,12000);
+    }
+
+    void JustDied(Unit* pKiller)
+    {
+        for(uint8 i = 0; i < 30; ++i)
+        {
+            if (Creature* pMob = m_creature->SummonCreature(NPC_MINDLESS_UNDEAD, 3969.35f+irand(-10,10), -3391.87f+irand(-10,10), 119.11f, 5.91f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 1800000))
+                pMob->AI()->AttackStart(pKiller);
+        }
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_SLAUGHTER_SQUARE, DONE);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -57,28 +66,27 @@ struct MANGOS_DLL_DECL boss_ramstein_the_gorgerAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        // Trample
-        if (m_uiTrample_Timer < uiDiff)
+        // Knockout spell
+        if (m_uiKnockoutTimer <= uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_TRAMPLE) == CAST_OK)
-                m_uiTrample_Timer = 7000;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_KNOCKOUT);
+            m_uiKnockoutTimer = urand(8000,12000);
         }
         else
-            m_uiTrample_Timer -= uiDiff;
+            m_uiKnockoutTimer -= uiDiff;
 
-        // Knockout
-        if (m_uiKnockout_Timer < uiDiff)
+        // Trample spell
+        if (m_uiTrampleTimer <= uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_KNOCKOUT) == CAST_OK)
-                m_uiKnockout_Timer = 10000;
+            DoCastSpellIfCan(m_creature, SPELL_TRAMPLE);
+            m_uiTrampleTimer = urand(6000,8000);
         }
         else
-            m_uiKnockout_Timer -= uiDiff;
+            m_uiTrampleTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
-
 CreatureAI* GetAI_boss_ramstein_the_gorger(Creature* pCreature)
 {
     return new boss_ramstein_the_gorgerAI(pCreature);
@@ -86,10 +94,10 @@ CreatureAI* GetAI_boss_ramstein_the_gorger(Creature* pCreature)
 
 void AddSC_boss_ramstein_the_gorger()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "boss_ramstein_the_gorger";
-    pNewScript->GetAI = &GetAI_boss_ramstein_the_gorger;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "boss_ramstein_the_gorger";
+    pNewscript->GetAI = &GetAI_boss_ramstein_the_gorger;
+    pNewscript->RegisterSelf();
 }

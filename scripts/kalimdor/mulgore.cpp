@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,37 +17,16 @@
 /* ScriptData
 SDName: Mulgore
 SD%Complete: 100
-SDComment: Quest support: 772, Skorn Whitecloud: Just a story if not rewarded for quest
+SDComment: Skorn Whitecloud: Just a story if not rewarded for quest
 SDCategory: Mulgore
 EndScriptData */
 
 /* ContentData
-npc_plains_vision
+npc_kyle_the_frenzied
 npc_skorn_whitecloud
 EndContentData */
 
 #include "precompiled.h"
-#include "escort_ai.h"
-
-/*#####
-# npc_plains_vision
-######*/
-
-struct MANGOS_DLL_DECL npc_plains_visionAI : public npc_escortAI
-{
-    npc_plains_visionAI(Creature* pCreature) : npc_escortAI(pCreature) {Reset();}
-
-    void Reset() {Start();}
-
-    void WaypointReached(uint32 uiPointId)
-    {
-        if (uiPointId == 49)
-        {
-            m_creature->SetDeathState(JUST_DIED);
-            m_creature->RemoveCorpse();
-        }
-    }
-};
 
 /*######
 # npc_skorn_whitecloud
@@ -77,23 +53,13 @@ bool GossipSelect_npc_skorn_whitecloud(Player* pPlayer, Creature* pCreature, uin
     return true;
 }
 
-CreatureAI* GetAI_npc_plains_vision(Creature* pCreature)
-{
-    return new npc_plains_visionAI(pCreature);
-}
-
 void AddSC_mulgore()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_plains_vision";
-    pNewScript->GetAI = &GetAI_npc_plains_vision;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_skorn_whitecloud";
-    pNewScript->pGossipHello = &GossipHello_npc_skorn_whitecloud;
-    pNewScript->pGossipSelect = &GossipSelect_npc_skorn_whitecloud;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_skorn_whitecloud";
+    pNewscript->pGossipHello = &GossipHello_npc_skorn_whitecloud;
+    pNewscript->pGossipSelect = &GossipSelect_npc_skorn_whitecloud;
+    pNewscript->RegisterSelf();
 }

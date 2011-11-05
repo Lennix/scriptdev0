@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -18,48 +15,22 @@
  */
 
 /* ScriptData
-SDName: instance_blackrock_spire
-SD%Complete: 50
-SDComment: To really get this instance working, many encounters will need more love - and also the DB content is surely not yet perfect.
+SDName: Instance_Blackrock_Spire
+SD%Complete: 90
+SDComment:
 SDCategory: Blackrock Spire
 EndScriptData */
 
 #include "precompiled.h"
 #include "blackrock_spire.h"
 
-enum
-{
-    AREATRIGGER_ENTER_UBRS      = 2046,
-    AREATRIGGER_STADIUM         = 2026
-};
-
-/* Areatrigger
-1470 Instance Entry
-1628 LBRS, between Spiders and Ogres
-1946 LBRS, ubrs pre-quest giver (1)
-1986 LBRS, ubrs pre-quest giver (2)
-1987 LBRS, ubrs pre-quest giver (3)
-2026 UBRS, stadium event trigger
-2046 UBRS, way to upper
-2066 UBRS, The Beast - Exit (to the dark chamber)
-2067 UBRS, The Beast - Entry
-2068 LBRS, fall out of map
-3726 UBRS, entrance to BWL
-*/
-
 instance_blackrock_spire::instance_blackrock_spire(Map* pMap) : ScriptedInstance(pMap),
-    m_uiEmberseerGUID(0),
-    m_uiNefariusGUID(0),
-    m_uiGythGUID(0),
-    m_uiInfiltratorGUID(0),
+    m_bEmberseerGrowing(false),
+    m_bStartUpLoader(true),
 
-    m_uiEmberseerInDoorGUID(0),
-    m_uiEmberseerCombatDoorGUID(0),
-    m_uiEmberseerOutDoorGUID(0),
-
-    m_uiGythEntryDoorGUID(0),
-    m_uiGythCombatDoorGUID(0),
-    m_uiGythExitDoorGUID(0)
+    m_uiEmberseerGrowingTimer(0),
+    m_uiRookeryEggsTimer(1000),
+    m_uiStartUpLoaderTimer(5000)
 {
     Initialize();
 }
@@ -67,123 +38,335 @@ instance_blackrock_spire::instance_blackrock_spire(Map* pMap) : ScriptedInstance
 void instance_blackrock_spire::Initialize()
 {
     memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
-    memset(&m_auiRoomRuneGUID, 0, sizeof(m_auiRoomRuneGUID));
+
+    for(uint8 i = 0; i < MAX_DRAGONSPINE_RUNE; i++)
+        m_auiDragonspineRuneGUID[i].Clear();
+
+    m_lDragonspineMobs.clear();
+    m_lDarkIronRunes.clear();
+    m_lIncarcerators.clear();
+    m_lRookeryEggs.clear();
+    m_lChromaticEliteGuards.clear();
+    m_lTempList.clear();
 }
 
-void instance_blackrock_spire::OnObjectCreate(GameObject* pGo)
+void instance_blackrock_spire::OnPlayerEnter(Player* pPlayer)
 {
-    switch(pGo->GetEntry())
-    {
-        case GO_EMBERSEER_IN:
-            m_uiEmberseerInDoorGUID = pGo->GetObjectGuid();
-            if (GetData(TYPE_ROOM_EVENT) == DONE)
-                pGo->SetGoState(GO_STATE_ACTIVE);
-            break;
-        case GO_DOORS:
-            m_uiEmberseerCombatDoorGUID = pGo->GetObjectGuid();
-            break;
-        case GO_EMBERSEER_OUT:
-            m_uiEmberseerOutDoorGUID = pGo->GetObjectGuid();
-            if (GetData(TYPE_EMBERSEER) == DONE)
-                pGo->SetGoState(GO_STATE_ACTIVE);
-            break;
-        case GO_GYTH_ENTRY_DOOR:
-            m_uiGythEntryDoorGUID = pGo->GetObjectGuid();
-            break;
-        case GO_GYTH_COMBAT_DOOR:
-            m_uiGythCombatDoorGUID = pGo->GetObjectGuid();
-            break;
-        case GO_GYTH_EXIT_DOOR:
-            m_uiGythExitDoorGUID = pGo->GetObjectGuid();
-            if (GetData(TYPE_GYTH) == DONE)
-                pGo->SetGoState(GO_STATE_ACTIVE);
-            break;
+    SetLavaState(pPlayer, true);
+}
 
-        case GO_ROOM_1_RUNE: m_auiRoomRuneGUID[0] = pGo->GetObjectGuid(); break;
-        case GO_ROOM_2_RUNE: m_auiRoomRuneGUID[1] = pGo->GetObjectGuid(); break;
-        case GO_ROOM_3_RUNE: m_auiRoomRuneGUID[2] = pGo->GetObjectGuid(); break;
-        case GO_ROOM_4_RUNE: m_auiRoomRuneGUID[3] = pGo->GetObjectGuid(); break;
-        case GO_ROOM_5_RUNE: m_auiRoomRuneGUID[4] = pGo->GetObjectGuid(); break;
-        case GO_ROOM_6_RUNE: m_auiRoomRuneGUID[5] = pGo->GetObjectGuid(); break;
-        case GO_ROOM_7_RUNE: m_auiRoomRuneGUID[6] = pGo->GetObjectGuid(); break;
-
-        case GO_ROOKERY_EGG: m_lRookeryEggGUIDList.push_back(pGo->GetObjectGuid());   break;
-        case GO_EMBERSEER_RUNE_1:
-        case GO_EMBERSEER_RUNE_2:
-        case GO_EMBERSEER_RUNE_3:
-        case GO_EMBERSEER_RUNE_4:
-        case GO_EMBERSEER_RUNE_5:
-        case GO_EMBERSEER_RUNE_6:
-        case GO_EMBERSEER_RUNE_7:
-            m_lEmberseerRunesGUIDList.push_back(pGo->GetObjectGuid());
-            break;
-    }
+void instance_blackrock_spire::OnPlayerLeave(Player* pPlayer)
+{
+    SetLavaState(pPlayer, false);
 }
 
 void instance_blackrock_spire::OnCreatureCreate(Creature* pCreature)
 {
     switch(pCreature->GetEntry())
     {
-        case NPC_PYROGUARD_EMBERSEER:    m_uiEmberseerGUID = pCreature->GetObjectGuid();   break;
-        case NPC_LORD_VICTOR_NEFARIUS:   m_uiNefariusGUID = pCreature->GetObjectGuid();    break;
-        case NPC_GYTH:                   m_uiGythGUID = pCreature->GetObjectGuid();        break;
-        case NPC_SCARSHIELD_INFILTRATOR: m_uiInfiltratorGUID = pCreature->GetObjectGuid(); break;
+        // Bosses    
+        case NPC_PYROGUARD_EMBERSEER:
+        case NPC_SCARSHIELD_INFILTRATOR:
+            break;
+        case NPC_LORD_VICTOR_NEFARIUS:
+            if (m_auiEncounter[5] == DONE)
+                pCreature->RemoveFromWorld();
+            break;
+        case NPC_JED_RUNEWATCHER:
+            SetRareBoss(pCreature, 50);
+            return;
 
+        // Trash
+        case NPC_BLACKHAND_INCARCERATOR:
+            m_lIncarcerators.push_back(pCreature->GetObjectGuid());
+            return;
+        case NPC_BLACKHAND_VETERAN:
         case NPC_BLACKHAND_SUMMONER:
-        case NPC_BLACKHAND_VETERAN:      m_lRoomEventMobGUIDList.push_back(pCreature->GetObjectGuid()); break;
-        case NPC_BLACKHAND_INCANCERATOR: m_lIncanceratorGUIDList.push_back(pCreature->GetObjectGuid()); break;
-        case NPC_DRAKKISATH:
-        case NPC_ELITE_GUARD:
-            m_lDrakkisathNpcGUIDList.push_back(pCreature->GetObjectGuid());
+            m_lDragonspineMobs.push_back(pCreature->GetObjectGuid());
+            return;
+        case NPC_CHROMATIC_ELITE_GUARD:
+            m_lChromaticEliteGuards.push_back(pCreature->GetObjectGuid());
+            return;
+        default:
+            return;
+    }
+
+    m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+}
+
+void instance_blackrock_spire::OnCreatureDeath(Creature* pCreature)
+{
+    switch(pCreature->GetEntry())
+    {
+        case NPC_BLACKHAND_VETERAN:
+        case NPC_BLACKHAND_SUMMONER:
+        {
+            if (GetData(TYPE_DRAGONSPINE_HALL) == DONE)
+                break;
+
+            // Sort mobs if they weren't sorted yet (players don't step on AT -> server crash after UBRS doors)
+            if (GetData(TYPE_DRAGONSPINE_HALL) != IN_PROGRESS)
+                SortDragonspineMobs();
+
+            for (uint8 i = 0; i < MAX_DRAGONSPINE_RUNE; ++i)
+            {
+                if (m_alRuneMobsGUID[i].empty())                        // Make sure that all runes have proper state
+                {
+                    GameObject* pRune = instance->GetGameObject(m_auiDragonspineRuneGUID[i]);
+                    if (pRune && pRune->GetGoState() != GO_STATE_READY)
+                        pRune->SetGoState(GO_STATE_READY);
+
+                    continue;
+                }
+
+                m_alRuneMobsGUID[i].remove(pCreature->GetObjectGuid());
+                if (m_alRuneMobsGUID[i].empty())
+                {
+                    if (GameObject* pRune = instance->GetGameObject(m_auiDragonspineRuneGUID[i]))
+                        pRune->SetGoState(GO_STATE_READY);
+                }
+            }
+
+            bool bCanOpen = true;
+            for (uint8 i = 0; i < MAX_DRAGONSPINE_RUNE; ++i)
+            {
+                GameObject* pRune = instance->GetGameObject(m_auiDragonspineRuneGUID[i]);
+
+                if (pRune && pRune->GetGoState() == GO_STATE_ACTIVE)
+                {
+                    bCanOpen = false;
+                    break;
+                }
+            }
+
+            if (bCanOpen)
+                SetData(TYPE_DRAGONSPINE_HALL, DONE);
+            break;
+        }
+        case NPC_BLACKHAND_INCARCERATOR:
+        {
+            m_lTempList.remove(pCreature->GetObjectGuid());
+
+            if (m_lTempList.empty())
+            {
+                if (Creature* pEmberseer = GetSingleCreatureFromStorage(NPC_PYROGUARD_EMBERSEER))
+                    pEmberseer->CastSpell(pEmberseer, SPELL_EMBERSEER_GROWING, false);
+                
+                m_lTempList.clear();
+                m_lTempList = m_lDarkIronRunes;
+                m_bEmberseerGrowing = true;
+                m_uiEmberseerGrowingTimer = 9000;
+            }
+            else
+                debug_log("SD0: Instance UBRS: %u Blackhand Incarcerators left to kill.", m_lTempList.size());
+            break;
+        }
+        default:
             break;
     }
+}
+
+void instance_blackrock_spire::OnObjectCreate(GameObject* pGo)
+{
+    switch(pGo->GetEntry())
+    {
+        case GO_DRAGONSPINE_HALL_RUNE_1:
+            m_auiDragonspineRuneGUID[0] = pGo->GetObjectGuid();
+            if (m_auiEncounter[2] == DONE)
+                pGo->SetGoState(GO_STATE_READY);
+            break;
+        case GO_DRAGONSPINE_HALL_RUNE_2:
+            m_auiDragonspineRuneGUID[1] = pGo->GetObjectGuid();
+            if (m_auiEncounter[2] == DONE)
+                pGo->SetGoState(GO_STATE_READY);
+            return;
+        case GO_DRAGONSPINE_HALL_RUNE_3:
+            m_auiDragonspineRuneGUID[2] = pGo->GetObjectGuid();
+            if (m_auiEncounter[2] == DONE)
+                pGo->SetGoState(GO_STATE_READY);
+            return;
+        case GO_DRAGONSPINE_HALL_RUNE_4:
+            m_auiDragonspineRuneGUID[3] = pGo->GetObjectGuid();
+            if (m_auiEncounter[2] == DONE)
+                pGo->SetGoState(GO_STATE_READY);
+            return;
+        case GO_DRAGONSPINE_HALL_RUNE_5:
+            m_auiDragonspineRuneGUID[4] = pGo->GetObjectGuid();
+            if (m_auiEncounter[2] == DONE)
+                pGo->SetGoState(GO_STATE_READY);
+            return;
+        case GO_DRAGONSPINE_HALL_RUNE_6:
+            m_auiDragonspineRuneGUID[5] = pGo->GetObjectGuid();
+            if (m_auiEncounter[2] == DONE)
+                pGo->SetGoState(GO_STATE_READY);
+            return;
+        case GO_DRAGONSPINE_HALL_RUNE_7:
+            m_auiDragonspineRuneGUID[6] = pGo->GetObjectGuid();
+            if (m_auiEncounter[2] == DONE)
+                pGo->SetGoState(GO_STATE_READY);
+            return;
+        case GO_DRAGONSPINE_HALL_DOOR:
+            if (m_auiEncounter[2] == DONE)
+                pGo->SetGoState(GO_STATE_ACTIVE);
+            break;
+        case GO_EMBERSEER_DOOR_IN:
+        case GO_EMBERSEER_DOOR_OUT:
+            if (m_auiEncounter[3] == DONE)
+                pGo->SetGoState(GO_STATE_ACTIVE);
+            break;
+        case GO_DARK_IRON_RUNE_1:
+        case GO_DARK_IRON_RUNE_2:
+        case GO_DARK_IRON_RUNE_3:
+        case GO_DARK_IRON_RUNE_4:
+        case GO_DARK_IRON_RUNE_5:
+        case GO_DARK_IRON_RUNE_6:
+        case GO_DARK_IRON_RUNE_7:
+			m_lDarkIronRunes.push_back(pGo->GetObjectGuid());
+            if (m_auiEncounter[3] == DONE)
+                pGo->SetGoState(GO_STATE_ACTIVE);
+            return;
+        case GO_ROOKERY_EGG:
+            m_lRookeryEggs.push_back(pGo->GetObjectGuid());
+            return;
+        case GO_STADIUM_DOOR:
+        case GO_STADIUM_PORTCULLIS:
+            break;
+        case GO_THE_FURNACE_DOOR:
+            if (m_auiEncounter[5] == DONE || m_auiEncounter[7] == DONE)
+                pGo->SetGoState(GO_STATE_ACTIVE);
+            break;
+        case GO_DRAKKISATH_GATE01:
+        case GO_DRAKKISATH_GATE02:
+            if (m_auiEncounter[7] == DONE)
+                pGo->SetGoState(GO_STATE_ACTIVE);
+            break;
+    }
+
+    m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
 }
 
 void instance_blackrock_spire::SetData(uint32 uiType, uint32 uiData)
 {
     switch(uiType)
     {
-        case TYPE_ROOM_EVENT:
-            if (uiData == DONE)
-                DoUseDoorOrButton(m_uiEmberseerInDoorGUID);
+        // LBRS
+        case TYPE_MOR_GRAYHOOF:
             m_auiEncounter[0] = uiData;
             break;
-        case TYPE_EMBERSEER:
-            DoUseDoorOrButton(m_uiEmberseerCombatDoorGUID);
-            if (uiData == DONE)
-                DoUseDoorOrButton(m_uiEmberseerOutDoorGUID);
-            else if (uiData == FAIL)
-            {
-                // reset runes
-                DoUseEmberseerRunes();
-                // respawn incarcerators if fail
-                // the fail is set only in boss script; if party wipes during the incarcerators fight, the boss will fight the incarcerators then will reset (wowhead)
-                for (GUIDList::const_iterator itr = m_lIncanceratorGUIDList.begin(); itr != m_lIncanceratorGUIDList.end(); itr++)
-                {
-                    if (Creature* pCreature = instance->GetCreature(*itr))
-                    {
-                        if (!pCreature->isAlive())
-                            pCreature->Respawn();
-                    }
-                }
-            }
+        case TYPE_UROK_DOOMHOWL:
             m_auiEncounter[1] = uiData;
             break;
-        case TYPE_FLAMEWREATH:
+        // UBRS
+        case TYPE_DRAGONSPINE_HALL:
+            if (uiData == DONE)
+                HandleGameObject(GO_DRAGONSPINE_HALL_DOOR, true);
             m_auiEncounter[2] = uiData;
             break;
-        case TYPE_GYTH:
-            if (uiData == IN_PROGRESS || uiData == FAIL)
-                DoUseDoorOrButton(m_uiGythEntryDoorGUID);
-            else if (uiData == DONE)
+        case TYPE_PYROGUARD_EMBERSEER:
+            switch(uiData)
             {
-                DoUseDoorOrButton(m_uiGythEntryDoorGUID);
-                DoUseDoorOrButton(m_uiGythExitDoorGUID);
+                case NOT_STARTED:
+                    for(GUIDList::iterator itr = m_lIncarcerators.begin(); itr != m_lIncarcerators.end(); ++itr)
+                        if (Creature* pIncarcerator = instance->GetCreature(*itr))
+                            pIncarcerator->Respawn();
+
+                    for(GUIDList::iterator itr = m_lDarkIronRunes.begin(); itr != m_lDarkIronRunes.end(); ++itr)
+                        HandleGameObject(*itr, false);
+
+                    m_lTempList.clear();
+                    HandleGameObject(GO_EMBERSEER_DOOR_IN, true);
+                    break;
+                case IN_PROGRESS:
+                    if (m_auiEncounter[3] != IN_PROGRESS)
+                    {
+                        m_lTempList = m_lIncarcerators;
+                        for(GUIDList::iterator itr = m_lIncarcerators.begin(); itr != m_lIncarcerators.end(); ++itr)
+                        {
+                            if (Creature* pIncarcerator = instance->GetCreature(*itr))
+                            {
+                                pIncarcerator->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE + UNIT_FLAG_NOT_SELECTABLE);
+                                pIncarcerator->InterruptNonMeleeSpells(false);
+                                pIncarcerator->SetInCombatWithZone();
+                            }
+                        }
+
+                        HandleGameObject(GO_EMBERSEER_DOOR_IN, false);
+                        HandleGameObject(GO_EMBERSEER_DOOR_OUT, false);
+                    }
+                    break;
+                case DONE:
+                    for(GUIDList::iterator itr = m_lDarkIronRunes.begin(); itr != m_lDarkIronRunes.end(); ++itr)
+                        HandleGameObject(*itr, false);
+
+                    HandleGameObject(GO_EMBERSEER_DOOR_IN, true);
+                    HandleGameObject(GO_EMBERSEER_DOOR_OUT, true);
+                    break;
             }
             m_auiEncounter[3] = uiData;
             break;
-        case TYPE_VALTHALAK:
+        case TYPE_ROOKERY:
             m_auiEncounter[4] = uiData;
+            break;
+        case TYPE_REND_BLACKHAND:
+            switch(uiData)
+            {
+                case NOT_STARTED:
+                    HandleGameObject(GO_STADIUM_DOOR, true);
+                    break;
+                case IN_PROGRESS:
+                    HandleGameObject(GO_STADIUM_DOOR, false);
+                    if (Creature* pNefarius = GetSingleCreatureFromStorage(NPC_LORD_VICTOR_NEFARIUS))
+                    {
+                        pNefarius->GetMotionMaster()->MovePoint(0, 147.87f, -444.59f, 121.97f);
+
+                        if (Creature* pRend = pNefarius->SummonCreature(NPC_WARCHIEF_REND_BLACKHAND, 167.32f, -456.94f, 121.97f, 2.2f, TEMPSUMMON_MANUAL_DESPAWN, 0))
+                        {
+                            pRend->setFaction(FACTION_FRIENDLY_FOR_ALL);
+                            pRend->GetMotionMaster()->MovePoint(0, 154.86f, -444.63f, 121.97f);
+                            CreatureCreatePos pos(pRend->GetMap(), 154.86f, -444.63f, 121.97f, 1.58f);
+                            pRend->SetSummonPoint(pos);
+                        }
+                    }
+                    break;
+                case DONE:
+                    HandleGameObject(GO_STADIUM_DOOR, true);
+                    HandleGameObject(GO_THE_FURNACE_DOOR, true);
+
+                    if (Creature* pNefarius = GetSingleCreatureFromStorage(NPC_LORD_VICTOR_NEFARIUS))
+                    {
+                        DoScriptText(SAY_NEFARIAN_REND_END, pNefarius);
+                        pNefarius->RemoveFromWorld();
+                    }
+                    break;
+            }
+            m_auiEncounter[5] = uiData;
+            break;
+        case TYPE_LORD_VALTHALAK:
+            m_auiEncounter[6] = uiData;
+            break;
+        case TYPE_DRAKKISATH:
+            switch(uiData)
+            {
+                case FAIL:
+                    if (!m_lChromaticEliteGuards.empty())
+                    {
+                        for(GUIDList::iterator itr = m_lChromaticEliteGuards.begin(); itr != m_lChromaticEliteGuards.end(); ++itr)
+                        {
+                            Creature* pGuard = instance->GetCreature(*itr);
+                            if (pGuard && !pGuard->isAlive() && pGuard->isDead())
+                            {
+                                pGuard->RemoveCorpse();
+                                pGuard->Respawn();
+                            }
+                        }
+                    }
+                    break;
+                case DONE:
+                    HandleGameObject(GO_DRAKKISATH_GATE01, true);
+                    HandleGameObject(GO_DRAKKISATH_GATE02, true);
+                    break;
+            }
+            m_auiEncounter[7] = uiData;
             break;
     }
 
@@ -192,175 +375,158 @@ void instance_blackrock_spire::SetData(uint32 uiType, uint32 uiData)
         OUT_SAVE_INST_DATA;
 
         std::ostringstream saveStream;
-        saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " " << m_auiEncounter[3] << " " << m_auiEncounter[4];
+        saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " " << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5] << " " << m_auiEncounter[6] << " " << m_auiEncounter[7];
 
-        m_strInstData = saveStream.str();
+        strInstData = saveStream.str();
 
         SaveToDB();
         OUT_SAVE_INST_DATA_COMPLETE;
     }
 }
 
-void instance_blackrock_spire::SetData64(uint32 uiType, uint64 uiData)
+uint32 instance_blackrock_spire::GetData(uint32 uiType)
 {
-    if (uiType == TYPE_ROOM_EVENT && GetData(TYPE_ROOM_EVENT) == IN_PROGRESS)
-    {
-        uint8 uiNotEmptyRoomsCount = 0;
-        for (uint8 i = 0; i< MAX_ROOMS; i++)
-        {
-            if (m_auiRoomRuneGUID[i])                       // This check is used, to ensure which runes still need processing
-            {
-                m_alRoomEventMobGUIDSorted[i].remove(uiData);
-                if (m_alRoomEventMobGUIDSorted[i].empty())
-                {
-                    DoUseDoorOrButton(m_auiRoomRuneGUID[i]);
-                    m_auiRoomRuneGUID[i] = 0;
-                }
-                else
-                    uiNotEmptyRoomsCount++;                 // found an not empty room
-            }
-        }
-        if (!uiNotEmptyRoomsCount)
-            SetData(TYPE_ROOM_EVENT, DONE);
-    }
+    if (uiType < MAX_ENCOUNTER)
+        return m_auiEncounter[uiType];
+
+    return 0;
 }
 
-void instance_blackrock_spire::Load(const char* chrIn)
+void instance_blackrock_spire::Update(uint32 uiDiff)
 {
-    if (!chrIn)
+    if (m_bStartUpLoader)
+    {
+        if (m_uiStartUpLoaderTimer <= uiDiff)
+        {
+            if (GetData(TYPE_PYROGUARD_EMBERSEER) != DONE)
+                SetData(TYPE_PYROGUARD_EMBERSEER, NOT_STARTED);
+
+            if (GetData(TYPE_REND_BLACKHAND) == DONE)
+                if (Creature* pNefarius = GetSingleCreatureFromStorage(NPC_LORD_VICTOR_NEFARIUS))
+                    pNefarius->RemoveFromWorld();
+
+            m_bStartUpLoader = false;
+        }
+        else
+            m_uiStartUpLoaderTimer -= uiDiff;
+    }
+
+    if (m_bEmberseerGrowing)
+    {
+        if (m_uiEmberseerGrowingTimer <= uiDiff)
+        {
+            if (!m_lTempList.empty())
+            {
+                HandleGameObject(m_lTempList.back(), true);
+                m_lTempList.pop_back();
+                m_uiEmberseerGrowingTimer = 9000;
+            }
+            else
+                m_bEmberseerGrowing = false;
+        }
+        else
+            m_uiEmberseerGrowingTimer -= uiDiff;
+    }
+
+    // The Rookery Eggs
+    if (m_uiRookeryEggsTimer <= uiDiff)
+    {
+        Map::PlayerList const &lPlayers = instance->GetPlayers();
+
+        if (!m_lRookeryEggs.empty() && !lPlayers.isEmpty())
+        {
+            for(GUIDList::iterator i = m_lRookeryEggs.begin(); i != m_lRookeryEggs.end(); ++i)
+            {
+                if (GameObject* pEgg = instance->GetGameObject(*i))
+                {
+                    for (Map::PlayerList::const_iterator itr = lPlayers.begin(); itr != lPlayers.end(); ++itr)
+                    {
+                        Player* pPlayer = (itr)->getSource();
+                        if (pPlayer && pPlayer->IsWithinDist(pEgg, 3.0f))
+                        {
+                            float fX, fY, fZ;
+                            pEgg->GetPosition(fX, fY, fZ);
+                            pPlayer->CastSpell(pPlayer, 15750, false);    // for visual effect
+                            pEgg->RemoveFromWorld();
+                            pEgg->SetRespawnTime(300);
+                            for(uint32 i = 0; i < 3; ++i)
+                            {
+                                if (Creature* Whelp = pEgg->SummonCreature(NPC_ROOKERY_WHELP, fX, fY, fZ, 0, TEMPSUMMON_DEAD_DESPAWN, 10000))
+                                    Whelp->AI()->AttackStart(pPlayer);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        m_uiRookeryEggsTimer = 500;
+    }
+    else
+        m_uiRookeryEggsTimer -= uiDiff;
+
+    DoLavaDamage(uiDiff);
+}
+
+void instance_blackrock_spire::Load(const char* in)
+{
+    if (!in)
     {
         OUT_LOAD_INST_DATA_FAIL;
         return;
     }
 
-    OUT_LOAD_INST_DATA(chrIn);
+    OUT_LOAD_INST_DATA(in);
 
-    std::istringstream loadStream(chrIn);
-    loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3] >> m_auiEncounter[4];
+    std::istringstream loadStream(in);
+    loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3] >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6] >> m_auiEncounter[7];
 
     for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
-    {
         if (m_auiEncounter[i] == IN_PROGRESS)
             m_auiEncounter[i] = NOT_STARTED;
-    }
 
     OUT_LOAD_INST_DATA_COMPLETE;
 }
 
-uint32 instance_blackrock_spire::GetData(uint32 uiType)
+void instance_blackrock_spire::SortDragonspineMobs()
 {
-    switch(uiType)
-    {
-        case TYPE_ROOM_EVENT:   return m_auiEncounter[0];
-        case TYPE_EMBERSEER:    return m_auiEncounter[1];
-        case TYPE_FLAMEWREATH:  return m_auiEncounter[2];
-        case TYPE_GYTH:         return m_auiEncounter[3];
-        case TYPE_VALTHALAK:    return m_auiEncounter[4];
-    }
-    return 0;
-}
+    // we do this for detecting at least on sorting check
+    if (GetData(TYPE_DRAGONSPINE_HALL) == NOT_STARTED)
+        SetData(TYPE_DRAGONSPINE_HALL, IN_PROGRESS);
 
-uint64 instance_blackrock_spire::GetData64(uint32 uiType)
-{
-    switch (uiType)
-    {
-        case NPC_PYROGUARD_EMBERSEER:    return m_uiEmberseerGUID;
-        case NPC_LORD_VICTOR_NEFARIUS:   return m_uiNefariusGUID;
-        case NPC_GYTH:                   return m_uiGythGUID;
-        case NPC_SCARSHIELD_INFILTRATOR: return m_uiInfiltratorGUID;
-        case GO_GYTH_COMBAT_DOOR:        return m_uiGythCombatDoorGUID;
-    }
-    return 0;
-}
+    // If all mobs were sorted or event is done
+    if (m_lDragonspineMobs.empty() || GetData(TYPE_DRAGONSPINE_HALL) == DONE)
+        return;
 
-void instance_blackrock_spire::OnCreatureEnterCombat(Creature* pCreature)
-{
-    switch(pCreature->GetEntry())
+    // Sort Mobs in Dragonspine Hall
+    for(GUIDList::iterator itr = m_lDragonspineMobs.begin(); itr != m_lDragonspineMobs.end();)
     {
-        case NPC_BLACKHAND_INCANCERATOR:
-            // set data in progress when incarcerators enter combat
-            // also need to set all the incarcerators in combat, when one of them gets aggro
-            if (GetData(TYPE_EMBERSEER) != IN_PROGRESS)
+        bool bAlreadyIterated = false;
+
+        Creature* pMob = instance->GetCreature(*itr);
+        if (pMob && pMob->isAlive())
+        {
+            for(uint8 i = 0; i < MAX_DRAGONSPINE_RUNE; ++i)
             {
-                SetData(TYPE_EMBERSEER, IN_PROGRESS);
-                // set the mates in combat too
-                for (GUIDList::const_iterator itr = m_lIncanceratorGUIDList.begin(); itr != m_lIncanceratorGUIDList.end(); itr++)
+                if (GameObject* pRune = instance->GetGameObject(m_auiDragonspineRuneGUID[i]))
                 {
-                    if (Creature* pTemp = instance->GetCreature(*itr))
+                    if (pMob->IsWithinDistInMap(pRune, 20.0f, false) && pMob->IsWithinLOSInMap(pRune))
                     {
-                        if (pCreature->getVictim())
-                            pTemp->AI()->AttackStart(pCreature->getVictim());
+                        m_alRuneMobsGUID[i].push_back(*itr);
+                        itr = m_lDragonspineMobs.erase(itr);
+                        bAlreadyIterated = true;
+
+                        // Check proper state of rune if alive mob is nearby
+                        if (pRune->GetGoState() != GO_STATE_ACTIVE)
+                            pRune->SetGoState(GO_STATE_ACTIVE);
+                        break;
                     }
                 }
             }
-            break;
-        case NPC_DRAKKISATH:
-        case NPC_ELITE_GUARD:
-            for (GUIDList::const_iterator itr = m_lDrakkisathNpcGUIDList.begin(); itr != m_lDrakkisathNpcGUIDList.end(); itr++)
-            {
-                if (Creature* pTemp = instance->GetCreature(*itr))
-                {
-                    if (pCreature->getVictim())
-                        pTemp->AI()->AttackStart(pCreature->getVictim());
-                }
-            }
-            break;
-    }
-}
-
-void instance_blackrock_spire::DoSortRoomEventMobs()
-{
-    if (GetData(TYPE_ROOM_EVENT) != NOT_STARTED)
-        return;
-    for (uint8 i = 0; i < MAX_ROOMS; i++)
-        if (GameObject* pRune = instance->GetGameObject(m_auiRoomRuneGUID[i]))
-            for (GUIDList::const_iterator itr = m_lRoomEventMobGUIDList.begin(); itr != m_lRoomEventMobGUIDList.end(); itr++)
-                if (Creature* pCreature = instance->GetCreature(*itr))
-                    if (pCreature->isAlive() && pCreature->GetDistance(pRune) < 10.0f)
-                        m_alRoomEventMobGUIDSorted[i].push_back(*itr);
-
-    SetData(TYPE_ROOM_EVENT, IN_PROGRESS);
-}
-
-void instance_blackrock_spire::ProcessEmberseerEvent()
-{
-    // check if already done or in progress
-    if (GetData(TYPE_EMBERSEER) == DONE || GetData(TYPE_EMBERSEER) == IN_PROGRESS)
-        return;
-
-    // start to grow
-    if (Creature* pEmberseer = instance->GetCreature(m_uiEmberseerGUID))
-    {
-        // remove encaging auras first
-        pEmberseer->RemoveAllAuras();
-        pEmberseer->CastSpell(pEmberseer, SPELL_EMBERSEER_GROW, true);
-    }
-
-    // remove the incarcerators flags and stop casting
-    if (!m_lIncanceratorGUIDList.empty())
-    {
-        for (GUIDList::const_iterator itr = m_lIncanceratorGUIDList.begin(); itr != m_lIncanceratorGUIDList.end(); itr++)
-        {
-            if (Creature* pCreature = instance->GetCreature(*itr))
-            {
-                if (pCreature->isAlive())
-                {
-                    pCreature->CastStop();
-                    pCreature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
-                    pCreature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
-                }
-            }
         }
+
+        if (itr != m_lDragonspineMobs.end() && !bAlreadyIterated)
+            ++itr;
     }
-}
-
-void instance_blackrock_spire::DoUseEmberseerRunes()
-{
-    if (m_lEmberseerRunesGUIDList.empty())
-        return;
-
-    for (GUIDList::const_iterator itr = m_lEmberseerRunesGUIDList.begin(); itr != m_lEmberseerRunesGUIDList.end(); itr++)
-        DoUseDoorOrButton(*itr);
 }
 
 InstanceData* GetInstanceData_instance_blackrock_spire(Map* pMap)
@@ -368,55 +534,12 @@ InstanceData* GetInstanceData_instance_blackrock_spire(Map* pMap)
     return new instance_blackrock_spire(pMap);
 }
 
-bool AreaTrigger_at_blackrock_spire(Player* pPlayer, AreaTriggerEntry const* pAt)
-{
-    if (pPlayer->isDead())
-        return false;
-
-    switch (pAt->id)
-    {
-        case AREATRIGGER_ENTER_UBRS:
-            if (instance_blackrock_spire* pInstance = (instance_blackrock_spire*) pPlayer->GetInstanceData())
-                pInstance->DoSortRoomEventMobs();
-            break;
-        case AREATRIGGER_STADIUM:
-            if (instance_blackrock_spire* pInstance = (instance_blackrock_spire*) pPlayer->GetInstanceData())
-                if (Creature* pGyth = pInstance->instance->GetCreature(pInstance->GetData64(NPC_GYTH)))
-                    if (pGyth->isAlive() && !pGyth->isInCombat())
-                        pGyth->AI()->AttackStart(pPlayer);
-            break;
-    }
-    return false;
-}
-
-bool ProcessEventId_event_spell_altar_emberseer(uint32 uiEventId, Object* pSource, Object* pTarget, bool bIsStart)
-{
-    if (bIsStart && pSource->GetTypeId() == TYPEID_PLAYER)
-    {
-        if (instance_blackrock_spire* pInstance = (instance_blackrock_spire*)((Player*)pSource)->GetInstanceData())
-        {
-            pInstance->ProcessEmberseerEvent();
-            return true;
-        }
-    }
-    return false;
-}
-
 void AddSC_instance_blackrock_spire()
 {
-    Script* pNewScript;
-    pNewScript = new Script;
-    pNewScript->Name = "instance_blackrock_spire";
-    pNewScript->GetInstanceData = &GetInstanceData_instance_blackrock_spire;
-    pNewScript->RegisterSelf();
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "at_blackrock_spire";
-    pNewScript->pAreaTrigger = &AreaTrigger_at_blackrock_spire;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "event_spell_altar_emberseer";
-    pNewScript->pProcessEventId = &ProcessEventId_event_spell_altar_emberseer;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "instance_blackrock_spire";
+    pNewscript->GetInstanceData = &GetInstanceData_instance_blackrock_spire;
+    pNewscript->RegisterSelf();
 }

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,14 +23,16 @@ EndScriptData */
 
 #include "precompiled.h"
 
+#define SPELL_BLOODLUST             21049
 #define SPELL_WHIRLWIND             15589
-#define SPELL_MORTALSTRIKE          24573
+#define SPELL_WHIRLWIND_            13736 //not used
+#define SPELL_MORTALSTRIKE          15708 //24573
 
 struct MANGOS_DLL_DECL boss_gorosh_the_dervishAI : public ScriptedAI
 {
     boss_gorosh_the_dervishAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 WhirlWind_Timer;
+	uint32 WhirlWind_Timer;
     uint32 MortalStrike_Timer;
 
     void Reset()
@@ -41,6 +40,11 @@ struct MANGOS_DLL_DECL boss_gorosh_the_dervishAI : public ScriptedAI
         WhirlWind_Timer = 12000;
         MortalStrike_Timer = 22000;
     }
+
+	void Aggro(Unit* pAttacker)
+	{
+		DoCastSpellIfCan(m_creature, SPELL_BLOODLUST);
+	}
 
     void UpdateAI(const uint32 diff)
     {
@@ -72,9 +76,9 @@ CreatureAI* GetAI_boss_gorosh_the_dervish(Creature* pCreature)
 
 void AddSC_boss_gorosh_the_dervish()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_gorosh_the_dervish";
-    newscript->GetAI = &GetAI_boss_gorosh_the_dervish;
-    newscript->RegisterSelf();
+    Script* pNewscript;
+    pNewscript = new Script;
+    pNewscript->Name = "boss_gorosh_the_dervish";
+    pNewscript->GetAI = &GetAI_boss_gorosh_the_dervish;
+    pNewscript->RegisterSelf();
 }

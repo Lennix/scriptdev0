@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,71 +23,79 @@ EndScriptData */
 
 #include "precompiled.h"
 
-enum
+enum eSpells
 {
-    SPELL_DUSTFIELD       = 21909,
-    SPELL_BOULDER         = 21832,
-    SPELL_THRASH          = 3391,
-    SPELL_REPULSIVEGAZE   = 21869
+	SPELL_DUSTFIELD				= 21909,
+	SPELL_BOULDER				= 21832,
+	SPELL_THRASH				= 3391,
+	SPELL_REPULSIVEGAZE			= 21869
 };
 
 struct MANGOS_DLL_DECL boss_ptheradrasAI : public ScriptedAI
 {
     boss_ptheradrasAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 Dustfield_Timer;
-    uint32 Boulder_Timer;
-    uint32 Thrash_Timer;
-    uint32 RepulsiveGaze_Timer;
+    uint32 DustfieldTimer;
+    uint32 BoulderTimer;
+    uint32 ThrashTimer;
+    uint32 RepulsiveGazeTimer;
 
     void Reset()
     {
-        Dustfield_Timer = 8000;
-        Boulder_Timer = 2000;
-        Thrash_Timer = 5000;
-        RepulsiveGaze_Timer = 23000;
+        DustfieldTimer = 8000;
+        BoulderTimer = 2000;
+        ThrashTimer = 5000;
+        RepulsiveGazeTimer = 23000;
     }
 
-    void JustDied(Unit* Killer)
+    void JustDied(Unit* /*pKiller*/)
     {
-        m_creature->SummonCreature(12238,28.067f, 61.875f, -123.405f, 4.67f, TEMPSUMMON_TIMED_DESPAWN, 600000);
+        m_creature->SummonCreature(12238,28.067f,61.875f,-123.405f,4.67f,TEMPSUMMON_TIMED_DESPAWN,600000);
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //Dustfield_Timer
-        if (Dustfield_Timer < diff)
+        // DustfieldTimer
+        if (DustfieldTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature,SPELL_DUSTFIELD);
-            Dustfield_Timer = 14000;
-        }else Dustfield_Timer -= diff;
+            DoCastSpellIfCan(m_creature, SPELL_DUSTFIELD);
+            DustfieldTimer = 14000;
+        }
+		else
+			DustfieldTimer -= uiDiff;
 
-        //Boulder_Timer
-        if (Boulder_Timer < diff)
+        // BoulderTimer
+        if (BoulderTimer < uiDiff)
         {
             Unit* target = NULL;
             target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
             if (target)
-                DoCastSpellIfCan(target,SPELL_BOULDER);
-            Boulder_Timer = 10000;
-        }else Boulder_Timer -= diff;
+                DoCastSpellIfCan(target, SPELL_BOULDER);
+            BoulderTimer = 10000;
+        }
+		else
+			BoulderTimer -= uiDiff;
 
-        //RepulsiveGaze_Timer
-        if (RepulsiveGaze_Timer < diff)
+        // RepulsiveGazeTimer
+        if (RepulsiveGazeTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_REPULSIVEGAZE);
-            RepulsiveGaze_Timer = 20000;
-        }else RepulsiveGaze_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_REPULSIVEGAZE);
+            RepulsiveGazeTimer = 20000;
+        }
+		else
+			RepulsiveGazeTimer -= uiDiff;
 
-        //Thrash_Timer
-        if (Thrash_Timer < diff)
+        // ThrashTimer
+        if (ThrashTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature,SPELL_THRASH);
-            Thrash_Timer = 18000;
-        }else Thrash_Timer -= diff;
+            DoCastSpellIfCan(m_creature, SPELL_THRASH);
+            ThrashTimer = 18000;
+        }
+		else
+			ThrashTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -102,10 +107,10 @@ CreatureAI* GetAI_boss_ptheradras(Creature* pCreature)
 
 void AddSC_boss_ptheradras()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "boss_princess_theradras";
-    pNewScript->GetAI = &GetAI_boss_ptheradras;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "boss_princess_theradras";
+    pNewscript->GetAI = &GetAI_boss_ptheradras;
+    pNewscript->RegisterSelf();
 }

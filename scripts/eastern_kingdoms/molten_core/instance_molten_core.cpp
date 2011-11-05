@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,15 +16,34 @@
 
 /* ScriptData
 SDName: Instance_Molten_Core
-SD%Complete: 25
-SDComment: Majordomos and Ragnaros Event missing
+SD%Complete: 90
+SDComment:
 SDCategory: Molten Core
 EndScriptData */
+
+/* Molten Core:
+    Encounter 0 - Lucifron
+    Encounter 1 - Magmadar
+    Encounter 2 - Gehennas
+    Encounter 3 - Garr
+    Encounter 4 - Shazzrah
+    Encounter 5 - Baron Geddon
+    Encounter 6 - Sulfuron Harbinger
+    Encounter 7 - Golemagg
+    Encounter 8 - Majordomo Executus
+    Encounter 9 - Ragnaros
+    Encounter 10 - Cache of the Firelord spawned (like boolean)
+*/
 
 #include "precompiled.h"
 #include "molten_core.h"
 
-instance_molten_core::instance_molten_core(Map* pMap) : ScriptedInstance(pMap)
+instance_molten_core::instance_molten_core(Map* pMap) : ScriptedInstance(pMap),
+
+    m_uiDomoAddsDeadCount(0),
+    m_uiInitiateAddsTimer(1000),
+    m_uiRagnarosDespawnTimer(0),
+    m_uiMajordomoRespawnTimer(0)
 {
     Initialize();
 }
@@ -35,66 +51,440 @@ instance_molten_core::instance_molten_core(Map* pMap) : ScriptedInstance(pMap)
 void instance_molten_core::Initialize()
 {
     memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
+
+    lFiresworn.clear();
+    lFlamewaker.clear();
+    lFlamewakerProtector.clear();
+    lFlamewakerPriest.clear();
+    lFlamewakerHealerElite.clear();
+    lLavaBomb.clear();
+    lCoreRager.clear();
 }
 
 bool instance_molten_core::IsEncounterInProgress() const
 {
-    for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
-    {
-        if (m_auiEncounter[i] == IN_PROGRESS)
+    for(uint8 itr = 0; itr < MAX_ENCOUNTER; ++itr)
+        if (m_auiEncounter[itr] == IN_PROGRESS)
             return true;
-    }
 
     return false;
 }
 
-void instance_molten_core::OnPlayerEnter(Player* pPlayer)
+void instance_molten_core::HandleRune(uint32 uiEntry, uint32 uiData)
 {
-    // Summon Majordomo if can
-    DoSpawnMajordomoIfCan(true);
+    if (GameObject* pGo = GetSingleGameObjectFromStorage(uiEntry))
+    {
+        if (uiData == DONE)
+        {
+            // Exception for Kress rune which includes killing two bosses
+            if (pGo->GetEntry() == GO_RUNE_OF_KRESS)
+            {
+                if (m_auiEncounter[0] == uiData && m_auiEncounter[1] == uiData)
+                    pGo->SetGoState(GO_STATE_ACTIVE);
+            }
+            else
+                pGo->SetGoState(GO_STATE_ACTIVE);
+        }
+        else
+        {
+            pGo->SetGoState(GO_STATE_READY);
+
+            if (uiData == SPECIAL)
+                DoSpawnMajordomoIfCan();
+        }
+    }
+    else
+        debug_log("SD0: Molten Core: Rune not handled properly!");
 }
 
-void instance_molten_core::OnCreatureCreate(Creature* pCreature)
+bool instance_molten_core::CanSpawnDomoOrRagnaros(bool spawn_majordomo)
 {
-    switch (pCreature->GetEntry())
+    // Majordomo IF
+    if (spawn_majordomo)
     {
-        // Bosses
-        case NPC_GARR:
-        case NPC_SULFURON:
-        case NPC_MAJORDOMO:
-            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
-            break;
+        // Debug: instant spawn of Majordomo
+        //return m_auiEncounter[8] == DONE || m_auiEncounter[9] == DONE ? false : true;
 
-        // Push adds to lists in order to handle respawn
-        case NPC_FLAMEWAKER_PROTECTOR:  m_luiProtectorGUIDs.push_back(pCreature->GetObjectGuid());    break;
-        case NPC_FLAMEWAKER:            m_luiFlamewakerGUIDs.push_back(pCreature->GetObjectGuid());   break;
-        case NPC_FIRESWORN:             m_luiFireswornGUIDs.push_back(pCreature->GetObjectGuid());    break;
-        case NPC_FLAMEWAKER_PRIEST:     m_luiPriestGUIDs.push_back(pCreature->GetObjectGuid());       break;
-        case NPC_CORE_RAGER:            m_luiRagerGUIDs.push_back(pCreature->GetObjectGuid());        break;
+        // Other bosses (except Ragnaros)
+        for(uint8 i = 0; i < 8; ++i)
+            if (m_auiEncounter[i] != SPECIAL)
+                return false;
+
+        // Majordomo and Ragnaros encounter
+        if (m_auiEncounter[8] == DONE || m_auiEncounter[9] == DONE)
+            return false;
+
+        return true;
     }
+    // Ragnaros IF
+    else
+    {
+        // Majordomo's encounter must to be DONE
+        // Ragnaros's  encounter must to be NOT_STARTED
+        if (m_auiEncounter[8] != DONE || m_auiEncounter[9] == DONE || m_auiEncounter[9] == IN_PROGRESS)
+            return false;
+
+        return true;
+    }
+}
+
+void instance_molten_core::DoSpawnMajordomoIfCan(bool m_bKillAndRespawn)
+{
+    error_log("SD0: Molten Core - DoSpawnMajordomoIfCan() called.");
+
+    // Un-hide Majordomo and his adds
+    if (CanSpawnDomoOrRagnaros(true))
+    {
+        // Majordomo
+        if (Creature* pDomo = GetSingleCreatureFromStorage(NPC_MAJORDOMO))
+        {
+            SetMoltenCoreCreatureVisibility(pDomo, ObjectGuid(), true, m_bKillAndRespawn);
+
+            m_uiDomoAddsDeadCount = 0;
+
+            if (pDomo->isDead())
+                pDomo->Respawn();
+
+            pDomo->SetUInt32Value(UNIT_DYNAMIC_FLAGS, 0);
+            pDomo->SetStandState(UNIT_STAND_STATE_STAND);
+            pDomo->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+
+            //TODO: Yell again after 12 hour respawn?
+            if (pDomo->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP))
+                pDomo->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+            pDomo->MonsterYellToZone(SAY_DOMO_SPAWN, LANG_UNIVERSAL, NULL);
+        }
+        else
+            error_log("SD0: Molten Core: DoSpawnMajordomoIfCan() - unable to select Majordomo.");
+
+        // Majordomo adds
+        if (!lFlamewakerHealerElite.empty())
+            for(GUIDList::iterator itr = lFlamewakerHealerElite.begin(); itr != lFlamewakerHealerElite.end(); ++itr)
+                SetMoltenCoreCreatureVisibility(0, (*itr), true);
+
+        RespawnBossAdds(lFlamewakerHealerElite);
+    }
+}
+
+void instance_molten_core::SetMoltenCoreCreatureVisibility(Creature* pCreature, ObjectGuid pCreatureGUID, bool set_visible, bool m_bKillAndRespawn)
+{
+    if (!pCreature)
+        pCreature = instance->GetCreature(pCreatureGUID);
+
+    if (pCreature)
+    {
+        if (m_bKillAndRespawn)
+        {
+            if (pCreature->isAlive())
+            {
+                pCreature->SetHealth(0);
+                pCreature->SetDeathState(JUST_DIED);
+            }
+            pCreature->Respawn();
+        }
+
+        if (set_visible)
+        {
+            //pCreature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+            pCreature->setFaction(pCreature->GetCreatureInfo()->faction_A);
+            pCreature->SetVisibility(VISIBILITY_ON);
+        }
+        else
+        {
+            if (pCreature->isInCombat())
+                pCreature->AI()->EnterEvadeMode();
+            //pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+            pCreature->setFaction(FACTION_FRIENDLY);
+            pCreature->SetVisibility(VISIBILITY_OFF);
+        }
+    }
+    else
+        debug_log("SD0: Molten Core: SetMoltenCoreCreatureVisibility() - Can't select creature!");
+}
+
+void instance_molten_core::RespawnBossAdds(GUIDList list)
+{
+    debug_log("SD0: Molten Core: RespawnBossAdds()");
+
+    if (!list.empty())
+    {
+        for(GUIDList::iterator itr = list.begin(); itr != list.end(); ++itr)
+        {
+            if (Creature* pCreature = instance->GetCreature(*itr))
+            {
+                pCreature->Respawn();
+
+                // Flamewaker Healer and Flamewaker Elite - Majordomo adds
+                // Reset scale, damage and immunity at polymorph effect (only healer!)
+                if (pCreature->GetEntry() == NPC_FLAMEWAKER_HEALER || pCreature->GetEntry() == NPC_FLAMEWAKER_ELITE)
+                {
+                    const CreatureInfo* cinfo = pCreature->GetCreatureInfo();
+                    pCreature->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, cinfo->mindmg);
+                    pCreature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, cinfo->maxdmg);
+                    pCreature->UpdateDamagePhysical(BASE_ATTACK);
+
+                    pCreature->SetFloatValue(OBJECT_FIELD_SCALE_X, pCreature->GetCreatureInfo()->scale);
+
+                    if (pCreature->GetEntry() == NPC_FLAMEWAKER_HEALER)
+                        pCreature->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_POLYMORPH, false);
+                }
+            }
+        }
+    }
+    else
+        debug_log("SD0: Molten Core: RespawnBossAdds() called, but list of adds seems to be empty!");
+}
+
+void instance_molten_core::OnPlayerEnter(Player* pPlayer)
+{
+    SetLavaState(pPlayer, true);
+}
+
+void instance_molten_core::OnPlayerLeave(Player* pPlayer)
+{
+    SetLavaState(pPlayer, false);
 }
 
 void instance_molten_core::OnObjectCreate(GameObject* pGo)
 {
     switch(pGo->GetEntry())
     {
-        // Runes
-        case GO_RUNE_KRESS:
-        case GO_RUNE_MOHN:
-        case GO_RUNE_BLAZ:
-        case GO_RUNE_MAZJ:
-        case GO_RUNE_ZETH:
-        case GO_RUNE_THERI:
-        case GO_RUNE_KORO:
-
-        // Majordomo event chest
-        case GO_CACHE_OF_THE_FIRE_LORD:
-        // Ragnaros GOs
-        case GO_LAVA_STEAM:
-        case GO_LAVA_SPLASH:
-            m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
+        case GO_LAVA_BOMB:
+            lLavaBomb.push_back(pGo->GetObjectGuid());
+            return;
+        case GO_RUNE_OF_KRESS:                                   // Magmadar
+            HandleRune(pGo->GetEntry(), m_auiEncounter[1]);
             break;
+        case GO_RUNE_OF_MOHN:                                    // Gehennas
+            HandleRune(pGo->GetEntry(), m_auiEncounter[2]);
+            break;
+        case GO_RUNE_OF_BLAZ:                                    // Garr
+            HandleRune(pGo->GetEntry(), m_auiEncounter[3]);
+            break;
+        case GO_RUNE_OF_MAZJ:                                    // Shazzrah
+            HandleRune(pGo->GetEntry(), m_auiEncounter[4]);
+            break;
+        case GO_RUNE_OF_ZETH:                                    // Geddon
+            HandleRune(pGo->GetEntry(), m_auiEncounter[5]);
+            break;
+        case GO_RUNE_OF_KORO:                                    // Sulfuron
+            HandleRune(pGo->GetEntry(), m_auiEncounter[6]);
+            break;
+        case GO_RUNE_OF_THERI:                                   // Golemagg
+            HandleRune(pGo->GetEntry(), m_auiEncounter[7]);
+            break;
+        case GO_FIRELORD_CACHE:									// Majordomo's chest
+            break;
+		default:
+			return;
     }
+
+	m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
+}
+
+void instance_molten_core::OnCreatureCreate(Creature* pCreature)
+{
+    switch(pCreature->GetEntry())
+    {
+        case NPC_LUCIFRON:
+        case NPC_MAGMADAR:
+        case NPC_GEHENNAS:
+        case NPC_GARR:
+        case NPC_SHAZZRAH:
+        case NPC_GEDDON:
+        case NPC_SULFURON:
+        case NPC_GOLEMAGG:
+            break;
+        case NPC_MAJORDOMO:
+            if (!CanSpawnDomoOrRagnaros(true))
+                SetMoltenCoreCreatureVisibility(pCreature, ObjectGuid(), false);
+            break;
+        case NPC_RAGNAROS:
+            if (!CanSpawnDomoOrRagnaros(false))
+                SetMoltenCoreCreatureVisibility(pCreature, ObjectGuid(), false);
+            break;
+        // Boss adds
+        case NPC_FLAMEWAKER:
+			lFlamewaker.push_back(pCreature->GetObjectGuid());
+            return;
+        case NPC_FLAMEWAKER_PROTECTOR:
+            lFlamewakerProtector.push_back(pCreature->GetObjectGuid());
+            return;
+        case NPC_FLAMEWAKER_PRIEST:
+            lFlamewakerPriest.push_back(pCreature->GetObjectGuid());
+            return;
+        case NPC_FLAMEWAKER_HEALER:
+        case NPC_FLAMEWAKER_ELITE:
+            lFlamewakerHealerElite.push_back(pCreature->GetObjectGuid());
+            if (!CanSpawnDomoOrRagnaros(true))
+                SetMoltenCoreCreatureVisibility(pCreature, ObjectGuid(), false);
+            return;
+        case NPC_FIRESWORN:
+            lFiresworn.push_back(pCreature->GetObjectGuid());
+            return;
+        case NPC_CORE_RAGER:
+            lCoreRager.push_back(pCreature->GetObjectGuid());
+            return;
+    }
+
+	m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+}
+
+void instance_molten_core::OnCreatureDeath(Creature* pCreature)
+{
+    switch(pCreature->GetEntry())
+    {
+        case NPC_FLAMEWAKER_HEALER:
+        case NPC_FLAMEWAKER_ELITE:
+        {
+            ++m_uiDomoAddsDeadCount;
+
+            if (m_uiDomoAddsDeadCount == 4)
+            {
+                if (!lFlamewakerHealerElite.empty())
+                {
+                    for(GUIDList::iterator itr = lFlamewakerHealerElite.begin(); itr != lFlamewakerHealerElite.end(); ++itr)
+                    {
+                        Creature* pDomoAdd = instance->GetCreature(*itr);
+                        if (pDomoAdd && pDomoAdd->isAlive())
+                        {
+                            // Un-sheep sheeped Adds
+                            if (pDomoAdd->IsPolymorphed())
+                                pDomoAdd->RemoveAurasAtMechanicImmunity(1<<(MECHANIC_POLYMORPH-1), NULL, true);
+
+                            // Add immunity on polymorph effect
+                            pDomoAdd->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_POLYMORPH, true);
+                        }
+                    }
+                }
+            }
+            else if (m_uiDomoAddsDeadCount == 7)
+            {
+                // Boost Majordomo and his last alive add
+                if (Creature* pDomo = GetSingleCreatureFromStorage(NPC_MAJORDOMO))
+                {
+                    const CreatureInfo* domocinfo = pDomo->GetCreatureInfo();
+                    pDomo->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, (domocinfo->mindmg * 1.7f));
+                    pDomo->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, (domocinfo->maxdmg * 1.8f));
+                    pDomo->UpdateDamagePhysical(BASE_ATTACK);
+                }
+
+                if (!lFlamewakerHealerElite.empty())
+                {
+                    for(GUIDList::iterator itr = lFlamewakerHealerElite.begin(); itr != lFlamewakerHealerElite.end(); ++itr)
+                    {
+                        Creature* pDomoAdd = instance->GetCreature(*itr);
+                        if (pDomoAdd && pDomoAdd->isAlive())
+                        {
+                            pDomoAdd->SetFloatValue(OBJECT_FIELD_SCALE_X, (pDomoAdd->GetFloatValue(OBJECT_FIELD_SCALE_X) + 0.5f));
+
+                            const CreatureInfo* cinfo = pDomoAdd->GetCreatureInfo();
+                            pDomoAdd->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, (cinfo->mindmg * 2));
+                            pDomoAdd->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, (cinfo->maxdmg * 2));
+                            pDomoAdd->UpdateDamagePhysical(BASE_ATTACK);
+                        }
+                    }
+                }
+            }
+            else if (m_uiDomoAddsDeadCount == 8 && GetData(TYPE_MAJORDOMO) == IN_PROGRESS)
+                SetData(TYPE_MAJORDOMO, SPECIAL);
+            break;
+        }
+    }
+}
+
+void instance_molten_core::Update(uint32 uiDiff)
+{
+    if (m_uiInitiateAddsTimer)
+    {
+        if (m_uiInitiateAddsTimer <= uiDiff)
+        {
+            m_uiInitiateAddsTimer = 0;
+
+            // Lucifron encounter
+            if (GetData(TYPE_LUCIFRON) == NOT_STARTED || GetData(TYPE_LUCIFRON) == FAIL)
+                if (Creature* pLuci = GetSingleCreatureFromStorage(NPC_LUCIFRON))
+                    if (pLuci->isAlive())
+                        RespawnBossAdds(lFlamewakerProtector);
+
+            // Gehennas encounter
+            if (GetData(TYPE_GEHENNAS) == NOT_STARTED || GetData(TYPE_GEHENNAS) == FAIL)
+                if (Creature* pGehennas = GetSingleCreatureFromStorage(NPC_GEHENNAS))
+                    if (pGehennas->isAlive())
+                        RespawnBossAdds(lFlamewaker);
+
+            // Garr encounter
+            if (GetData(TYPE_GARR) == NOT_STARTED || GetData(TYPE_GARR) == FAIL)
+                if (Creature* pGarr = GetSingleCreatureFromStorage(NPC_GARR))
+                    if (pGarr->isAlive())
+                        RespawnBossAdds(lFiresworn);
+
+            // Golemagg the Incinerator encounter
+            if (GetData(TYPE_GOLEMAGG) == NOT_STARTED || GetData(TYPE_GOLEMAGG) == FAIL)
+                if (Creature* pGolemagg = GetSingleCreatureFromStorage(NPC_GOLEMAGG))
+                    if (pGolemagg->isAlive())
+                        RespawnBossAdds(lCoreRager);
+
+            // Sulfuron Harbinger encounter
+            if (GetData(TYPE_SULFURON) == NOT_STARTED || GetData(TYPE_SULFURON) == FAIL)
+                if (Creature* pSulfuron = GetSingleCreatureFromStorage(NPC_SULFURON))
+                    if (pSulfuron->isAlive())
+                        RespawnBossAdds(lFlamewakerPriest);
+
+            // Majordomo Executus encounter
+            DoSpawnMajordomoIfCan();
+
+            // Ragnaros
+            if (CanSpawnDomoOrRagnaros(false))
+                if (Creature* pRagnaros = GetSingleCreatureFromStorage(NPC_RAGNAROS))
+                    if (pRagnaros->isDead())
+                        //pRagnaros->Respawn();
+                        SetMoltenCoreCreatureVisibility(pRagnaros, ObjectGuid(), true, true);
+        }
+        else
+            m_uiInitiateAddsTimer -= uiDiff;
+    }
+
+    // Despawn Ragnaros
+    if (m_uiRagnarosDespawnTimer && GetData(TYPE_RAGNAROS) != DONE)
+    {
+        if (m_uiRagnarosDespawnTimer <= uiDiff)
+        {
+            if (Creature* pRagnaros = GetSingleCreatureFromStorage(NPC_RAGNAROS))
+            {
+                if (pRagnaros->isAlive() && !pRagnaros->isInCombat())
+                {
+                    debug_log("SD0: Molten Core: Despawning Ragnaros after 2 hours. It's time.. :-)");
+                    m_uiRagnarosDespawnTimer = 0;
+
+                    SetData(TYPE_RAGNAROS, NOT_STARTED);
+                    SetMoltenCoreCreatureVisibility(pRagnaros, ObjectGuid(), false);
+                }
+                else
+                    m_uiRagnarosDespawnTimer = 100;     // Try again every update tick
+            }
+            else
+                error_log("SD0: Molten Core: Despawn Ragnaros and respawn Majordomo, but Ragnaros cannot be selected.");
+        }
+        else
+            m_uiRagnarosDespawnTimer -= uiDiff;
+    }
+
+    // Respawn Majordomo after 12 hours
+    if (m_uiMajordomoRespawnTimer)
+    {
+        if (m_uiMajordomoRespawnTimer <= uiDiff)
+        {
+            m_uiMajordomoRespawnTimer = 0;
+
+            SetData(TYPE_MAJORDOMO, NOT_STARTED);
+            DoSpawnMajordomoIfCan(true);
+        }
+        else
+            m_uiMajordomoRespawnTimer -= uiDiff;
+    }
+
+    DoLavaDamage(uiDiff);
 }
 
 void instance_molten_core::SetData(uint32 uiType, uint32 uiData)
@@ -102,65 +492,130 @@ void instance_molten_core::SetData(uint32 uiType, uint32 uiData)
     switch(uiType)
     {
         case TYPE_LUCIFRON:
-            m_auiEncounter[uiType] = uiData;
+            m_auiEncounter[0] = uiData;
+            HandleRune(GO_RUNE_OF_KRESS, uiData);
             if (uiData == FAIL)
-                DoHandleAdds(m_luiProtectorGUIDs);
+                RespawnBossAdds(lFlamewakerProtector);
             break;
         case TYPE_MAGMADAR:
-            m_auiEncounter[uiType] = uiData;
+            m_auiEncounter[1] = uiData;
+            HandleRune(GO_RUNE_OF_KRESS, uiData);
+            if (!lLavaBomb.empty() && (uiData == FAIL || uiData == DONE))
+            {
+                for(GUIDList::iterator itr = lLavaBomb.begin(); itr != lLavaBomb.end(); ++itr)
+                {
+                    if (GameObject* pBomb = instance->GetGameObject(*itr))
+                        pBomb->RemoveFromWorld();
+                }
+                lLavaBomb.clear();
+            }
             break;
         case TYPE_GEHENNAS:
-            m_auiEncounter[uiType] = uiData;
-            if (uiData == DONE)
-                m_luiFlamewakerGUIDs.clear();
+            m_auiEncounter[2] = uiData;
+            HandleRune(GO_RUNE_OF_MOHN, uiData);
             if (uiData == FAIL)
-                DoHandleAdds(m_luiFlamewakerGUIDs);
+                RespawnBossAdds(lFlamewaker);
             break;
         case TYPE_GARR:
-            m_auiEncounter[uiType] = uiData;
-            if (uiData == DONE)
-                m_luiFireswornGUIDs.clear();
+            m_auiEncounter[3] = uiData;
+            HandleRune(GO_RUNE_OF_BLAZ, uiData);
             if (uiData == FAIL)
-                DoHandleAdds(m_luiFireswornGUIDs);
+                RespawnBossAdds(lFiresworn);
             break;
         case TYPE_SHAZZRAH:
-            m_auiEncounter[uiType] = uiData;
+            m_auiEncounter[4] = uiData;
+            HandleRune(GO_RUNE_OF_MAZJ, uiData);
             break;
         case TYPE_GEDDON:
-            m_auiEncounter[uiType] = uiData;
-            break;
-        case TYPE_GOLEMAGG:
-            m_auiEncounter[uiType] = uiData;
-            if (uiData == DONE)
-            {
-                DoHandleAdds(m_luiRagerGUIDs, false);
-                m_luiRagerGUIDs.clear();
-            }
-            if (uiData == FAIL)
-                DoHandleAdds(m_luiRagerGUIDs);
+            m_auiEncounter[5] = uiData;
+            HandleRune(GO_RUNE_OF_ZETH, uiData);
             break;
         case TYPE_SULFURON:
-            m_auiEncounter[uiType] = uiData;
-            if (uiData == DONE)
-                m_luiPriestGUIDs.clear();
+            m_auiEncounter[6] = uiData;
+            HandleRune(GO_RUNE_OF_KORO, uiData);
             if (uiData == FAIL)
-                DoHandleAdds(m_luiPriestGUIDs);
+                RespawnBossAdds(lFlamewakerPriest);
+            break;
+        case TYPE_GOLEMAGG:
+            m_auiEncounter[7] = uiData;
+            HandleRune(GO_RUNE_OF_THERI, uiData);
+            if (uiData == FAIL)
+                RespawnBossAdds(lCoreRager);
+            else if (uiData == DONE)    // Despawn Golemagg's adds
+                if (!lCoreRager.empty())
+                    for (GUIDList::iterator itr = lCoreRager.begin(); itr != lCoreRager.end(); ++itr)
+                        if (Creature* target = instance->GetCreature(*itr))
+                            target->ForcedDespawn();
             break;
         case TYPE_MAJORDOMO:
-            m_auiEncounter[uiType] = uiData;
-            if (uiData == DONE)
-                DoRespawnGameObject(GO_CACHE_OF_THE_FIRE_LORD, HOUR);
+            m_auiEncounter[8] = uiData;
+            switch(uiData)
+            {
+                case FAIL:
+                    RespawnBossAdds(lFlamewakerHealerElite);
+                    m_uiDomoAddsDeadCount = 0;
+                    break;
+                case DONE:
+                    // Majordomo will be respawned after 12 hours,
+                    // but his loot from cache should not be already obtainable
+                    if (GetData(TYPE_MAJORDOMO_FIRST_SPAWN) == NOT_STARTED)
+                        DoRespawnGameObject(GO_FIRELORD_CACHE, 2*HOUR);
+                    break;
+            }
             break;
         case TYPE_RAGNAROS:
-            m_auiEncounter[uiType] = uiData;
+            m_auiEncounter[9] = uiData;
+            if (uiData == IN_PROGRESS && !m_uiRagnarosDespawnTimer)
+            {
+                //m_uiRagnarosDespawnTimer  = 2 * HOUR * IN_MILLISECONDS;
+                //m_uiMajordomoRespawnTimer = 12 * HOUR * IN_MILLISECONDS;
+                m_uiRagnarosDespawnTimer  = 2 * 3600 * 1000;
+                m_uiMajordomoRespawnTimer = 12 * 3600 * 1000;
+                //m_uiRagnarosDespawnTimer  = 10000;
+                //m_uiMajordomoRespawnTimer = 15000;
+            }
+            else if (uiData == FAIL && !m_uiRagnarosDespawnTimer)
+                m_uiRagnarosDespawnTimer = 100;
+            else if (uiData == DONE)
+            {
+                // Ragnaros has been defeated, so Majordomo is no more needed..
+                if (m_uiMajordomoRespawnTimer)
+                    m_uiMajordomoRespawnTimer = 0;
+
+                if (Creature* pDomo = GetSingleCreatureFromStorage(NPC_MAJORDOMO))
+                {
+                    if (pDomo->isAlive())
+                    {
+                        if (pDomo)
+                            pDomo->AI()->EnterEvadeMode();
+                        pDomo->SetHealth(0);
+                        pDomo->SetDeathState(JUST_DIED);
+                    }
+                }
+
+                for(GUIDList::iterator itr = lFlamewakerHealerElite.begin(); itr != lFlamewakerHealerElite.end(); ++itr)
+                {
+                    if (Creature* pDomoAdd = instance->GetCreature(*itr))
+                    {
+                        if (pDomoAdd->isAlive())
+                        {
+                            if (pDomoAdd)
+                                pDomoAdd->AI()->EnterEvadeMode();
+                            pDomoAdd->SetHealth(0);
+                            pDomoAdd->SetDeathState(JUST_DIED);
+                        }
+                    }
+                }
+
+                SetData(TYPE_MAJORDOMO, DONE);
+            }
+            break;
+        case TYPE_MAJORDOMO_FIRST_SPAWN:
+            m_auiEncounter[10] = uiData;
             break;
     }
 
-    // Check if Majordomo can be summoned
-    if (uiData == SPECIAL)
-        DoSpawnMajordomoIfCan(false);
-
-    if (uiData == DONE || uiData == SPECIAL)
+    if (uiData != -1)
     {
         OUT_SAVE_INST_DATA;
 
@@ -168,9 +623,9 @@ void instance_molten_core::SetData(uint32 uiType, uint32 uiData)
         saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " "
             << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5] << " "
             << m_auiEncounter[6] << " " << m_auiEncounter[7] << " " << m_auiEncounter[8] << " "
-            << m_auiEncounter[9];
+            << m_auiEncounter[9] << " " << m_auiEncounter[10];
 
-        m_strInstData = saveStream.str();
+        strInstData = saveStream.str();
 
         SaveToDB();
         OUT_SAVE_INST_DATA_COMPLETE;
@@ -183,69 +638,6 @@ uint32 instance_molten_core::GetData(uint32 uiType)
         return m_auiEncounter[uiType];
 
     return 0;
-}
-
-// Handle Majordomo summon here
-void instance_molten_core::DoSpawnMajordomoIfCan(bool bByPlayerEnter)
-{
-    // If both Majordomo and Ragnaros events are finished, return
-    if (m_auiEncounter[TYPE_MAJORDOMO] == DONE && m_auiEncounter[TYPE_RAGNAROS] == DONE)
-        return;
-
-    // If already spawned return
-    if (GetSingleCreatureFromStorage(NPC_MAJORDOMO, true))
-        return;
-
-    // Check if all rune bosses are done
-    for(uint8 i = TYPE_MAGMADAR; i < TYPE_MAJORDOMO; i++)
-    {
-        if (m_auiEncounter[i] != SPECIAL)
-            return;
-    }
-
-    Player* pPlayer = GetPlayerInMap();
-    if (!pPlayer)
-        return;
-
-    // Summon Majordomo
-    // If Majordomo encounter isn't done, summon at encounter place, else near Ragnaros
-    uint8 uiSummonPos = m_auiEncounter[TYPE_MAJORDOMO] == DONE ? 1 : 0;
-    if (Creature* pMajordomo = pPlayer->SummonCreature(m_aMajordomoLocations[uiSummonPos].m_uiEntry, m_aMajordomoLocations[uiSummonPos].m_fX, m_aMajordomoLocations[uiSummonPos].m_fY, m_aMajordomoLocations[uiSummonPos].m_fZ, m_aMajordomoLocations[uiSummonPos].m_fO, TEMPSUMMON_MANUAL_DESPAWN, 2*HOUR*IN_MILLISECONDS))
-    {
-        if (uiSummonPos)                                    // Majordomo encounter already done, set faction
-        {
-            pMajordomo->setFaction(FACTION_MAJORDOMO_FRIENDLY);
-            pMajordomo->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
-            pMajordomo->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-        }
-        else                                                // Else yell and summon adds
-        {
-            if (!bByPlayerEnter)
-                DoScriptText(SAY_MAJORDOMO_SPAWN, pMajordomo);
-
-            for (uint8 i = 0; i < MAX_MAJORDOMO_ADDS; ++i)
-                pMajordomo->SummonCreature(m_aBosspawnLocs[i].m_uiEntry, m_aBosspawnLocs[i].m_fX, m_aBosspawnLocs[i].m_fY, m_aBosspawnLocs[i].m_fZ, m_aBosspawnLocs[i].m_fO, TEMPSUMMON_MANUAL_DESPAWN, DAY*IN_MILLISECONDS);
-        }
-    }
-}
-
-void instance_molten_core::DoHandleAdds(GUIDList &luiAddsGUIDs, bool bRespawn /*=true*/)
-{
-    if (luiAddsGUIDs.empty())
-        return;
-
-    for (GUIDList::const_iterator itr = luiAddsGUIDs.begin(); itr != luiAddsGUIDs.end(); ++itr)
-    {
-        if (Creature* pAdd = instance->GetCreature(*itr))
-        {
-            // Respawn dead mobs (or corpses)
-            if (bRespawn && !pAdd->isAlive())
-                pAdd->Respawn();
-            // Kill adds
-            else if (!bRespawn)
-                pAdd->DealDamage(pAdd, pAdd->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
-        }
-    }
 }
 
 void instance_molten_core::Load(const char* chrIn)
@@ -261,19 +653,20 @@ void instance_molten_core::Load(const char* chrIn)
     std::istringstream loadStream(chrIn);
 
     loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3]
-    >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6] >> m_auiEncounter[7]
-    >> m_auiEncounter[8] >> m_auiEncounter[9];
+        >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6] >> m_auiEncounter[7]
+        >> m_auiEncounter[8] >> m_auiEncounter[9] >> m_auiEncounter[10];
 
     for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
-    {
-        if (m_auiEncounter[i] == IN_PROGRESS)
+        if (m_auiEncounter[i] == IN_PROGRESS)           // Do not load an encounter as "In Progress" - reset it instead.
             m_auiEncounter[i] = NOT_STARTED;
-    }
+
+    if (m_auiEncounter[8] == SPECIAL)                   // Do not load Majordomo's encounter as "Special" - reset.
+        m_auiEncounter[8] = NOT_STARTED;
 
     OUT_LOAD_INST_DATA_COMPLETE;
 }
 
-InstanceData* GetInstance_instance_molten_core(Map* pMap)
+InstanceData* GetInstanceData_instance_molten_core(Map* pMap)
 {
     return new instance_molten_core(pMap);
 }
@@ -281,9 +674,8 @@ InstanceData* GetInstance_instance_molten_core(Map* pMap)
 void AddSC_instance_molten_core()
 {
     Script* pNewScript;
-
     pNewScript = new Script;
     pNewScript->Name = "instance_molten_core";
-    pNewScript->GetInstanceData = &GetInstance_instance_molten_core;
+    pNewScript->GetInstanceData = &GetInstanceData_instance_molten_core;
     pNewScript->RegisterSelf();
 }

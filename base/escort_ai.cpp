@@ -1,21 +1,6 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+ * This program is free software licensed under GPL version 2
+ * Please see the included DOCS/LICENSE.TXT for more information */
 
 /* ScriptData
 SDName: EscortAI
@@ -97,9 +82,6 @@ void npc_escortAI::AttackStart(Unit* pWho)
 
 void npc_escortAI::EnterCombat(Unit* pEnemy)
 {
-    // Store combat start position
-    m_creature->SetCombatStartPosition(m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ());
-
     if (!pEnemy)
         return;
 
@@ -163,8 +145,8 @@ void npc_escortAI::MoveInLineOfSight(Unit* pWho)
         if (!m_creature->CanInitiateAttack())
             return;
 
-        if (!m_creature->CanFly() && m_creature->GetDistanceZ(pWho) > CREATURE_Z_ATTACK_RANGE)
-            return;
+        /*if (!m_creature->CanFly() && m_creature->GetDistanceZ(pWho) > CREATURE_Z_ATTACK_RANGE)
+            return;*/
 
         if (m_creature->IsHostileTo(pWho))
         {
@@ -237,11 +219,10 @@ void npc_escortAI::EnterEvadeMode()
 
     if (HasEscortState(STATE_ESCORT_ESCORTING))
     {
-        // We have left our path
-        if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() != POINT_MOTION_TYPE)
-        {
-            debug_log("SD0: EscortAI has left combat and is now returning to CombatStartPosition.");
+        debug_log("SD0: EscortAI has left combat and is now returning to CombatStartPosition.");
 
+        if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE)
+        {
             AddEscortState(STATE_ESCORT_RETURNING);
 
             float fPosX, fPosY, fPosZ;
@@ -404,14 +385,11 @@ void npc_escortAI::MovementInform(uint32 uiMoveType, uint32 uiPointId)
         //Make sure that we are still on the right waypoint
         if (CurrentWP->uiId != uiPointId)
         {
-            error_log("SD0: EscortAI for Npc %u reached waypoint out of order %u, expected %u.", m_creature->GetEntry(), uiPointId, CurrentWP->uiId);
+            error_log("SD0: EscortAI reached waypoint out of order %u, expected %u.", uiPointId, CurrentWP->uiId);
             return;
         }
 
         debug_log("SD0: EscortAI waypoint %u reached.", CurrentWP->uiId);
-
-        // In case we were moving while in combat, we should evade back to this position
-        m_creature->SetCombatStartPosition(m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ());
 
         //Call WP function
         WaypointReached(CurrentWP->uiId);

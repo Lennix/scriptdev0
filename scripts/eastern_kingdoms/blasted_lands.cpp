@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -37,12 +34,9 @@ EndContentData */
 
 #define GOSSIP_ITEM_USHER "I wish to to visit the Rise of the Defiler."
 
-enum
-{
-    SPELL_TELEPORT_SINGLE            = 12885,
-    SPELL_TELEPORT_SINGLE_IN_GROUP   = 13142,
-    SPELL_TELEPORT_GROUP             = 27686
-};
+#define SPELL_TELEPORT_SINGLE           12885
+#define SPELL_TELEPORT_SINGLE_IN_GROUP  13142
+#define SPELL_TELEPORT_GROUP            27686
 
 bool GossipHello_npc_deathly_usher(Player* pPlayer, Creature* pCreature)
 {
@@ -149,17 +143,17 @@ bool GossipSelect_npc_fallen_hero_of_horde(Player* pPlayer, Creature* pCreature,
 
 void AddSC_blasted_lands()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_deathly_usher";
-    pNewScript->pGossipHello = &GossipHello_npc_deathly_usher;
-    pNewScript->pGossipSelect = &GossipSelect_npc_deathly_usher;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_deathly_usher";
+    pNewscript->pGossipHello =  &GossipHello_npc_deathly_usher;
+    pNewscript->pGossipSelect = &GossipSelect_npc_deathly_usher;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_fallen_hero_of_horde";
-    pNewScript->pGossipHello = &GossipHello_npc_fallen_hero_of_horde;
-    pNewScript->pGossipSelect = &GossipSelect_npc_fallen_hero_of_horde;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_fallen_hero_of_horde";
+    pNewscript->pGossipHello =  &GossipHello_npc_fallen_hero_of_horde;
+    pNewscript->pGossipSelect = &GossipSelect_npc_fallen_hero_of_horde;
+    pNewscript->RegisterSelf();
 }

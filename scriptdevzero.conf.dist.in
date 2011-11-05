@@ -1,7 +1,7 @@
 # ScriptDevZero Configuration file
 # This file must be placed within the directory which holds mangosd.conf and realmd.conf
 
-[ScriptDevZeroConf]
+[ScriptDev2Conf]
 ConfVersion=2010062001
 
 # Database connection settings for the world server.

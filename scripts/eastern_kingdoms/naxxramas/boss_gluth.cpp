@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -29,16 +26,15 @@ EndScriptData */
 
 enum
 {
-    EMOTE_ZOMBIE                    = -1533119,
-    EMOTE_BOSS_GENERIC_ENRAGED      = -1000006,             // NYI
-    EMOTE_DECIMATE                  = -1533152,             // NYI
+    EMOTE_ZOMBIE      = -1533119,
 
-    SPELL_MORTALWOUND               = 25646,
-    SPELL_DECIMATE                  = 28374,
-    SPELL_ENRAGE                    = 28371,
-    SPELL_BERSERK                   = 26662,
+    SPELL_MORTALWOUND = 25646,
+    SPELL_DECIMATE    = 28374,
+    SPELL_ENRAGE      = 28371,
+    SPELL_ENRAGE_H    = 54427,
+    SPELL_BERSERK     = 26662,
 
-    NPC_ZOMBIE_CHOW                 = 16360
+    NPC_ZOMBIE_CHOW   = 16360
 };
 
 #define ADD_1X 3269.590f
@@ -104,22 +100,16 @@ struct MANGOS_DLL_DECL boss_gluthAI : public ScriptedAI
         m_uiBerserkTimer = MINUTE*8*IN_MILLISECONDS;
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/)
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_GLUTH, DONE);
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/)
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_GLUTH, IN_PROGRESS);
-    }
-
-    void JustReachedHome()
-    {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_GLUTH, FAIL);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -163,12 +153,6 @@ struct MANGOS_DLL_DECL boss_gluthAI : public ScriptedAI
                     pZombie->AddThreat(pTarget);
             }
 
-            if (Creature* pZombie = m_creature->SummonCreature(NPC_ZOMBIE_CHOW, ADD_1X, ADD_1Y, ADD_1Z, 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 80000))
-            {
-                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                    pZombie->AddThreat(pTarget);
-            }
-
             m_uiSummonTimer = 10000;
         }
         else
@@ -177,7 +161,7 @@ struct MANGOS_DLL_DECL boss_gluthAI : public ScriptedAI
         // Berserk
         if (m_uiBerserkTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature, SPELL_BERSERK, CAST_TRIGGERED);
+            DoCastSpellIfCan(m_creature, SPELL_BERSERK, true);
             m_uiBerserkTimer = MINUTE*5*IN_MILLISECONDS;
         }
         else
@@ -194,9 +178,9 @@ CreatureAI* GetAI_boss_gluth(Creature* pCreature)
 
 void AddSC_boss_gluth()
 {
-    Script* NewScript;
-    NewScript = new Script;
-    NewScript->Name = "boss_gluth";
-    NewScript->GetAI = &GetAI_boss_gluth;
-    NewScript->RegisterSelf();
+    Script* pNewscript;
+    pNewscript = new Script;
+    pNewscript->Name = "boss_gluth";
+    pNewscript->GetAI = &GetAI_boss_gluth;
+    pNewscript->RegisterSelf();
 }

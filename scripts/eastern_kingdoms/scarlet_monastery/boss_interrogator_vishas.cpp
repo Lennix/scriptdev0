@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -35,74 +32,76 @@ enum
     SAY_KILL                = -1189014,
     SAY_TRIGGER_VORREL      = -1189015,
 
-    SPELL_SHADOWWORDPAIN    = 2767,
+    SPELL_SHADOW_WORD_PAIN  = 2767,
 };
 
 struct MANGOS_DLL_DECL boss_interrogator_vishasAI : public ScriptedAI
 {
     boss_interrogator_vishasAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_scarlet_monastery*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_scarlet_monastery* m_pInstance;
 
-    bool Yell30;
-    bool Yell60;
-    uint32 ShadowWordPain_Timer;
+    bool bYell30;
+    bool bYell60;
+    uint32 m_uiShadowWordPainTimer;
 
     void Reset()
     {
-        Yell30 = false;
-        Yell60 = false;
-        ShadowWordPain_Timer = 5000;
+        bYell30 = false;
+        bYell60 = false;
+        m_uiShadowWordPainTimer = 5000;
     }
 
-    void Aggro(Unit *who)
+    void Aggro(Unit* /*pWho*/)
     {
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
-    void KilledUnit(Unit* Victim)
+    void KilledUnit(Unit* pVictim)
     {
         DoScriptText(SAY_KILL, m_creature);
     }
 
-    void JustDied(Unit* Killer)
+    void JustDied(Unit* /*pKiller*/)
     {
         if (!m_pInstance)
             return;
 
-        //Any other actions to do with vorrel? setStandState?
-        if (Creature *vorrel = m_pInstance->GetSingleCreatureFromStorage(NPC_VORREL))
-            DoScriptText(SAY_TRIGGER_VORREL, vorrel);
+        // Any other actions to do with vorrel? setStandState?
+		if (Creature* pVorrel = m_pInstance->GetSingleCreatureFromStorage(NPC_VORREL))
+            DoScriptText(SAY_TRIGGER_VORREL, pVorrel);
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //If we are low on hp Do sayings
-        if (!Yell60 && m_creature->GetHealthPercent() <= 60.0f)
+        // If we are low on hp Do sayings
+        if (!bYell60 && HealthBelowPct(60))
         {
             DoScriptText(SAY_HEALTH1, m_creature);
-            Yell60 = true;
+            bYell60 = true;
         }
 
-        if (!Yell30 && m_creature->GetHealthPercent() <= 30.0f)
+        if (!bYell30 && HealthBelowPct(60))
         {
             DoScriptText(SAY_HEALTH2, m_creature);
-            Yell30 = true;
+            bYell30 = true;
         }
 
-        //ShadowWordPain_Timer
-        if (ShadowWordPain_Timer < diff)
+        // Shadow word: Pain
+        if (m_uiShadowWordPainTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_SHADOWWORDPAIN);
-            ShadowWordPain_Timer = urand(5000, 15000);
-        }else ShadowWordPain_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOW_WORD_PAIN);
+            m_uiShadowWordPainTimer = urand(5000, 15000);
+        }
+        else 
+            m_uiShadowWordPainTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -115,9 +114,9 @@ CreatureAI* GetAI_boss_interrogator_vishas(Creature* pCreature)
 
 void AddSC_boss_interrogator_vishas()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_interrogator_vishas";
-    newscript->GetAI = &GetAI_boss_interrogator_vishas;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+    pNewScript = new Script;
+    pNewScript->Name = "boss_interrogator_vishas";
+    pNewScript->GetAI = &GetAI_boss_interrogator_vishas;
+    pNewScript->RegisterSelf();
 }

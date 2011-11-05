@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -141,12 +138,12 @@ bool GossipSelect_npc_ragged_john(Player* pPlayer, Creature* pCreature, uint32 u
 
 void AddSC_burning_steppes()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_ragged_john";
-    pNewScript->GetAI = &GetAI_npc_ragged_john;
-    pNewScript->pGossipHello = &GossipHello_npc_ragged_john;
-    pNewScript->pGossipSelect = &GossipSelect_npc_ragged_john;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_ragged_john";
+    pNewscript->GetAI = &GetAI_npc_ragged_john;
+    pNewscript->pGossipHello =  &GossipHello_npc_ragged_john;
+    pNewscript->pGossipSelect = &GossipSelect_npc_ragged_john;
+    pNewscript->RegisterSelf();
 }

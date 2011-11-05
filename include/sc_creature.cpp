@@ -1,21 +1,6 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+ * This program is free software licensed under GPL version 2
+ * Please see the included DOCS/LICENSE.TXT for more information */
 
 #include "precompiled.h"
 #include "Item.h"
@@ -53,8 +38,8 @@ void ScriptedAI::MoveInLineOfSight(Unit* pWho)
     if (m_creature->CanInitiateAttack() && pWho->isTargetableForAttack() &&
         m_creature->IsHostileTo(pWho) && pWho->isInAccessablePlaceFor(m_creature))
     {
-        if (!m_creature->CanFly() && m_creature->GetDistanceZ(pWho) > CREATURE_Z_ATTACK_RANGE)
-            return;
+        /*if (!m_creature->CanFly() && m_creature->GetDistanceZ(pWho) > CREATURE_Z_ATTACK_RANGE)
+            return;*/
 
         if (m_creature->IsWithinDistInMap(pWho, m_creature->GetAttackDistance(pWho)) && m_creature->IsWithinLOSInMap(pWho))
         {
@@ -218,8 +203,8 @@ SpellEntry const* ScriptedAI::SelectSpell(Unit* pTarget, int32 uiSchool, int32 u
             continue;
 
         //Check for school if specified
-//        if (uiSchool >= 0 && pTempSpell->SchoolMask & uiSchool)
-//            continue;
+        /*if (uiSchool >= 0 && pTempSpell->SchoolMask & uiSchool)
+            continue;*/
 
         //Check for spell mechanic if specified
         if (uiMechanic >= 0 && pTempSpell->Mechanic != uiMechanic)
@@ -403,7 +388,7 @@ void ScriptedAI::DoTeleportPlayer(Unit* pUnit, float fX, float fY, float fZ, flo
 
     if (pUnit->GetTypeId() != TYPEID_PLAYER)
     {
-        error_log("SD0: Creature " UI64FMTD " (Entry: %u) Tried to teleport non-player unit (Type: %u GUID: " UI64FMTD ") to x: %f y:%f z: %f o: %f. Aborted.", m_creature->GetObjectGuid(), m_creature->GetEntry(), pUnit->GetTypeId(), pUnit->GetObjectGuid(), fX, fY, fZ, fO);
+        error_log("SD0: %s tried to teleport non-player (%s) to x: %f y:%f z: %f o: %f. Aborted.", m_creature->GetGuidStr().c_str(), pUnit->GetGuidStr().c_str(), fX, fY, fZ, fO);
         return;
     }
 
@@ -458,22 +443,22 @@ Player* ScriptedAI::GetPlayerAtMinimumRange(float fMinimumRange)
     return pPlayer;
 }
 
-void ScriptedAI::SetEquipmentSlots(bool bLoadDefault, int32 iMainHand, int32 iOffHand, int32 iRanged)
+void ScriptedAI::SetEquipmentSlots(bool bLoadDefault, int32 uiMainHand, int32 uiOffHand, int32 uiRanged)
 {
     if (bLoadDefault)
     {
-        m_creature->LoadEquipment(m_creature->GetCreatureInfo()->equipmentId, true);
+        m_creature->LoadEquipment(m_creature->GetCreatureInfo()->equipmentId,true);
         return;
     }
 
-    if (iMainHand >= 0)
-        m_creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_0, iMainHand);
+    if (uiMainHand >= 0)
+        m_creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, uint32(uiMainHand));
 
-    if (iOffHand >= 0)
-        m_creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_1, iOffHand);
+    if (uiOffHand >= 0)
+        m_creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, uint32(uiOffHand));
 
-    if (iRanged >= 0)
-        m_creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_2, iRanged);
+    if (uiRanged >= 0)
+        m_creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, uint32(uiRanged));
 }
 
 void ScriptedAI::SetCombatMovement(bool bCombatMove)
@@ -481,11 +466,10 @@ void ScriptedAI::SetCombatMovement(bool bCombatMove)
     m_bCombatMovement = bCombatMove;
 }
 
-// Hacklike storage used for misc creatures that are expected to evade of outside of a certain area.
-// It is assumed the information is found elswehere and can be handled by mangos. So far no luck finding such information/way to extract it.
-enum
+enum eBosses
 {
-    NPC_BROODLORD               = 12017,
+    NPC_BROODLORD   = 12017,
+    NPC_HAKKAR      = 14834,
 };
 
 bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 uiDiff)
@@ -501,14 +485,16 @@ bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 uiDiff)
     if (m_creature->IsInEvadeMode() || !m_creature->getVictim())
         return false;
 
-    float fX = m_creature->GetPositionX();
-    float fY = m_creature->GetPositionY();
     float fZ = m_creature->GetPositionZ();
 
     switch(m_creature->GetEntry())
     {
         case NPC_BROODLORD:                                 // broodlord (not move down stairs)
             if (fZ > 448.60f)
+                return false;
+            break;
+        case NPC_HAKKAR:
+            if (fZ > 51.0f)                                 // Hakkar (not move down stairs)
                 return false;
             break;
         default:
@@ -519,10 +505,9 @@ bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 uiDiff)
     EnterEvadeMode();
     return true;
 }
-
 void Scripted_NoMovementAI::GetAIInformation(ChatHandler& reader)
 {
-    reader.PSendSysMessage("ScriptedAI (no movement)");
+    reader.PSendSysMessage("Subclass of Scripted_NoMovementAI");
 }
 
 void Scripted_NoMovementAI::AttackStart(Unit* pWho)
@@ -535,4 +520,31 @@ void Scripted_NoMovementAI::AttackStart(Unit* pWho)
 
         DoStartNoMovement(pWho);
     }
+}
+
+Unit* ScriptedAI::SelectUnitWithPower(Powers power)
+{
+    GUIDList lTargets;
+
+    GUIDVector vGuids;
+    m_creature->FillGuidsListFromThreatList(vGuids);
+
+    if (vGuids.empty())
+        return NULL;
+
+    for (GUIDVector::const_iterator itr = vGuids.begin(); itr != vGuids.end(); ++itr)
+    {
+        Unit* pTarget = m_creature->GetMap()->GetUnit(*itr);
+
+        if (pTarget && pTarget->getPowerType() == power)
+            lTargets.push_back(pTarget->GetObjectGuid());
+    }
+
+    if (lTargets.empty())
+        return NULL;
+
+    GUIDList::iterator itr = lTargets.begin();
+    advance(itr, urand(0, lTargets.size()-1));
+
+    return m_creature->GetMap()->GetUnit((*itr));
 }

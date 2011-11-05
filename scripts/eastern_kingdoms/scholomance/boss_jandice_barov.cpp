@@ -1,21 +1,18 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+*/
 
 /* ScriptData
 SDName: Boss_jandicebarov
@@ -25,180 +22,177 @@ SDCategory: Scholomance
 EndScriptData */
 
 #include "precompiled.h"
+#include "scholomance.h"
 
-#define SPELL_CURSEOFBLOOD          24673
-//#define SPELL_ILLUSION              17773
-
-//Spells of Illusion of Jandice Barov
-#define SPELL_CLEAVE                15584
-
-struct MANGOS_DLL_DECL boss_jandicebarovAI : public ScriptedAI
+enum Spells
 {
-    boss_jandicebarovAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    SPELL_BANISH                  = 8994,
+    SPELL_CURSE_OF_BLOOD          = 16098,
+    SPELL_ILLUSION                = 17773,
+    SPELL_CLEAVE                  = 15584
+};
 
-    uint32 CurseOfBlood_Timer;
-    uint32 Illusion_Timer;
-    //uint32 Illusioncounter;
-    uint32 Invisible_Timer;
-    bool Invisible;
-    int Rand;
-    int RandX;
-    int RandY;
-    Creature* Summoned;
+struct MANGOS_DLL_DECL boss_jandice_barovAI : public ScriptedAI
+{
+    boss_jandice_barovAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_pInstance = (instance_scholomance*)pCreature->GetInstanceData();
+        Reset();
+    }
+
+    instance_scholomance* m_pInstance;
+
+    bool m_bInvisible;
+    uint32 m_uiBanishTimer;
+    uint32 m_uiCurseOfBloodTimer;
+    uint32 m_uiIllusionTimer;
+    uint32 m_uiInvisibleTimer;
 
     void Reset()
     {
-        CurseOfBlood_Timer = 15000;
-        Illusion_Timer = 30000;
-        Invisible_Timer = 3000;                             //Too much too low?
-        Invisible = false;
+        m_bInvisible = false;
+        m_uiBanishTimer = urand(16000,20000);
+        m_uiCurseOfBloodTimer = urand(10000,15000);
+        m_uiIllusionTimer = 25000;
+        m_uiInvisibleTimer = 3000;
     }
 
-    void SummonIllusions(Unit* victim)
+    void JustReachedHome()
     {
-        Rand = rand()%10;
-        switch(urand(0, 1))
-        {
-        case 0: RandX = 0 - Rand; break;
-        case 1: RandX = 0 + Rand; break;
-        }
-        Rand = 0;
-        Rand = rand()%10;
-        switch(urand(0, 1))
-        {
-        case 0: RandY = 0 - Rand; break;
-        case 1: RandY = 0 + Rand; break;
-        }
-        Rand = 0;
-        Summoned = DoSpawnCreature(11439, RandX, RandY, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 60000);
-        if (Summoned)
-            Summoned->AI()->AttackStart(victim);
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_JANDICE_BAROV, NOT_STARTED);
     }
 
-    void UpdateAI(const uint32 diff)
+    void Aggro(Unit* /*pWho*/)
     {
-        if (Invisible && Invisible_Timer < diff)
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_JANDICE_BAROV, IN_PROGRESS);
+    }
+
+    void JustDied(Unit* /*pKiller*/)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_JANDICE_BAROV, DONE);
+    }
+
+    void JustSummoned(Creature* pSummoned)
+    {
+        if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
+            pSummoned->AI()->AttackStart(pTarget);
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (m_bInvisible && m_uiInvisibleTimer < uiDiff)
         {
-            //Become visible again
-            m_creature->setFaction(14);
+            m_creature->setFaction(FACTION_HOSTILE);
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-            m_creature->SetDisplayId(11073);                //Jandice Model
-            Invisible = false;
-        } else if (Invisible)
+            m_creature->SetDisplayId(11073);
+            m_bInvisible = false;
+        }
+        else if (m_bInvisible)
         {
-            Invisible_Timer -= diff;
-            //Do nothing while invisible
+            m_uiInvisibleTimer -= uiDiff;
             return;
         }
 
-        //Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //CurseOfBlood_Timer
-        if (CurseOfBlood_Timer < diff)
+        // Banish
+        if (m_uiBanishTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_CURSEOFBLOOD);
-            CurseOfBlood_Timer = 30000;
-        }else CurseOfBlood_Timer -= diff;
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
+                DoCastSpellIfCan(pTarget, SPELL_BANISH);
+            m_uiBanishTimer = urand(25000,35000);
+        }
+        else
+            m_uiBanishTimer -= uiDiff;
 
-        //Illusion_Timer
-        if (!Invisible && Illusion_Timer < diff)
+        // Curse Of Blood
+        if (m_uiCurseOfBloodTimer < uiDiff)
         {
-            //Inturrupt any spell casting
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_CURSE_OF_BLOOD);
+            m_uiCurseOfBloodTimer = 30000;
+        }
+        else
+            m_uiCurseOfBloodTimer -= uiDiff;
+
+        // Illusion summon
+        if (!m_bInvisible && m_uiIllusionTimer < uiDiff)
+        {
             m_creature->InterruptNonMeleeSpells(false);
-            m_creature->setFaction(35);
+            m_creature->setFaction(FACTION_FRIENDLY);
             m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-            m_creature->SetDisplayId(11686);                // Invisible Model
+            m_creature->SetDisplayId(11686);
             m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(),-99);
 
-            //Summon 10 Illusions attacking random gamers
-            Unit* target = NULL;
-            for(int i = 0; i < 10; ++i)
-            {
-                target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
-                SummonIllusions(target);
-            }
-            Invisible = true;
-            Invisible_Timer = 3000;
+            for(uint8 i = 0; i < 10; ++i)
+                DoSpawnCreature(NPC_ILLUSION_OF_JANDICE_BAROV, irand(-10,10), irand(-10,10), 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 25000);
 
-            //25 seconds until we should cast this agian
-            Illusion_Timer = 25000;
-        }else Illusion_Timer -= diff;
+            m_bInvisible = true;
+            m_uiInvisibleTimer = 3000;
 
-        //            //Illusion_Timer
-        //            if (Illusion_Timer < diff)
-        //            {
-        //                  //Cast
-        //                DoCastSpellIfCan(m_creature->getVictim(),SPELL_ILLUSION);
-        //                  //3 Illusion will be summoned
-        //                  if (Illusioncounter < 3)
-        //                  {
-        //                    Illusion_Timer = 500;
-        //                    ++Illusioncounter;
-        //                  }
-        //                  else {
-        //                      //15 seconds until we should cast this again
-        //                      Illusion_Timer = 15000;
-        //                      Illusioncounter=0;
-        //                  }
-        //            }else Illusion_Timer -= diff;
+            m_uiIllusionTimer = 25000;
+        }
+        else
+            m_uiIllusionTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
 
-// Illusion of Jandice Barov Script
-
-struct MANGOS_DLL_DECL mob_illusionofjandicebarovAI : public ScriptedAI
+CreatureAI* GetAI_boss_jandice_barov(Creature* pCreature)
 {
-    mob_illusionofjandicebarovAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    return new boss_jandice_barovAI(pCreature);
+}
 
-    uint32 Cleave_Timer;
+struct MANGOS_DLL_DECL mob_illusion_of_jandice_barovAI : public ScriptedAI
+{
+    mob_illusion_of_jandice_barovAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+
+    uint32 m_uiCleaveTimer;
 
     void Reset()
     {
-        Cleave_Timer = urand(2000, 8000);
+        m_uiCleaveTimer = urand(2000,8000);
         m_creature->ApplySpellImmune(0, IMMUNITY_DAMAGE, SPELL_SCHOOL_MASK_MAGIC, true);
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff)
     {
-        //Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //Cleave_Timer
-        if (Cleave_Timer < diff)
+        // Cleave
+        if (m_uiCleaveTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_CLEAVE);
-            Cleave_Timer = urand(5000, 8000);
-        }else Cleave_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE);
+            m_uiCleaveTimer = urand(5000,8000);
+        }
+        else
+            m_uiCleaveTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
 
-CreatureAI* GetAI_boss_jandicebarov(Creature* pCreature)
+CreatureAI* GetAI_mob_illusion_of_jandice_barov(Creature* pCreature)
 {
-    return new boss_jandicebarovAI(pCreature);
+    return new mob_illusion_of_jandice_barovAI(pCreature);
 }
 
-CreatureAI* GetAI_mob_illusionofjandicebarov(Creature* pCreature)
+void AddSC_boss_jandice_barov()
 {
-    return new mob_illusionofjandicebarovAI(pCreature);
-}
+    Script* pNewscript;
 
-void AddSC_boss_jandicebarov()
-{
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_jandice_barov";
-    newscript->GetAI = &GetAI_boss_jandicebarov;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "boss_jandice_barov";
+    pNewscript->GetAI = &GetAI_boss_jandice_barov;
+    pNewscript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_illusionofjandicebarov";
-    newscript->GetAI = &GetAI_mob_illusionofjandicebarov;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "mob_illusion_of_jandice_barov";
+    pNewscript->GetAI = &GetAI_mob_illusion_of_jandice_barov;
+    pNewscript->RegisterSelf();
 }

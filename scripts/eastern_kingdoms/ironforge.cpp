@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -86,11 +83,11 @@ bool GossipSelect_npc_royal_historian_archesonus(Player* pPlayer, Creature* pCre
 
 void AddSC_ironforge()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_royal_historian_archesonus";
-    pNewScript->pGossipHello = &GossipHello_npc_royal_historian_archesonus;
-    pNewScript->pGossipSelect = &GossipSelect_npc_royal_historian_archesonus;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_royal_historian_archesonus";
+    pNewscript->pGossipHello =  &GossipHello_npc_royal_historian_archesonus;
+    pNewscript->pGossipSelect = &GossipSelect_npc_royal_historian_archesonus;
+    pNewscript->RegisterSelf();
 }

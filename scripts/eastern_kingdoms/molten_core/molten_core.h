@@ -1,121 +1,83 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This program is free software licensed under GPL version 2
+ * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_MOLTEN_CORE_H
 #define DEF_MOLTEN_CORE_H
 
-enum
+enum Data
 {
-    MAX_ENCOUNTER               = 10,
+    TYPE_LUCIFRON,
+    TYPE_MAGMADAR,
+    TYPE_GEHENNAS,
+    TYPE_GARR,
+    TYPE_SHAZZRAH,
+    TYPE_GEDDON,
+    TYPE_SULFURON,
+    TYPE_GOLEMAGG,
+    TYPE_MAJORDOMO,
+    TYPE_RAGNAROS,
+    TYPE_MAJORDOMO_FIRST_SPAWN,  // please, use only these values: NOT_STARTED, DONE
 
-    TYPE_LUCIFRON               = 0,
-    TYPE_MAGMADAR               = 1,
-    TYPE_GEHENNAS               = 2,
-    TYPE_GARR                   = 3,
-    TYPE_SHAZZRAH               = 4,
-    TYPE_GEDDON                 = 5,
-    TYPE_GOLEMAGG               = 6,
-    TYPE_SULFURON               = 7,
-    TYPE_MAJORDOMO              = 8,
-    TYPE_RAGNAROS               = 9,
+    MAX_ENCOUNTER
+};
 
+enum Creatures
+{
+    // Bosses
     NPC_LUCIFRON                = 12118,
     NPC_MAGMADAR                = 11982,
     NPC_GEHENNAS                = 12259,
     NPC_GARR                    = 12057,
-    NPC_SHAZZRAH                = 12264,
     NPC_GEDDON                  = 12056,
+    NPC_SHAZZRAH                = 12264,
     NPC_GOLEMAGG                = 11988,
     NPC_SULFURON                = 12098,
     NPC_MAJORDOMO               = 12018,
     NPC_RAGNAROS                = 11502,
 
     // Adds
-    // Used for respawn in case of wipe
-    NPC_FLAMEWAKER_PROTECTOR    = 12119,                    // Lucifron
-    NPC_FLAMEWAKER              = 11661,                    // Gehennas
-    NPC_FIRESWORN               = 12099,                    // Garr
-    NPC_CORE_RAGER              = 11672,                    // Golemagg
-    NPC_FLAMEWAKER_PRIEST       = 11662,                    // Sulfuron
-    NPC_FLAMEWAKER_HEALER       = 11663,                    // Majordomo
-    NPC_FLAMEWAKER_ELITE        = 11664,                    // Majordomo
+    NPC_FIRESWORN               = 12099,
+    NPC_FLAMEWAKER              = 11661,
+    NPC_FLAMEWAKER_PROTECTOR    = 12119,
+    NPC_FLAMEWAKER_PRIEST       = 11662,
+    NPC_FLAMEWAKER_HEALER       = 11663,
+    NPC_FLAMEWAKER_ELITE        = 11664,
+    NPC_CORE_HOUND              = 11671,
+    NPC_CORE_RAGER              = 11672,
 
-    GO_LAVA_STEAM               = 178107,
-    GO_LAVA_SPLASH              = 178108,
-    GO_CACHE_OF_THE_FIRE_LORD   = 179703,
-    GO_RUNE_KRESS               = 176956,                   // Magmadar
-    GO_RUNE_MOHN                = 176957,                   // Gehennas
-    GO_RUNE_BLAZ                = 176955,                   // Garr
-    GO_RUNE_MAZJ                = 176953,                   // Shazzah
-    GO_RUNE_ZETH                = 176952,                   // Geddon
-    GO_RUNE_THERI               = 176954,                   // Golemagg
-    GO_RUNE_KORO                = 176951,                   // Sulfuron
-
-    MAX_MOLTEN_RUNES            = 7,
-    MAX_MAJORDOMO_ADDS          = 8,
-    FACTION_MAJORDOMO_FRIENDLY  = 1080,
-    SAY_MAJORDOMO_SPAWN         = -1409004,
+    // Trash
+    NPC_ANCIENT_CORE_HOUND      = 11673,
+    NPC_LAVA_SURGER             = 12101,
+    NPC_SON_OF_FLAME            = 12143,
+    NPC_FLAME_OF_RAGNAROS       = 13148,
 };
 
-struct sRuneEncounters
+enum GameObjects
 {
-    uint32 m_uiRuneEntry, m_uiType;
+    GO_RUNE_OF_KORO             = 176951,
+    GO_RUNE_OF_ZETH             = 176952,
+    GO_RUNE_OF_MAZJ             = 176953,
+    GO_RUNE_OF_THERI            = 176954,
+    GO_RUNE_OF_BLAZ             = 176955,
+    GO_RUNE_OF_KRESS            = 176956,
+    GO_RUNE_OF_MOHN             = 176957,
+
+    GO_HOT_COALS                = 177000,
+    GO_FIRELORD_CACHE           = 179703,
+    GO_LAVA_BOMB                = 177704,
 };
 
-static const sRuneEncounters m_aMoltenCoreRunes[MAX_MOLTEN_RUNES] =
+enum YellsToZone
 {
-    {GO_RUNE_KRESS, TYPE_MAGMADAR},
-    {GO_RUNE_MOHN,  TYPE_GEHENNAS},
-    {GO_RUNE_BLAZ,  TYPE_GARR},
-    {GO_RUNE_MAZJ,  TYPE_SHAZZRAH},
-    {GO_RUNE_ZETH,  TYPE_GEDDON},
-    {GO_RUNE_THERI, TYPE_GOLEMAGG},
-    {GO_RUNE_KORO,  TYPE_SULFURON}
+    // Majordomo Executus
+    SAY_DOMO_SPAWN              = -1409004,
 };
 
-struct sSpawnLocation
+enum Misc
 {
-    uint32 m_uiEntry;
-    float m_fX, m_fY, m_fZ, m_fO;
+    FACTION_FRIENDLY            = 35,
 };
-
-static sSpawnLocation m_aBosspawnLocs[MAX_MAJORDOMO_ADDS] =
-{
-    {NPC_FLAMEWAKER_ELITE,  737.945f, -1156.48f, -118.945f, 4.46804f},
-    {NPC_FLAMEWAKER_ELITE,  752.520f, -1191.02f, -118.218f, 2.49582f},
-    {NPC_FLAMEWAKER_ELITE,  752.953f, -1163.94f, -118.869f, 3.70010f},
-    {NPC_FLAMEWAKER_ELITE,  738.814f, -1197.40f, -118.018f, 1.83260f},
-    {NPC_FLAMEWAKER_HEALER, 746.939f, -1194.87f, -118.016f, 2.21657f},
-    {NPC_FLAMEWAKER_HEALER, 747.132f, -1158.87f, -118.897f, 4.03171f},
-    {NPC_FLAMEWAKER_HEALER, 757.116f, -1170.12f, -118.793f, 3.40339f},
-    {NPC_FLAMEWAKER_HEALER, 755.910f, -1184.46f, -118.449f, 2.80998f}
-};
-
-static sSpawnLocation m_aMajordomoLocations[2] =
-{
-    {NPC_MAJORDOMO, 758.089f, -1176.71f, -118.640f, 3.12414f},  // Summon fight position
-    {NPC_MAJORDOMO, 847.103f, -816.153f, -229.775f, 4.344f}     // Summon and teleport location (near Ragnaros)
-};
-
-static const float RANGE_CALL_FOR_HELP     = 20.0f;
-
-typedef GUIDList GUIDList;
 
 class MANGOS_DLL_DECL instance_molten_core : public ScriptedInstance
 {
@@ -124,33 +86,45 @@ class MANGOS_DLL_DECL instance_molten_core : public ScriptedInstance
         ~instance_molten_core() {}
 
         void Initialize();
-        bool IsEncounterInProgress() const;
+
+		bool IsEncounterInProgress() const;
+
+        void OnPlayerEnter(Player* pPlayer);
+        void OnPlayerLeave(Player* pPlayer);
 
         void OnCreatureCreate(Creature* pCreature);
+        void OnCreatureDeath(Creature* pCreature);
         void OnObjectCreate(GameObject* pGo);
-        void OnPlayerEnter(Player* pPlayer);
 
         void SetData(uint32 uiType, uint32 uiData);
         uint32 GetData(uint32 uiType);
 
-        const char* Save() { return m_strInstData.c_str(); }
+        const char* Save() { return strInstData.c_str(); }
         void Load(const char* chrIn);
 
-        // TODO Remove this, when creature linking implemented in MaNGOS
-        void DoHandleAdds(GUIDList &m_luiAddsGUIDs, bool bRespawn = true);
+        void Update(uint32 uiDiff);
 
+		void HandleRune(uint32 uiEntry, uint32 uiData);
+		bool CanSpawnDomoOrRagnaros(bool spawn_majordomo);
+		void SetMoltenCoreCreatureVisibility(Creature* pCreature, ObjectGuid pCreatureGUID, bool set_visible, bool m_bKillAndRespawn = false);
+		void DoSpawnMajordomoIfCan(bool m_bKillAndRespawn = true);
+		void RespawnBossAdds(GUIDList list);
     protected:
-        void DoSpawnMajordomoIfCan(bool bByPlayerEnter);
-
-        std::string m_strInstData;
         uint32 m_auiEncounter[MAX_ENCOUNTER];
+        std::string strInstData;
 
-        // Adds lists
-        GUIDList m_luiProtectorGUIDs;
-        GUIDList m_luiFlamewakerGUIDs;
-        GUIDList m_luiFireswornGUIDs;
-        GUIDList m_luiPriestGUIDs;
-        GUIDList m_luiRagerGUIDs;
+        uint32 m_uiDomoAddsDeadCount;
+        uint32 m_uiInitiateAddsTimer;
+        uint32 m_uiRagnarosDespawnTimer;
+        uint32 m_uiMajordomoRespawnTimer;
+
+        GUIDList lFiresworn;
+        GUIDList lFlamewaker;
+        GUIDList lFlamewakerProtector;
+        GUIDList lFlamewakerPriest;
+        GUIDList lFlamewakerHealerElite;
+        GUIDList lLavaBomb;
+        GUIDList lCoreRager;
 };
 
 #endif

@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -27,92 +24,97 @@ EndScriptData */
 #include "precompiled.h"
 #include "zulgurub.h"
 
-enum
+enum eVenoxis
 {
-    NPC_RAZZASHI_COBRA  = 11373,
+    SAY_TRANSFORM           = -1309003,
+    SAY_DEATH               = -1309004,
 
-    SAY_TRANSFORM       = -1309000,
-    SAY_DEATH           = -1309001,
-
-    SPELL_HOLY_FIRE     = 23860,
-    SPELL_HOLY_WRATH    = 23979,
-    SPELL_VENOMSPIT     = 23862,
-    SPELL_HOLY_NOVA     = 23858,
-    SPELL_POISON_CLOUD  = 23861,
-    SPELL_SNAKE_FORM    = 23849,
-    SPELL_RENEW         = 23895,
-    SPELL_ENRAGE        = 8269,
-    SPELL_DISPELL       = 23859,
-    SPELL_PARASITIC     = 23865,
-    SPELL_TRASH         = 3391
+    SPELL_DISPELL           = 23859,
+    SPELL_FRENZY            = 8269,
+    SPELL_HOLY_FIRE         = 23860,
+    SPELL_HOLY_NOVA         = 23858,
+    SPELL_HOLY_WRATH        = 23979,
+    SPELL_PARASITIC_SERPENT = 23865,
+    SPELL_POISON_CLOUD      = 23861,
+    SPELL_RENEW             = 23895,
+    SPELL_TRASH             = 3391,
+    SPELL_VENOM_SPIT        = 23862,
+    SPELL_VENOXIS_TRANSFORM = 23849,
 };
 
 struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
 {
     boss_venoxisAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        m_fDefaultSize = m_creature->GetFloatValue(OBJECT_FIELD_SCALE_X);
+        m_pInstance = (instance_zulgurub*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_zulgurub* m_pInstance;
 
-    uint32 m_uiHolyFire_Timer;
-    uint32 m_uiHolyWrath_Timer;
-    uint32 m_uiVenomSpit_Timer;
-    uint32 m_uiRenew_Timer;
-    uint32 m_uiPoisonCloud_Timer;
-    uint32 m_uiHolyNova_Timer;
-    uint32 m_uiDispell_Timer;
-    uint32 m_uiParasitic_Timer;
-    uint32 m_uiTrash_Timer;
+    bool m_bFrenzied;
+    bool m_bPhaseTwo;
+
+    uint32 m_uiHolyFireTimer;
+    uint32 m_uiHolyWrathTimer;
+    uint32 m_uiVenomSpitTimer;
+    uint32 m_uiRenewTimer;
+    uint32 m_uiPoisonCloudTimer;
+    uint32 m_uiHolyNovaTimer;
+    uint32 m_uiDispellTimer;
+    uint32 m_uiParasiticTimer;
+    uint32 m_uiTrashTimer;
 
     uint8 m_uiTargetsInRangeCount;
 
-    bool m_bPhaseTwo;
-    bool m_bInBerserk;
-
-    float m_fDefaultSize;
-
     void Reset()
     {
-        m_uiHolyFire_Timer = 10000;
-        m_uiHolyWrath_Timer = 60500;
-        m_uiVenomSpit_Timer = 5500;
-        m_uiRenew_Timer = 30500;
-        m_uiPoisonCloud_Timer = 2000;
-        m_uiHolyNova_Timer = 5000;
-        m_uiDispell_Timer = 35000;
-        m_uiParasitic_Timer = 10000;
-        m_uiTrash_Timer = 5000;
+        m_bFrenzied = false;
+        m_bPhaseTwo = false;
+
+        m_uiHolyFireTimer = 10000;
+        m_uiHolyWrathTimer = 60500;
+        m_uiVenomSpitTimer = 5500;
+        m_uiRenewTimer = 30500;
+        m_uiPoisonCloudTimer = 2000;
+        m_uiHolyNovaTimer = 5000;
+        m_uiDispellTimer = 35000;
+        m_uiParasiticTimer = 10000;
+        m_uiTrashTimer = 5000;
 
         m_uiTargetsInRangeCount = 0;
 
-        m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, m_fDefaultSize);
-
-        m_bPhaseTwo = false;
-        m_bInBerserk = false;
+        m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, 1.0f);
     }
 
     void JustReachedHome()
     {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_VENOXIS, NOT_STARTED);
+
         std::list<Creature*> m_lCobras;
         GetCreatureListWithEntryInGrid(m_lCobras, m_creature, NPC_RAZZASHI_COBRA, DEFAULT_VISIBILITY_INSTANCE);
 
         if (m_lCobras.empty())
-            debug_log("SD0: boss_venoxis, no Cobras with the entry %u were found", NPC_RAZZASHI_COBRA);
+            debug_log("SD2: ZG: boss_venoxis, no Cobras with the entry %u were found", NPC_RAZZASHI_COBRA);
         else
         {
-            for(std::list<Creature*>::iterator iter = m_lCobras.begin(); iter != m_lCobras.end(); ++iter)
+            for(std::list<Creature*>::iterator itr = m_lCobras.begin(); itr != m_lCobras.end(); ++itr)
             {
-                if ((*iter) && !(*iter)->isAlive())
-                    (*iter)->Respawn();
+                if ((*itr) && !(*itr)->isAlive())
+                    (*itr)->Respawn();
             }
         }
     }
 
-    void JustDied(Unit* pKiller)
+    void Aggro(Unit* /*pWho*/)
+    {
+        m_creature->CallForHelp(25.f);
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_VENOXIS, IN_PROGRESS);
+    }
+
+    void JustDied(Unit* /*pKiller*/)
     {
         DoScriptText(SAY_DEATH, m_creature);
 
@@ -120,17 +122,19 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
             m_pInstance->SetData(TYPE_VENOXIS, DONE);
     }
 
-    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
+    void UpdateAI(const uint32 uiDiff)
     {
-        if (!m_bPhaseTwo && (m_creature->GetHealth()+uiDamage)*100 / m_creature->GetMaxHealth() < 50)
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        // Start Phase Two
+        if (!m_bPhaseTwo && HealthBelowPct(50))
         {
             DoScriptText(SAY_TRANSFORM, m_creature);
+            DoCastSpellIfCan(m_creature, SPELL_VENOXIS_TRANSFORM, CAST_INTERRUPT_PREVIOUS + CAST_FORCE_TARGET_SELF);
 
-            m_creature->InterruptNonMeleeSpells(false);
-            DoCastSpellIfCan(m_creature,SPELL_SNAKE_FORM);
-
-            m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, m_fDefaultSize*2);
-            const CreatureInfo *cinfo = m_creature->GetCreatureInfo();
+            m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, 3.0f);
+            const CreatureInfo* cinfo = m_creature->GetCreatureInfo();
             m_creature->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, (cinfo->mindmg +((cinfo->mindmg/100) * 25)));
             m_creature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, (cinfo->maxdmg +((cinfo->maxdmg/100) * 25)));
             m_creature->UpdateDamagePhysical(BASE_ATTACK);
@@ -138,46 +142,41 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
             m_bPhaseTwo = true;
         }
 
-        if (m_bPhaseTwo && !m_bInBerserk && (m_creature->GetHealth()+uiDamage)*100 / m_creature->GetMaxHealth() < 11)
+        // Frenzy if health or mana below 15%
+        if (m_bPhaseTwo && !m_bFrenzied && (HealthBelowPct(15) || (m_creature->GetPower(POWER_MANA)*100/m_creature->GetMaxPower(POWER_MANA) <= 15)))
         {
-            m_creature->InterruptNonMeleeSpells(false);
-            DoCastSpellIfCan(m_creature, SPELL_ENRAGE);
-            m_bInBerserk = true;
+            DoCastSpellIfCan(m_creature, SPELL_FRENZY, CAST_INTERRUPT_PREVIOUS + CAST_FORCE_TARGET_SELF);
+            m_bFrenzied = true;
         }
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
 
         if (!m_bPhaseTwo)
         {
-            if (m_uiDispell_Timer < uiDiff)
+            if (m_uiDispellTimer <= uiDiff)
             {
                 DoCastSpellIfCan(m_creature, SPELL_DISPELL);
-                m_uiDispell_Timer = urand(15000, 30000);
+                m_uiDispellTimer = urand(15000, 30000);
             }
             else
-                m_uiDispell_Timer -= uiDiff;
+                m_uiDispellTimer -= uiDiff;
 
-            if (m_uiRenew_Timer < uiDiff)
+            if (m_uiRenewTimer <= uiDiff)
             {
                 DoCastSpellIfCan(m_creature, SPELL_RENEW);
-                m_uiRenew_Timer = urand(20000, 30000);
+                m_uiRenewTimer = urand(15000, 30000);
             }
             else
-                m_uiRenew_Timer -= uiDiff;
+                m_uiRenewTimer -= uiDiff;
 
-            if (m_uiHolyWrath_Timer < uiDiff)
+            if (m_uiHolyWrathTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(), SPELL_HOLY_WRATH);
-                m_uiHolyWrath_Timer = urand(15000, 25000);
+                Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+                DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_HOLY_WRATH);
+                m_uiHolyWrathTimer = urand(8000, 10000);       // 15000, 25000
             }
             else
-                m_uiHolyWrath_Timer -= uiDiff;
+                m_uiHolyWrathTimer -= uiDiff;
 
-            if (m_uiHolyNova_Timer < uiDiff)
+            if (m_uiHolyNovaTimer <= uiDiff)
             {
                 m_uiTargetsInRangeCount = 0;
                 for(uint8 i = 0; i < 10; ++i)
@@ -189,64 +188,66 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
 
                 if (m_uiTargetsInRangeCount > 1)
                 {
-                    DoCastSpellIfCan(m_creature->getVictim(),SPELL_HOLY_NOVA);
-                    m_uiHolyNova_Timer = 1000;
+                    DoCastSpellIfCan(m_creature->getVictim(), SPELL_HOLY_NOVA);
+                    m_uiHolyNovaTimer = 1000;
                 }
                 else
-                {
-                    m_uiHolyNova_Timer = 2000;
-                }
+                    m_uiHolyNovaTimer = 2000;
             }
             else
-                m_uiHolyNova_Timer -= uiDiff;
+                m_uiHolyNovaTimer -= uiDiff;
 
-            if (m_uiHolyFire_Timer < uiDiff && m_uiTargetsInRangeCount < 3)
+            if (m_uiHolyFireTimer <= uiDiff && m_uiTargetsInRangeCount < 3)
             {
-                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
-                    DoCastSpellIfCan(pTarget, SPELL_HOLY_FIRE);
+                Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
+                DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_HOLY_FIRE);
 
-                m_uiHolyFire_Timer = 8000;
+                m_uiHolyFireTimer = 3000;       // 8000
             }
             else
-                m_uiHolyFire_Timer -= uiDiff;
+                m_uiHolyFireTimer -= uiDiff;
         }
         else
         {
-            if (m_uiPoisonCloud_Timer < uiDiff)
+            // Poison Cloud
+            if (m_uiPoisonCloudTimer <= uiDiff)
             {
                 DoCastSpellIfCan(m_creature->getVictim(), SPELL_POISON_CLOUD);
-                m_uiPoisonCloud_Timer = 15000;
+                m_uiPoisonCloudTimer = urand(5000,8000);        // 10000
             }
             else
-                m_uiPoisonCloud_Timer -= uiDiff;
+                m_uiPoisonCloudTimer -= uiDiff;
 
-            if (m_uiVenomSpit_Timer < uiDiff)
+            // Venom Spit
+            if (m_uiVenomSpitTimer <= uiDiff)
             {
-                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
-                    DoCastSpellIfCan(pTarget, SPELL_VENOMSPIT);
+                Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+                DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_VENOM_SPIT);
 
-                m_uiVenomSpit_Timer = urand(15000, 20000);
+                m_uiVenomSpitTimer = urand(5000,6000);       // 15000, 20000
             }
             else
-                m_uiVenomSpit_Timer -= uiDiff;
+                m_uiVenomSpitTimer -= uiDiff;
 
-            if (m_uiParasitic_Timer < uiDiff)
+            // Parasitic Serpent
+            if (m_uiParasiticTimer <= uiDiff)
             {
-                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
-                    DoCastSpellIfCan(pTarget, SPELL_PARASITIC);
+                Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
+                DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_PARASITIC_SERPENT);
 
-                m_uiParasitic_Timer = 10000;
+                m_uiParasiticTimer = 10000;
             }
             else
-                m_uiParasitic_Timer -= uiDiff;
+                m_uiParasiticTimer -= uiDiff;
 
-            if (m_uiTrash_Timer < uiDiff)
+            if (m_uiTrashTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(), SPELL_TRASH);
-                m_uiTrash_Timer = urand(10000, 20000);
+                DoCastSpellIfCan(m_creature, SPELL_TRASH);
+                m_uiTrashTimer = urand(8000, 12000);
+                
             }
             else
-                m_uiTrash_Timer -= uiDiff;
+                m_uiTrashTimer -= uiDiff;
         }
 
         DoMeleeAttackIfReady();
@@ -258,11 +259,119 @@ CreatureAI* GetAI_boss_venoxis(Creature* pCreature)
     return new boss_venoxisAI(pCreature);
 }
 
+/*######
+## mob_razzashi_cobra
+######*/
+
+enum eRazzashiCobra
+{
+    SPELL_POISON = 24097,
+    SPELL_SPIT   = 27919
+};
+
+struct MANGOS_DLL_DECL mob_razzashi_cobraAI : public ScriptedAI
+{
+    mob_razzashi_cobraAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_pInstance = (instance_zulgurub*)pCreature->GetInstanceData();
+        Reset();
+    }
+
+    instance_zulgurub* m_pInstance;
+
+    uint32 m_uiPoisonTimer;
+    uint32 m_uiSpitTimer;
+
+    void Reset()
+    {
+        m_uiPoisonTimer = urand(2500,5000);
+        m_uiSpitTimer = urand(0,2000);
+    }
+
+    void Aggro(Unit* pVictim)
+    {
+        m_creature->CallForHelp(25.0f);
+    }
+
+    void JustDied(Unit *)
+    {
+        // Increases Venoxis's damage by 15 percent
+        if (m_pInstance)
+        {
+            if (Creature* pVenoxis = m_pInstance->GetSingleCreatureFromStorage(NPC_VENOXIS))
+            {
+                if (pVenoxis->isAlive() && m_pInstance->GetData(TYPE_VENOXIS) == IN_PROGRESS)
+                {
+                    uint8 m_uiRazzashiCobrasDeadCount = 0;
+                    std::list<Creature*> m_lCobras;
+                    GetCreatureListWithEntryInGrid(m_lCobras, m_creature, NPC_RAZZASHI_COBRA, DEFAULT_VISIBILITY_INSTANCE);
+
+                    if (m_lCobras.empty())
+                        debug_log("SD2: ZG: boss_venoxis, no Cobras with the entry %u were found", NPC_RAZZASHI_COBRA);
+                    else
+                    {
+                        for(std::list<Creature*>::iterator itr = m_lCobras.begin(); itr != m_lCobras.end(); ++itr)
+                        {
+                            if ((*itr) && !(*itr)->isAlive())
+                                ++m_uiRazzashiCobrasDeadCount;
+                        }
+                    }
+
+                    const CreatureInfo* cinfo = pVenoxis->GetCreatureInfo();
+                    pVenoxis->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, cinfo->mindmg + (((cinfo->mindmg/100) * ((15 * m_uiRazzashiCobrasDeadCount)))));
+                    pVenoxis->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, cinfo->maxdmg + (((cinfo->maxdmg/100) * ((15 * m_uiRazzashiCobrasDeadCount)))));
+                    pVenoxis->UpdateDamagePhysical(BASE_ATTACK);
+                }
+            }
+        }
+        else
+            debug_log("SD0: Zul'Gurub - Razzashi Cobra near boss Venoxis: m_pInstance NULL ! Unable increas Venoxis's damage.");
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        // Return if we have no target
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        // Poison
+        if (m_uiPoisonTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_POISON);
+            m_uiPoisonTimer = urand(7000,10000);
+        }
+        else
+            m_uiPoisonTimer -= uiDiff;
+
+        // Spit
+        if (m_uiSpitTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_SPIT);
+            m_uiSpitTimer = urand(7000,10000);
+        }
+        else
+            m_uiSpitTimer -= uiDiff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_mob_razzashi_cobra(Creature* pCreature)
+{
+    return new mob_razzashi_cobraAI(pCreature);
+}
+
 void AddSC_boss_venoxis()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_venoxis";
-    newscript->GetAI = &GetAI_boss_venoxis;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_venoxis";
+    pNewScript->GetAI = &GetAI_boss_venoxis;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "mob_razzashi_cobra";
+    pNewScript->GetAI = &GetAI_mob_razzashi_cobra;
+    pNewScript->RegisterSelf();
 }

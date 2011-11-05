@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -18,10 +15,9 @@
  */
 
 /* ScriptData
-SDName: Boss_Archaedas
-SD%Complete: 60
-SDComment: Need correct way to deal with awaken vault and guardian spells, waiting for additions in mangos for them (target combination 22/7)
-SDCategory: Uldaman
+SDName: boss_archaedas
+SD%Complete: 100
+SDComment:
 EndScriptData */
 
 #include "precompiled.h"
@@ -29,18 +25,18 @@ EndScriptData */
 
 enum
 {
-    SPELL_GROUND_TREMOR             = 6524,
-
-    SPELL_AWAKEN_EARTHEN_GUARDIAN   = 10252,
-    SPELL_AWAKEN_VAULT_WARDER       = 10258,
-    SPELL_AWAKEN_EARTHEN_DWARF      = 10259,
-
-    SPELL_ARCHAEDAS_AWAKEN_VISUAL   = 10347,
-
     SAY_AGGRO                       = -1070001,
     SAY_AWAKE_GUARDIANS             = -1070002,
     SAY_AWAKE_WARDERS               = -1070003,
-    SAY_UNIT_SLAIN                  = -1070004
+    SAY_UNIT_SLAIN                  = -1070004,
+
+    SPELL_GROUND_TREMOR             = 6524,
+
+    SPELL_AWAKEN_EARTHEN_GUARDIAN   = 10252,            // NYI in core -> manually handled
+    SPELL_AWAKEN_VAULT_WARDER       = 10258,            // NYI in core -> manually handled
+    SPELL_AWAKEN_EARTHEN_DWARF      = 10259,
+
+    SPELL_ARCHAEDAS_AWAKEN_VISUAL   = 10347
 };
 
 struct MANGOS_DLL_DECL boss_archaedasAI : public ScriptedAI
@@ -53,21 +49,24 @@ struct MANGOS_DLL_DECL boss_archaedasAI : public ScriptedAI
 
     instance_uldaman* m_pInstance;
 
-    uint32 m_uiAwakeningTimer;
-    uint32 m_uiAwakeDwarfTimer;
-    uint8 m_uiSubevent;
     bool m_bDwarvesAwaken;
     bool m_bGuardiansAwaken;
     bool m_bWardersAwaken;
+    uint8 m_uiSubevent;
+    uint32 m_uiAwakeningTimer;
+    uint32 m_uiAwakeDwarfTimer;
+    uint32 m_uiTremorTimer;
 
     void Reset()
     {
-        m_uiAwakeningTimer  = 1000;
-        m_uiSubevent        = 0;
+        m_bGuardiansAwaken = false;
+        m_bWardersAwaken = false;
+        m_bDwarvesAwaken = false;
+
+        m_uiAwakeningTimer = 1000;
+        m_uiSubevent = 0;
         m_uiAwakeDwarfTimer = 10000;
-        m_bGuardiansAwaken  = false;
-        m_bWardersAwaken    = false;
-        m_bDwarvesAwaken    = false;
+        m_uiTremorTimer = 30000;
 
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
     }
@@ -85,7 +84,6 @@ struct MANGOS_DLL_DECL boss_archaedasAI : public ScriptedAI
 
     void JustDied(Unit* pKiller)
     {
-        // open door to vault (handled by instance script)
         if (m_pInstance)
             m_pInstance->SetData(TYPE_ARCHAEDAS, DONE);
     }
@@ -131,11 +129,11 @@ struct MANGOS_DLL_DECL boss_archaedasAI : public ScriptedAI
                         DoCastSpellIfCan(m_creature, SPELL_ARCHAEDAS_AWAKEN_VISUAL);
                         break;
                     case 1:
-                        DoScriptText(SAY_AGGRO,m_creature,NULL);
+                        DoScriptText(SAY_AGGRO, m_creature);
                         m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                         break;
                     case 2:
-                        if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_pInstance->GetData64(DATA_EVENT_STARTER)))
+                        if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_pInstance->GetEventStarterGuid()))
                             AttackStart(pPlayer);
                         else
                             EnterEvadeMode();
@@ -171,51 +169,33 @@ struct MANGOS_DLL_DECL boss_archaedasAI : public ScriptedAI
                 m_uiAwakeDwarfTimer -= uiDiff;
         }
 
-        //Awake Earthen Guardians
+        // Awake Earthen Guardians
         if (!m_bGuardiansAwaken && m_creature->GetHealthPercent() <= 66.0f)
         {
-            if (Creature* pGuard = m_pInstance->GetClosestDwarfNotInCombat(m_creature, PHASE_ARCHA_2))
+            if (m_pInstance->ActivateGuardians(NPC_EARTHEN_GUARDIAN))
             {
-                if (DoCastSpellIfCan(pGuard, SPELL_AWAKEN_EARTHEN_GUARDIAN) == CAST_OK)
-                {
-                    DoScriptText(SAY_AWAKE_GUARDIANS, m_creature);
-                    m_bGuardiansAwaken = true;
-                }
+                DoScriptText(SAY_AWAKE_GUARDIANS, m_creature);
+                m_bGuardiansAwaken = true;
             }
         }
 
         // Awake Warders
         if (!m_bWardersAwaken && m_creature->GetHealthPercent() <= 33.0f)
         {
-            if (Creature* pWarder = m_pInstance->GetClosestDwarfNotInCombat(m_creature, PHASE_ARCHA_3))
+            if (m_pInstance->ActivateGuardians(NPC_VAULT_WALKER))
             {
-                if (DoCastSpellIfCan(pWarder, SPELL_AWAKEN_VAULT_WARDER) == CAST_OK)
-                {
-                    DoScriptText(SAY_AWAKE_WARDERS, m_creature);
-                    m_bWardersAwaken = true;
-                }
+                DoScriptText(SAY_AWAKE_WARDERS, m_creature);
+                m_bWardersAwaken = true;
             }
         }
 
-        DoMeleeAttackIfReady();
-    }
-};
-
-struct MANGOS_DLL_DECL npc_archaeras_addAI : public ScriptedAI
-{
-    npc_archaeras_addAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        Reset();
-    }
-
-    void Reset()
-    {
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
+        if (m_uiTremorTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_GROUND_TREMOR) == CAST_OK)
+                m_uiTremorTimer = 45000;
+        }
+        else
+            m_uiTremorTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -226,22 +206,12 @@ CreatureAI* GetAI_boss_archaedas(Creature* pCreature)
     return new boss_archaedasAI(pCreature);
 }
 
-CreatureAI* GetAI_npc_archaeras_add(Creature* pCreature)
-{
-    return new npc_archaeras_addAI(pCreature);
-}
-
 void AddSC_boss_archaedas()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "boss_archaedas";
-    pNewScript->GetAI = &GetAI_boss_archaedas;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "mob_archaeras_add";
-    pNewScript->GetAI = &GetAI_npc_archaeras_add;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name="boss_archaedas";
+    pNewscript->GetAI = &GetAI_boss_archaedas;
+    pNewscript->RegisterSelf();
 }

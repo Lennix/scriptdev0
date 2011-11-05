@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,7 +16,7 @@
 
 /* ScriptData
 SDName: Boss_Maleki_the_Pallid
-SD%Complete: 70
+SD%Complete: 90
 SDComment:
 SDCategory: Stratholme
 EndScriptData */
@@ -27,65 +24,95 @@ EndScriptData */
 #include "precompiled.h"
 #include "stratholme.h"
 
-#define SPELL_FROSTBOLT     17503
-#define SPELL_DRAIN_LIFE    17238
-#define SPELL_DRAIN_MANA    17243
-#define SPELL_ICETOMB       16869
+enum Spells
+{
+    SPELL_DRAIN_LIFE          = 17238,
+    SPELL_DRAIN_MANA          = 17243,
+    SPELL_FROSTBOLT           = 17503,
+    SPELL_ICE_TOMB            = 16869
+};
 
 struct MANGOS_DLL_DECL boss_maleki_the_pallidAI : public ScriptedAI
 {
     boss_maleki_the_pallidAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_stratholme*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_stratholme* m_pInstance;
 
-    uint32 FrostNova_Timer;
-    uint32 Frostbolt_Timer;
-    uint32 IceTomb_Timer;
-    uint32 DrainLife_Timer;
+    uint32 m_uiDrainManaTimer;
+    uint32 m_uiDrainLifeTimer;
+    uint32 m_uiFrostboltTimer;
+    uint32 m_uiIceTombTimer;
 
     void Reset()
     {
-        FrostNova_Timer = 11000;
-        Frostbolt_Timer = 1000;
-        IceTomb_Timer = 16000;
-        DrainLife_Timer = 31000;
+        m_uiDrainManaTimer = urand(16000,20000);
+        m_uiDrainLifeTimer = urand(12000,14000);
+        m_uiFrostboltTimer = urand(2000,4000);
+        m_uiIceTombTimer = urand(6000,8000);
     }
 
-    void UpdateAI(const uint32 diff)
+    void JustReachedHome()
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_MALEKI_THE_PALLID, NOT_STARTED);
+    }
+
+    void Aggro(Unit* /*pWho*/)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_MALEKI_THE_PALLID, IN_PROGRESS);
+    }
+
+    void JustDied(Unit* /*pKiller*/)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_MALEKI_THE_PALLID, DONE);
+    }
+
+    void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //Frostbolt
-        if (Frostbolt_Timer < diff)
+        // Drain Mana spell
+        if (m_uiDrainManaTimer <= uiDiff)
         {
-            if (rand()%100 < 90)
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_FROSTBOLT);
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_DRAIN_LIFE);
+            m_uiDrainManaTimer = urand(15000,20000);
+        }
+        else
+            m_uiDrainManaTimer -= uiDiff;
 
-            Frostbolt_Timer = 3500;
-        }else Frostbolt_Timer -= diff;
-
-        //IceTomb
-        if (IceTomb_Timer < diff)
+        // Drain Life spell
+        if (m_uiDrainLifeTimer <= uiDiff)
         {
-            if (rand()%100 < 65)
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_ICETOMB);
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_DRAIN_LIFE);
+            m_uiDrainLifeTimer = urand(15000,20000);
+        }
+        else
+            m_uiDrainLifeTimer -= uiDiff;
 
-            IceTomb_Timer = 28000;
-        }else IceTomb_Timer -= diff;
-
-        //DrainLife
-        if (DrainLife_Timer < diff)
+        // Frostbolt spell
+        if (m_uiFrostboltTimer <= uiDiff)
         {
-            if (rand()%100 < 55)
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_DRAIN_LIFE);
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_FROSTBOLT);
+            m_uiFrostboltTimer = urand(3000,6000);
+        }
+        else
+            m_uiFrostboltTimer -= uiDiff;
 
-            DrainLife_Timer = 31000;
-        }else DrainLife_Timer -= diff;
+        // Ice Tomb spell
+        if (m_uiIceTombTimer <= uiDiff)
+        {
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_ICE_TOMB);
+            m_uiIceTombTimer = urand(15000,20000);
+        }
+        else
+            m_uiIceTombTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -97,9 +124,10 @@ CreatureAI* GetAI_boss_maleki_the_pallid(Creature* pCreature)
 
 void AddSC_boss_maleki_the_pallid()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_maleki_the_pallid";
-    newscript->GetAI = &GetAI_boss_maleki_the_pallid;
-    newscript->RegisterSelf();
+    Script* pNewscript;
+
+    pNewscript = new Script;
+    pNewscript->Name = "boss_maleki_the_pallid";
+    pNewscript->GetAI = &GetAI_boss_maleki_the_pallid;
+    pNewscript->RegisterSelf();
 }

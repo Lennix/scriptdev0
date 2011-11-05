@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -136,25 +133,29 @@ bool GossipSelect_npc_witch_doctor_mauari(Player* pPlayer, Creature* pCreature, 
     return true;
 }
 
+/*######
+## AddSC
+######*/
+
 void AddSC_winterspring()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_lorax";
-    pNewScript->pGossipHello = &GossipHello_npc_lorax;
-    pNewScript->pGossipSelect = &GossipSelect_npc_lorax;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_lorax";
+    pNewscript->pGossipHello =  &GossipHello_npc_lorax;
+    pNewscript->pGossipSelect = &GossipSelect_npc_lorax;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_rivern_frostwind";
-    pNewScript->pGossipHello = &GossipHello_npc_rivern_frostwind;
-    pNewScript->pGossipSelect = &GossipSelect_npc_rivern_frostwind;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_rivern_frostwind";
+    pNewscript->pGossipHello =  &GossipHello_npc_rivern_frostwind;
+    pNewscript->pGossipSelect = &GossipSelect_npc_rivern_frostwind;
+    pNewscript->RegisterSelf();
 
-    pNewScript = new Script;
-    pNewScript->Name = "npc_witch_doctor_mauari";
-    pNewScript->pGossipHello = &GossipHello_npc_witch_doctor_mauari;
-    pNewScript->pGossipSelect = &GossipSelect_npc_witch_doctor_mauari;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_witch_doctor_mauari";
+    pNewscript->pGossipHello =  &GossipHello_npc_witch_doctor_mauari;
+    pNewscript->pGossipSelect = &GossipSelect_npc_witch_doctor_mauari;
+    pNewscript->RegisterSelf();
 }

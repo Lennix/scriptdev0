@@ -1,7 +1,4 @@
-/*
- * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
- * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
- *
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,56 +23,62 @@ EndScriptData */
 
 #include "precompiled.h"
 
-enum
+enum eSpells
 {
-    SPELL_KNOCKAWAY   = 18670,
-    SPELL_TRAMPLE     = 5568,
-    SPELL_LANDSLIDE   = 21808
+	SPELL_KNOCKAWAY			= 18670,
+	SPELL_TRAMPLE			= 5568,
+	SPELL_LANDSLIDE			= 21808
 };
 
 struct MANGOS_DLL_DECL boss_landslideAI : public ScriptedAI
 {
     boss_landslideAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    uint32 KnockAway_Timer;
-    uint32 Trample_Timer;
-    uint32 Landslide_Timer;
+    uint32 KnockAwayTimer;
+    uint32 TrampleTimer;
+    uint32 LandslideTimer;
 
     void Reset()
     {
-        KnockAway_Timer = 8000;
-        Trample_Timer = 2000;
-        Landslide_Timer = 0;
+        KnockAwayTimer = 8000;
+        TrampleTimer = 2000;
+        LandslideTimer = 0;
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //KnockAway_Timer
-        if (KnockAway_Timer < diff)
+        // KnockAwayTimer
+        if (KnockAwayTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_KNOCKAWAY);
-            KnockAway_Timer = 15000;
-        }else KnockAway_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_KNOCKAWAY);
+            KnockAwayTimer = 15000;
+        }
+		else
+			KnockAwayTimer -= uiDiff;
 
-        //Trample_Timer
-        if (Trample_Timer < diff)
+        // TrampleTimer
+        if (TrampleTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature,SPELL_TRAMPLE);
-            Trample_Timer = 8000;
-        }else Trample_Timer -= diff;
+            DoCastSpellIfCan(m_creature, SPELL_TRAMPLE);
+            TrampleTimer = 8000;
+        }
+		else
+			TrampleTimer -= uiDiff;
 
-        //Landslide
-        if (m_creature->GetHealthPercent() < 50.0f)
+        // Landslide
+        if (HealthBelowPct(50))
         {
-            if (Landslide_Timer < diff)
+            if (LandslideTimer < uiDiff)
             {
                 m_creature->InterruptNonMeleeSpells(false);
-                DoCastSpellIfCan(m_creature,SPELL_LANDSLIDE);
-                Landslide_Timer = 60000;
-            } else Landslide_Timer -= diff;
+                DoCastSpellIfCan(m_creature, SPELL_LANDSLIDE);
+                LandslideTimer = 60000;
+            }
+			else
+				LandslideTimer -= uiDiff;
         }
 
         DoMeleeAttackIfReady();
@@ -88,10 +91,10 @@ CreatureAI* GetAI_boss_landslide(Creature* pCreature)
 
 void AddSC_boss_landslide()
 {
-    Script* pNewScript;
+    Script* pNewscript;
 
-    pNewScript = new Script;
-    pNewScript->Name = "boss_landslide";
-    pNewScript->GetAI = &GetAI_boss_landslide;
-    pNewScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "boss_landslide";
+    pNewscript->GetAI = &GetAI_boss_landslide;
+    pNewscript->RegisterSelf();
 }
