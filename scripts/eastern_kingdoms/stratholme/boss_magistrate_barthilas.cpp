@@ -74,6 +74,7 @@ struct MANGOS_DLL_DECL boss_magistrate_barthilasAI : public ScriptedAI
                 m_pInstance->SetData(TYPE_MAGISTRATE, DONE);
             }
             m_creature->NearTeleportTo(4065.45f, -3532.95f, 122.35f, 2.50f);
+			m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
         }
     }
 
