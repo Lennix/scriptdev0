@@ -56,9 +56,6 @@ struct MANGOS_DLL_DECL boss_ramstein_the_gorgerAI : public ScriptedAI
             if (Creature* pMob = m_creature->SummonCreature(NPC_MINDLESS_UNDEAD, 3969.35f+irand(-10,10), -3391.87f+irand(-10,10), 119.11f, 5.91f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 1800000))
                 pMob->AI()->AttackStart(pKiller);
         }
-
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_SLAUGHTER_SQUARE, DONE);
     }
 
     void UpdateAI(const uint32 uiDiff)

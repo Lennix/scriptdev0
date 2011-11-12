@@ -51,6 +51,7 @@ instance_stratholme::instance_stratholme(Map* pMap) : ScriptedInstance(pMap),
     m_bZigguratDoor(false),
 
     m_uiAbCount(0),
+	m_uiMindlessCount(0),
     m_uiNextPull(0),
     m_uiAbomPullTimer(0),
     m_uiBaronRunTimer(0),
@@ -155,6 +156,11 @@ void instance_stratholme::OnCreatureDeath(Creature* pCreature)
             }
             break;
         }
+		case NPC_MINDLESS_UNDEAD:
+			m_uiMindlessCount++;
+			if(m_uiMindlessCount >= 30)
+				SetData(TYPE_SLAUGHTER_SQUARE, DONE);
+			break;
         default:
             break;
     }

@@ -180,6 +180,7 @@ class MANGOS_DLL_DECL instance_stratholme : public ScriptedInstance
         bool m_bZigguratDoor;
 
         uint32 m_uiAbCount;
+		uint32 m_uiMindlessCount;
         uint32 m_uiNextPull;
         uint32 m_uiAbomPullTimer;
         uint32 m_uiBaronRunTimer;
