@@ -102,8 +102,7 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
             for(GUIDList::iterator itr = m_uiSkeletonGUID.begin(); itr != m_uiSkeletonGUID.end(); ++itr)
             {
                 if (Creature* pSkeleton = m_creature->GetMap()->GetCreature(*itr))
-                    if (pSkeleton->isAlive())
-                        pSkeleton->ForcedDespawn();
+                    pSkeleton->ForcedDespawn();
             }
 
         if (m_pInstance)
