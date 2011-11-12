@@ -758,6 +758,9 @@ struct MANGOS_DLL_DECL npc_stratholme_triggerAI : public Scripted_NoMovementAI
             float fX, fY, fZ;
             m_creature->GetPosition(fX, fY, fZ);
 
+			if(Creature* pMagistrate = m_pInstance->GetSingleCreatureFromStorage(NPC_MAGISTRATE_BARTHILAS))
+				pMagistrate->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+
             switch(m_uiNo)
             {
                 case 1:

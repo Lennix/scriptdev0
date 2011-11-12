@@ -79,13 +79,16 @@ void instance_stratholme::OnCreatureCreate(Creature* pCreature)
     {
         // Bosses
         case NPC_BARON_RIVENDARE:
-        case NPC_MAGISTRATE_BARTHILAS:
         case NPC_JARIEN:
         case NPC_SOTHOS:
 		// Npcs
         case NPC_AURIUS:
         case NPC_YSIDA_TRIGGER:
             m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
+		case NPC_MAGISTRATE_BARTHILAS:
+			pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+			m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
             break;
         // Trash
         case NPC_BILE_SPEWER:
@@ -518,8 +521,11 @@ void instance_stratholme::Update(uint32 uiDiff)
 			Creature* pMagistrate = GetSingleCreatureFromStorage(NPC_MAGISTRATE_BARTHILAS);
             if (pGauntlet && pMagistrate && pMagistrate->isAlive())
             {
+				// Magistrate runs to Gunlet door if players use service entrance
                 float fX, fY, fZ;
                 pGauntlet->GetPosition(fX, fY, fZ);
+				pMagistrate->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+				pMagistrate->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
                 pMagistrate->GetMotionMaster()->MovePoint(0, fX, fY, fZ);
             }
             m_bBaronWarn = false;
