@@ -98,6 +98,14 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
 
     void JustDied(Unit* /*pKiller*/)
     {
+        if (!m_uiSkeletonGUID.empty())
+            for(GUIDList::iterator itr = m_uiSkeletonGUID.begin(); itr != m_uiSkeletonGUID.end(); ++itr)
+            {
+                if (Creature* pSkeleton = m_creature->GetMap()->GetCreature(*itr))
+                    if (pSkeleton->isAlive())
+                        pSkeleton->ForcedDespawn();
+            }
+
         if (m_pInstance)
             m_pInstance->SetData(TYPE_BARON_RIVENDARE, DONE);
     }
@@ -155,7 +163,6 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
                                 m_creature->SetHealth(m_creature->GetHealth()+2000);
                     }
 
-                m_uiSkeletonGUID.clear();
                 m_uiDeathPactTimer = 0;
             }
             else
@@ -184,7 +191,7 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
         if (m_uiSummonSkeletonsTimer <= uiDiff)
         {
             for(uint32 i = 0; i < sizeof(Skeleton)/sizeof(Locations); ++i)
-                m_creature->SummonCreature(NPC_MINDLESS_SKELETON, Skeleton[i].x , Skeleton[i].y, Skeleton[i].z, 0, TEMPSUMMON_TIMED_DESPAWN, 14000);
+                m_creature->SummonCreature(NPC_MINDLESS_SKELETON, Skeleton[i].x , Skeleton[i].y, Skeleton[i].z, 0, TEMPSUMMON_MANUAL_DESPAWN, 0);
 
             m_uiDeathPactTimer = 12000;
             m_uiSummonSkeletonsTimer = urand(25000,35000);
