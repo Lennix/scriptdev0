@@ -71,7 +71,6 @@ struct MANGOS_DLL_DECL boss_magistrate_barthilasAI : public ScriptedAI
         {
             if (m_pInstance)
             {
-                m_pInstance->SetData(TYPE_BARON_RUN, IN_PROGRESS);
                 m_pInstance->SetData(TYPE_MAGISTRATE, DONE);
             }
             m_creature->NearTeleportTo(4065.45f, -3532.95f, 122.35f, 2.50f);

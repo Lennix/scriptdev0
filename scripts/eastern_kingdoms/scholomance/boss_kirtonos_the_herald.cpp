@@ -187,7 +187,7 @@ bool GOUse_go_brazier_of_the_herald(Player* pPlayer, GameObject* pGo)
 {
     instance_scholomance* m_pInstance = (instance_scholomance*)pGo->GetInstanceData();
 
-    if (m_pInstance && m_pInstance->GetData(TYPE_KIRTONOS_THE_HERALD) == NOT_STARTED && pPlayer->HasItemCount(ITEM_BLOOD_OF_INNOCENTS, 1))
+    if (m_pInstance && m_pInstance->GetData(TYPE_KIRTONOS_THE_HERALD) == NOT_STARTED)
     {
         pGo->SetGoState(GO_STATE_ACTIVE);
         pGo->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND + GO_FLAG_NO_INTERACT);
