@@ -362,7 +362,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
 				{
                     if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
 					{
-                        if (Creature* pSon = m_creature->SummonCreature(NPC_SON_OF_FLAME, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 0.0f, TEMPSUMMON_DEAD_DESPAWN, 10000))
+                        if (Creature* pSon = m_creature->SummonCreature(NPC_SON_OF_FLAME, Sons[i][0], Sons[i][1], Sons[i][2], Sons[i][3], TEMPSUMMON_DEAD_DESPAWN, 10000))
 						{
                             pSon->SetMeleeDamageSchool(SPELL_SCHOOL_FIRE);
 							pSon->AI()->AttackStart(pTarget);
