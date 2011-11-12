@@ -79,6 +79,7 @@ enum Creatures
 
 enum GameObjects
 {
+	GO_KINGSQUARE_GATE			= 175352,
     GO_SERVICE_ENTRANCE         = 175368,
     GO_GAUNTLET_INNER_GATE      = 175356,
     GO_GAUNTLET_OUTER_GATE      = 175357,         // Starts baron Run

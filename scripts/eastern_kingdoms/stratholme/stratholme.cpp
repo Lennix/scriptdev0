@@ -89,6 +89,10 @@ bool GOUse_go_stratholme_gate(Player* pPlayer, GameObject* pGo)
         case GO_SERVICE_ENTRANCE:
             if (m_pInstance->GetData(TYPE_MAGISTRATE) == NOT_STARTED)
                 m_pInstance->SetData(TYPE_MAGISTRATE, IN_PROGRESS);
+			break;
+		case GO_KINGSQUARE_GATE:
+			if(Creature* pMagistrate = m_pInstance->GetSingleCreatureFromStorage(NPC_MAGISTRATE_BARTHILAS))
+				pMagistrate->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
             break;
     }
 
