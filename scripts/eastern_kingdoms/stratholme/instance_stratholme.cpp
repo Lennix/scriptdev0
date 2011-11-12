@@ -158,7 +158,7 @@ void instance_stratholme::OnCreatureDeath(Creature* pCreature)
         }
 		case NPC_MINDLESS_UNDEAD:
 			m_uiMindlessCount++;
-			if(m_uiMindlessCount >= 30)
+			if(m_uiMindlessCount == 25 && GetData(TYPE_SLAUGHTER_SQUARE) != DONE)
 				SetData(TYPE_SLAUGHTER_SQUARE, DONE);
 			break;
         default:
