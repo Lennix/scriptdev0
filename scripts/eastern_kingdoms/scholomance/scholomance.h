@@ -45,7 +45,7 @@ enum Creatures
     NPC_MARDUK_BLACKPOOL            = 10433,
     NPC_VECTUS                      = 10432,
     NPC_KORMOK                      = 16118,
-    NPC_RISEN_ABERRATION            = 10485,
+	NPC_RISEN_GUARDIAN              = 11598,
     NPC_DARKMASTER_GANDLING         = 1853,
 };
 

@@ -155,7 +155,7 @@ struct MANGOS_DLL_DECL boss_darkmaster_gandlingAI : public ScriptedAI
                     DoTeleportPlayer(pTarget, Room[m_uiNo].x, Room[m_uiNo].y, Room[m_uiNo].z, 0);
                     for(uint32 i = 0; i < 3; ++i)
                     {
-                        if (Creature* Summoned = m_creature->SummonCreature(NPC_RISEN_ABERRATION, Room[m_uiNo].x+irand(-5,5), Room[m_uiNo].y+irand(-5,5), Room[m_uiNo].z, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 0))
+                        if (Creature* Summoned = m_creature->SummonCreature(NPC_RISEN_GUARDIAN, Room[m_uiNo].x+irand(-5,5), Room[m_uiNo].y+irand(-5,5), Room[m_uiNo].z, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 0))
                             Summoned->AI()->AttackStart(pTarget);
                     }
                 }
