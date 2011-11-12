@@ -131,7 +131,7 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
         {
             if (m_pInstance && m_pInstance->GetData(TYPE_AURIUS) == DONE)
             { 
-                if (Creature* pAurius = m_creature->getVictim()->SummonCreature(NPC_AURIUS, 4048.37f, -3339.96f, 115.05f,  0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 180000))
+                if (Creature* pAurius = m_creature->getVictim()->SummonCreature(NPC_AURIUS, 4048.37f, -3339.96f, 115.05f,  0, TEMPSUMMON_DEAD_DESPAWN, 30000))
                 {
                     pAurius->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
                     pAurius->AI()->AttackStart(m_creature);
