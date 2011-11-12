@@ -62,7 +62,6 @@ struct MANGOS_DLL_DECL boss_drakkisathAI : public ScriptedAI
     void Aggro(Unit* /*pWho*/)
     {
         m_creature->CallForHelp(20.0f);
-        m_creature->SetInCombatWithZone();
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_DRAKKISATH, IN_PROGRESS);
@@ -175,7 +174,6 @@ struct MANGOS_DLL_DECL mob_chromatic_elite_guardAI : public ScriptedAI
     void Aggro(Unit* pVictim)
     {
         m_creature->CallForHelp(20.0f);
-        m_creature->SetInCombatWithZone();
     }
 
     void UpdateAI(const uint32 uiDiff)
