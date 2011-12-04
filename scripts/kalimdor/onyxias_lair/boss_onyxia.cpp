@@ -442,7 +442,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     DoScriptText(SAY_PHASE_2_TRANS, m_creature);
 
                     if (m_pPointData)
-                        m_creature->GetMotionMaster()->MovePoint(1, -33.5561f, -182.682f, -60.9457f);
+                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ);
 
                     return;
                 }
