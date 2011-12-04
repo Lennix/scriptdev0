@@ -234,38 +234,41 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
             m_pInstance->SetData(TYPE_ONYXIA, DONE);
     }
 
-  //  sOnyxMove* GetMoveData()
-  //  {
-  //      //uint32 uiMaxCount = sizeof(aMoveData)/sizeof(sOnyxMove);
-		//uint32 uiMaxCount = 6;
+ //void MovementInform(uint32 uiMotionType, uint32 uiPointId)
+ //   {
+ //       switch(uiPointId)
+ //       {
+ //           case 1:
+//			m_creature->GetMotionMaster()->MoveRandom();
+//			break;
+ //       }
+ //   }
 
-  //      for (uint32 i = 0; i < uiMaxCount; ++i)
-  //      {
-  //          if (aMoveData[i].uiLocId == m_uiMovePoint)
-  //              return &aMoveData[i];
-  //      }
+    sOnyxMove* GetMoveData()
+    {
+        //uint32 uiMaxCount = sizeof(aMoveData)/sizeof(sOnyxMove);
+        uint32 uiMaxCount = 6;
 
-  //      return NULL;
-  //  }
+        for (uint32 i = 0; i < uiMaxCount; ++i)
+        {
+            if (aMoveData[i].uiLocId == m_uiMovePoint)
+                return &aMoveData[i];
+        }
 
-	//sOnyxMove* GetMoveData()
-	//{
- //    if (m_uiMovePoint > 0 && m_uiMovePoint < 6)
-	//  
-	//}
+        return NULL;
+    }
 
+    void SetNextRandomPoint()
+    {
+        uint32 uiMaxCount = sizeof(aMoveData)/sizeof(sOnyxMove);
 
-    //void SetNextRandomPoint()
-    //{
-    //    uint32 uiMaxCount = sizeof(aMoveData)/sizeof(sOnyxMove);
+        uint32 iTemp = urand(0, uiMaxCount-1);
 
-    //    uint32 iTemp = urand(0, uiMaxCount-1);
+        if (iTemp >= m_uiMovePoint)
+            ++iTemp;
 
-    //    if (iTemp >= m_uiMovePoint)
-    //        ++iTemp;
-
-    //    m_uiMovePoint = iTemp;
-    //}
+        m_uiMovePoint = iTemp;
+    }
 
     void UpdateAI(const uint32 uiDiff)
     {
@@ -386,6 +389,11 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                             {
                                 goList.clear();
                                 GetGameObjectListWithEntryInGrid(goList,pTarget,GO_LAVA_FISSURE,LAVA_RANGE);
+								for(std::list<GameObject*>::iterator i = goList.begin(); i != goList.end(); ++i)
+									if(GameObject* gobj = *i)
+										gobj->SendGameObjectCustomAnim(gobj->GetObjectGuid());
+
+
                                 if (!goList.empty())
                                     ((Player*)pTarget)->EnvironmentalDamage(DAMAGE_LAVA, urand(1300,1600));
                             }
@@ -432,7 +440,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     DoScriptText(SAY_PHASE_2_TRANS, m_creature);
 
                     if (m_pPointData)
-                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ);
+                        m_creature->GetMotionMaster()->MovePoint(1, -33.5561f, -182.682f, -60.9457f);
 
                     return;
                 }
@@ -449,7 +457,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 MaxWhelps = urand(4,6);
                 m_uiSummonCount = 0;
                 DoScriptText(SAY_PHASE_3_TRANS, m_creature);
-
+				m_creature->GetMotionMaster()->Clear(false);
                 DoResetThreat();
                 SetCombatMovement(true);
                 //m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
