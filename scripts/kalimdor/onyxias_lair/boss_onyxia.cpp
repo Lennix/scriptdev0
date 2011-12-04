@@ -379,23 +379,25 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     GUIDVector pList;
                     m_creature->FillGuidsListFromThreatList(pList);
                     std::list<GameObject*> goList;
+					// Lets get all players around Onyxia
                     if (!pList.empty())
                     {
                         for (GUIDVector::const_iterator itr = pList.begin(); itr != pList.end(); ++itr)
                         {
                             Unit* pTarget = m_creature->GetMap()->GetUnit(*itr);
-                            
                             if (pTarget && pTarget->GetTypeId() == TYPEID_PLAYER)
                             {
                                 goList.clear();
+								// Now lets check which players are near the lava fissures
                                 GetGameObjectListWithEntryInGrid(goList,pTarget,GO_LAVA_FISSURE,LAVA_RANGE);
 								for(std::list<GameObject*>::iterator i = goList.begin(); i != goList.end(); ++i)
+								{
 									if(GameObject* gobj = *i)
+									{
 										gobj->SendGameObjectCustomAnim(gobj->GetObjectGuid());
-
-
-                                if (!goList.empty())
-                                    ((Player*)pTarget)->EnvironmentalDamage(DAMAGE_LAVA, urand(1300,1600));
+	                                    ((Player*)pTarget)->EnvironmentalDamage(DAMAGE_LAVA, urand(1300,1600));
+									}
+								}
                             }
                         }
                     }
