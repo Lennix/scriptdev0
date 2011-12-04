@@ -397,7 +397,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     m_uiLavaTimer -= uiDiff;
 
                 // Occasional whelp spawns
-                if (m_uiWhelpTimer < uiDiff)
+                /*if (m_uiWhelpTimer < uiDiff)
                 {
                     if (m_uiSummonCount < MaxWhelps)
                     {
@@ -413,7 +413,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     }
                 }
                 else
-                    m_uiWhelpTimer -= uiDiff;
+                    m_uiWhelpTimer -= uiDiff;*/
             }
             else   //Phase 1 
             {
@@ -452,7 +452,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
                 DoResetThreat();
                 SetCombatMovement(true);
-                m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
+                //m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
                 m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
 
                 return;
@@ -463,7 +463,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
             {
                 m_uiRandom = urand(-1,1);
 
-                m_uiMovementTimer = 25000;
+                m_uiMovementTimer = 10000;
 
                 if (!m_pPointData)
                     return;
