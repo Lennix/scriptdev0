@@ -50,7 +50,7 @@ enum
     SPELL_BELLOWINGROAR         = 18431,
     SPELL_HEATED_GROUND         = 22191,
 	GO_LAVA_FISSURE             = 178036,
-	LAVA_RANGE                  = 8,
+	LAVA_RANGE                  = 3,
 
     SPELL_SUMMONWHELP           = 17646,
     //NPC_ONYXIA_WARDER           = 12129,                    // Already defined in onyxias_lair.h
