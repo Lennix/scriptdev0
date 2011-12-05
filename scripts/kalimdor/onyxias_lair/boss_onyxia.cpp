@@ -466,6 +466,12 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 return;
             }
 
+			if (m_uiIsStanding || m_uiCastingFireBall)
+			{
+				DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIREBALL);
+				m_creature->InterruptSpell(CURRENT_GENERIC_SPELL);
+			}
+
             // Timer runs out once deep breath is done casting
             if (m_uiMovementTimer < uiDiff)
             {
@@ -483,6 +489,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 						//DoScriptText(EMOTE_BREATH, m_creature); // does not work yet
 						m_creature->MonsterYell(EMOTE_BREATH, LANG_UNIVERSAL, NULL);
 						DoCastSpellIfCan(m_creature->getVictim(), m_pPointData->uiSpellId, CAST_INTERRUPT_PREVIOUS/* | CAST_FORCE_CAST | CAST_TRIGGERED*/);
+						m_creature->FinishSpell(CURRENT_GENERIC_SPELL);
 						m_uiMovePoint += 3;
 						m_uiMovementTimer = 8500;
 						m_uiIsStanding = true;
@@ -532,6 +539,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 						if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO , 0)) {
 							m_creature->SetFacingToObject(pTarget);
 							DoCastSpellIfCan(pTarget, SPELL_FIREBALL);
+							m_creature->FinishSpell(CURRENT_GENERIC_SPELL);
 							m_creature->getThreatManager().modifyThreatPercent(pTarget,-100);
 						}
 						m_uiEngulfingFlamesTimer = 4000;
