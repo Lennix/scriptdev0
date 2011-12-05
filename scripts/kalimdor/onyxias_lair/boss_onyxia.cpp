@@ -91,8 +91,8 @@ static float WarderSpawnLocation[2][3]=
 
 static float afSpawnLocations[2][3]=
 {
-    {-30.127f, -254.463f, -89.440f},
-    {-30.817f, -177.106f, -89.258f}
+    {-65.434f, -266.36f,  -94.311f},
+    {-62.059f, -160.655f, -94.346f}
 };
 
 struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
@@ -279,6 +279,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 		else if (uiPointId == 8)
 		{
 			m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
+			DoStartMovement(m_creature->getVictim());	
 		}
     }
 
@@ -392,9 +393,15 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 // Lava Eruptions after fear ran out
                 if (m_uiLavaTimer < uiDiff)
                 {
-                    GUIDVector pList;
-                    m_creature->FillGuidsListFromThreatList(pList);
+                    // Lava animation
                     std::list<GameObject*> goList;
+					GetGameObjectListWithEntryInGrid(goList,m_creature,GO_LAVA_FISSURE,300);
+					for(std::list<GameObject*>::iterator i = goList.begin(); i != goList.end(); ++i)
+						if(GameObject* gobj = *i)
+							gobj->SendGameObjectCustomAnim(gobj->GetObjectGuid());
+					
+					GUIDVector pList;
+                    m_creature->FillGuidsListFromThreatList(pList);
 					// Lets get all players around Onyxia
                     if (!pList.empty())
                     {
@@ -407,13 +414,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 								// Now lets check which players are near the lava fissures
                                 GetGameObjectListWithEntryInGrid(goList,pTarget,GO_LAVA_FISSURE,LAVA_RANGE);
 								for(std::list<GameObject*>::iterator i = goList.begin(); i != goList.end(); ++i)
-								{
 									if(GameObject* gobj = *i)
-									{
-										gobj->SendGameObjectCustomAnim(gobj->GetObjectGuid());
 	                                    ((Player*)pTarget)->EnvironmentalDamage(DAMAGE_LAVA, urand(1300,1600));
-									}
-								}
                             }
                         }
                     }
@@ -459,7 +461,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 				m_creature->GetMotionMaster()->Clear(false);
                 DoResetThreat();
                 SetCombatMovement(true);
-                m_creature->GetMotionMaster()->MovePoint(8,-26.43,-217.60,-86.68,false);
+                m_creature->GetMotionMaster()->MovePoint(8,-26.43f,-217.60f,-86.68f,false);
 
                 return;
             }
