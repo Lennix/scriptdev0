@@ -442,7 +442,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     DoScriptText(SAY_PHASE_2_TRANS, m_creature);
 
                     if (m_pPointData)
-                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ);
+                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ, false);
 
                     return;
                 }
@@ -504,7 +504,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 m_pPointData = &aMoveData[m_uiMovePoint];
 
                 if (m_uiRandom != 0 && m_pPointData)
-                    m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ);
+                    m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ, false);
             }
             else
                 m_uiMovementTimer -= uiDiff;
