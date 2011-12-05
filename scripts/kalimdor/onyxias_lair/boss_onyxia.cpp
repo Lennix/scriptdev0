@@ -276,6 +276,10 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 m_uiIsStanding = false;
             }	
 		}
+		else if (uiPointId == 8)
+		{
+			m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
+		}
     }
 
     void SetNextRandomPoint()
@@ -455,8 +459,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 				m_creature->GetMotionMaster()->Clear(false);
                 DoResetThreat();
                 SetCombatMovement(true);
-                //m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
-                m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
+                m_creature->GetMotionMaster()->MovePoint(8,-26.43,-217.60,-86.68,false);
 
                 return;
             }
@@ -479,7 +482,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 						m_creature->MonsterYell(EMOTE_BREATH, LANG_UNIVERSAL, NULL);
 						DoCastSpellIfCan(m_creature->getVictim(), m_pPointData->uiSpellId, CAST_INTERRUPT_PREVIOUS/* | CAST_FORCE_CAST | CAST_TRIGGERED*/);
 						m_uiMovePoint += 3;
-						m_uiMovementTimer = 8000;
+						m_uiMovementTimer = 8500;
 						m_uiIsStanding = true;
 					}
 					else 
@@ -529,7 +532,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 							DoCastSpellIfCan(pTarget, SPELL_FIREBALL);
 							m_creature->getThreatManager().modifyThreatPercent(pTarget,-100);
 						}
-						m_uiEngulfingFlamesTimer = 5000;
+						m_uiEngulfingFlamesTimer = 4000;
 						m_uiCastingFireBall = true;
 					}
 				}
