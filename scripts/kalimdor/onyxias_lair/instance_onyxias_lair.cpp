@@ -73,6 +73,14 @@ void instance_onyxias_lair::SetData(uint32 uiType, uint32 uiData)
                         if (Creature* pWarder = instance->GetCreature(*itr))
                             pWarder->ForcedDespawn();
             }
+			else if (uiData == IN_PROGRESS)
+			{
+				// Respawn Onyxia Warders once Onyxia is aggroed
+                if (!m_uiOnyxiaWarderGUID.empty())
+                    for (GUIDList::iterator itr = m_uiOnyxiaWarderGUID.begin(); itr != m_uiOnyxiaWarderGUID.end(); ++itr)
+                        if (Creature* pWarder = instance->GetCreature(*itr))
+							pWarder->Respawn();
+			}
             break;
     }
 
