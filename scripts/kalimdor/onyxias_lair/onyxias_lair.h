@@ -25,8 +25,6 @@ enum GameObjects
 
 #define SUMMON_PLAYER_TRIGGER_DISTANCE 85.0f    // yards
 
-class SpellCastTargets;
-
 class MANGOS_DLL_DECL instance_onyxias_lair : public ScriptedInstance
 {
     public:

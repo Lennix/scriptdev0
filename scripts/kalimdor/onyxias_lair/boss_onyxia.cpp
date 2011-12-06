@@ -50,16 +50,13 @@ enum
     SPELL_BELLOWINGROAR         = 18431,
     SPELL_HEATED_GROUND         = 22191,
 	GO_LAVA_FISSURE             = 178036,
-	LAVA_RANGE                  = 3,
+	LAVA_RANGE                  = 4,
 
     SPELL_SUMMONWHELP           = 17646,
     //NPC_ONYXIA_WARDER           = 12129,                    // Already defined in onyxias_lair.h
     //NPC_ONYXIA_WHELP            = 11262,                    // Already defined in onyxias_lair.h
     MAX_WHELP                   = 20,
     MAX_WARDER                  = 2,
-
-	// For flying animation packet
-	CAST_FLAG_UNKNOWN9          = 0x00000100,
 
     PHASE_START                 = 1,
     PHASE_BREATH                = 2,
@@ -128,6 +125,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 	// For flying animation
 	uint32 m_uiWingTimer;
 
+	// Change movement timer
+	uint32 m_uiChangeMovementTimer;
+
     uint32 m_uiSummonPlayerTimer;
 
     uint8 m_uiSummonCount;
@@ -165,6 +165,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         m_uiWhelpTimer = 1000;
 		m_uiLavaTimer = 6000;
 
+		m_uiChangeMovementTimer = 0;
 		m_uiWingTimer = 0;
 
         m_uiSummonCount = 0;
@@ -313,9 +314,24 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
             {
                 DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAMEBREATH);
                 m_uiFlameBreathTimer = urand(10000, 15000);
+				m_creature->addUnitState(UNIT_STAT_CAN_NOT_MOVE);
+				m_uiChangeMovementTimer = 2000;
             }
             else
                 m_uiFlameBreathTimer -= uiDiff;
+
+			if (m_uiChangeMovementTimer > 0)
+			{
+				// Flame Breath
+				if (m_uiChangeMovementTimer < uiDiff)
+				{
+					m_creature->clearUnitState(UNIT_STAT_CAN_NOT_MOVE);
+					DoStartMovement(m_creature->getVictim());
+					m_uiChangeMovementTimer = 0;
+				}
+				else
+					m_uiChangeMovementTimer -= uiDiff;
+			}
 
 			// Tail Sweep
             if (m_uiTailSweepTimer < uiDiff)
@@ -452,6 +468,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 				m_creature->GetMotionMaster()->Clear(false);
                 DoResetThreat();
                 SetCombatMovement(true);
+				// Land in the middle
                 m_creature->GetMotionMaster()->MovePoint(8,-26.43f,-217.60f,-86.68f,false);
 
                 return;
@@ -459,11 +476,11 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
 			if (m_uiIsStanding || m_uiCastingFireBall)
 			{
-				// Cleave
+				// Flying animation only while casting deep breath or fireball
 				if (m_uiWingTimer < uiDiff)
 				{
 					m_creature->SendFlyingAnimation(SPELL_FIREBALL);
-					m_uiWingTimer = 800;
+					m_uiWingTimer = 1000;
 				}
 				else
 					m_uiWingTimer -= uiDiff;
