@@ -58,6 +58,9 @@ enum
     MAX_WHELP                   = 20,
     MAX_WARDER                  = 2,
 
+	// For flying animation packet
+	CAST_FLAG_UNKNOWN9          = 0x00000100,
+
     PHASE_START                 = 1,
     PHASE_BREATH                = 2,
     PHASE_END                   = 3
@@ -122,6 +125,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     uint32 m_uiWhelpTimer;
 	uint32 m_uiLavaTimer;
 
+	// For flying animation
+	uint32 m_uiWingTimer;
+
     uint32 m_uiSummonPlayerTimer;
 
     uint8 m_uiSummonCount;
@@ -158,6 +164,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         m_uiBellowingRoarTimer = 10000;
         m_uiWhelpTimer = 1000;
 		m_uiLavaTimer = 6000;
+
+		m_uiWingTimer = 0;
 
         m_uiSummonCount = 0;
 		MaxWhelps = MAX_WHELP;
@@ -204,23 +212,6 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     {
         DoScriptText(SAY_KILL, m_creature);
     }
-
-    //void SpellHit(Unit* pCaster, const SpellEntry* pSpell)
-    //{
-    //    if (pSpell->Id == SPELL_BREATH_EAST_TO_WEST ||
-    //        pSpell->Id == SPELL_BREATH_WEST_TO_EAST ||
-    //        pSpell->Id == SPELL_BREATH_SE_TO_NW ||
-    //        pSpell->Id == SPELL_BREATH_NW_TO_SE ||
-    //        pSpell->Id == SPELL_BREATH_SW_TO_NE ||
-    //        pSpell->Id == SPELL_BREATH_NE_TO_SW)
-    //    {
-    //        if (m_pPointData)
-    //        {
-    //            m_creature->GetMap()->CreatureRelocation(m_creature, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ, 0.0f);
-    //            m_creature->SendMonsterMove(m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ, SPLINETYPE_NORMAL, m_creature->GetSplineFlags(), 1);
-    //        }
-    //    }
-    //}
 
     void JustDied(Unit* /*pKiller*/)
     {
@@ -468,9 +459,17 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
 			if (m_uiIsStanding || m_uiCastingFireBall)
 			{
-				DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIREBALL);
-				m_creature->InterruptSpell(CURRENT_GENERIC_SPELL);
+				// Cleave
+				if (m_uiWingTimer < uiDiff)
+				{
+					m_creature->SendFlyingAnimation(SPELL_FIREBALL);
+					m_uiWingTimer = 800;
+				}
+				else
+					m_uiWingTimer -= uiDiff;
 			}
+			else
+				m_uiWingTimer = 0;
 
             // Timer runs out once deep breath is done casting
             if (m_uiMovementTimer < uiDiff)
@@ -489,7 +488,6 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 						//DoScriptText(EMOTE_BREATH, m_creature); // does not work yet
 						m_creature->MonsterYell(EMOTE_BREATH, LANG_UNIVERSAL, NULL);
 						DoCastSpellIfCan(m_creature->getVictim(), m_pPointData->uiSpellId, CAST_INTERRUPT_PREVIOUS/* | CAST_FORCE_CAST | CAST_TRIGGERED*/);
-						m_creature->FinishSpell(CURRENT_GENERIC_SPELL);
 						m_uiMovePoint += 3;
 						m_uiMovementTimer = 8500;
 						m_uiIsStanding = true;
@@ -539,7 +537,6 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 						if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO , 0)) {
 							m_creature->SetFacingToObject(pTarget);
 							DoCastSpellIfCan(pTarget, SPELL_FIREBALL);
-							m_creature->FinishSpell(CURRENT_GENERIC_SPELL);
 							m_creature->getThreatManager().modifyThreatPercent(pTarget,-100);
 						}
 						m_uiEngulfingFlamesTimer = 4000;
