@@ -152,7 +152,7 @@ enum GameObjects
     GO_RELIC_COFFER_DOOR_09             = 174563,
     GO_RELIC_COFFER_DOOR_10             = 174564,
     GO_RELIC_COFFER_DOOR_12             = 174566,
-    GO_DARK_COFFER                      = 174565,
+	GO_DARK_COFFER_DOOR                 = 174565,
     GO_SECRET_DOOR                      = 174553,
     GO_DARK_IRON_DWARF_RUNE_A01         = 170578,
     GO_DARK_IRON_DWARF_RUNE_B01         = 170579,
@@ -169,6 +169,10 @@ enum GameObjects
     GO_GOLEM_ROOM_N                     = 170573,
     GO_GOLEM_ROOM_S                     = 170574,
     GO_THRONE_ROOM                      = 170575,
+
+	GO_RELIC_COFFER                     = 160836,
+	GO_DARK_COFFER                      = 160845,
+	GO_SECRET_SAFE                      = 161495,
 
     GO_SPECTRAL_CHALICE                 = 164869,
     GO_CHEST_SEVEN                      = 169243

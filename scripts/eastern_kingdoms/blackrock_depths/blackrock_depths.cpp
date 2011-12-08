@@ -778,15 +778,30 @@ bool GOUse_go_dark_keeper_portrait(Player* pPlayer, GameObject* pGo)
 
 bool GOUse_go_relic_coffer_door(Player* pPlayer, GameObject* pGo)
 {
-    if (instance_blackrock_depths* m_pInstance = (instance_blackrock_depths*)pPlayer->GetInstanceData())
+	if (instance_blackrock_depths* m_pInstance = (instance_blackrock_depths*)pPlayer->GetInstanceData())
     {
-        if (m_pInstance->GetData(TYPE_VAULT) != DONE || m_pInstance->GetData(TYPE_VAULT) != SPECIAL)
-            m_pInstance->SetData(TYPE_VAULT, IN_PROGRESS);
+		if (pGo->GetEntry() != GO_DARK_COFFER_DOOR && pGo->GetEntry() != GO_SECRET_DOOR)
+		{
+			if (m_pInstance->GetData(TYPE_VAULT) != DONE || m_pInstance->GetData(TYPE_VAULT) != SPECIAL)
+				m_pInstance->SetData(TYPE_VAULT, IN_PROGRESS);
 
-        if (m_pInstance->GetData(TYPE_VAULT) == SPECIAL)
-        {
-            pGo->SummonCreature(NPC_DOOMGRIP, 813.46f, -347.74f, -50.577f, 3.90f, TEMPSUMMON_DEAD_DESPAWN, 0);
-        }
+			if (m_pInstance->GetData(TYPE_VAULT) == SPECIAL)
+			{
+				pGo->SummonCreature(NPC_DOOMGRIP, 813.46f, -347.74f, -50.577f, 3.90f, TEMPSUMMON_DEAD_DESPAWN, 0);
+			}
+		}
+		if (GameObject* GoChest = GetClosestGameObjectWithEntry(pGo, GO_RELIC_COFFER, 1.2f))
+		{
+			GoChest->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
+		}
+		if (GameObject* GoChest = GetClosestGameObjectWithEntry(pGo, GO_DARK_COFFER, 1.5f))
+		{
+			GoChest->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
+		}
+		if (GameObject* GoChest = GetClosestGameObjectWithEntry(pGo, GO_SECRET_SAFE, 1.5f))
+		{
+			GoChest->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
+		}
     }
     return false;
 }
@@ -835,7 +850,7 @@ struct MANGOS_DLL_DECL mob_warbringer_constructAI : public ScriptedAI
         {
             bIsInTheVaultChecked = true;
 
-            if (GetClosestGameObjectWithEntry(m_creature, GO_DARK_COFFER, 20.0f))
+            if (GetClosestGameObjectWithEntry(m_creature, GO_DARK_COFFER_DOOR, 20.0f))
             {
                 bIsInTheVault = true;
 

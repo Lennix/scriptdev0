@@ -228,6 +228,12 @@ void instance_blackrock_depths::OnObjectCreate(GameObject* pGo)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
 
+		case GO_RELIC_COFFER:
+		case GO_DARK_COFFER:
+		case GO_SECRET_SAFE:
+			pGo->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
+			break;
+
         // Ambassador Flamelash
         case GO_DARK_IRON_DWARF_RUNE_A01:
         case GO_DARK_IRON_DWARF_RUNE_B01:
