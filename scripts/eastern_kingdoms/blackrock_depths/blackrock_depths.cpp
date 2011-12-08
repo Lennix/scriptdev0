@@ -831,37 +831,18 @@ struct MANGOS_DLL_DECL mob_warbringer_constructAI : public ScriptedAI
     
     void UpdateAI(const uint32 uiDiff)
     {
-        if (m_uiCheckEventStatusTimer <= uiDiff)
+        if (!bIsInTheVaultChecked)
         {
-            if (!bIsInTheVaultChecked)
+            bIsInTheVaultChecked = true;
+
+            if (GetClosestGameObjectWithEntry(m_creature, GO_DARK_COFFER, 20.0f))
             {
-                bIsInTheVaultChecked = true;
+                bIsInTheVault = true;
 
-                if (GetClosestGameObjectWithEntry(m_creature, GO_DARK_COFFER, 20.0f))
-                {
-                    bIsInTheVault = true;
-
-                    if (m_pInstance && m_pInstance->GetData(TYPE_VAULT) != SPECIAL)
-                    {
-                        EnterEvadeMode();
-                        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE + UNIT_FLAG_NOT_SELECTABLE);
-                        m_creature->addUnitState(UNIT_STAT_CAN_NOT_MOVE);
-                        m_creature->addUnitState(UNIT_STAT_ROOT);
-                    }
-                }
+                if (m_pInstance && m_pInstance->GetData(TYPE_VAULT) != SPECIAL)
+                    m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE + UNIT_FLAG_NOT_SELECTABLE);
             }
-
-            if (m_pInstance && m_pInstance->GetData(TYPE_VAULT) == SPECIAL)
-            {
-                m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE + UNIT_FLAG_NOT_SELECTABLE);
-                m_creature->clearUnitState(UNIT_STAT_CAN_NOT_MOVE);
-                m_creature->clearUnitState(UNIT_STAT_ROOT);
-            }
-
-            m_uiCheckEventStatusTimer = 1500;      // check only one time..
         }
-        else
-            m_uiCheckEventStatusTimer -= uiDiff;
         
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -905,15 +886,27 @@ struct MANGOS_DLL_DECL mob_watchman_doomgripAI : public ScriptedAI
     instance_blackrock_depths* m_pInstance;
     uint32 m_uiDrinkHealingPotionTimer;
     uint32 m_uiSunderArmorTimer;
+	uint32 m_uiWarbringerCalled;
     
     void Reset()
     {
         m_uiDrinkHealingPotionTimer = 0;
         m_uiSunderArmorTimer = 10000;
+		m_uiWarbringerCalled = 0;
     }
     
     void JustDied(Unit *)
     {
+		std::list<Creature*> cList;
+		GetCreatureListWithEntryInGrid(cList, m_creature, NPC_WARBRINGER_CONSTRUCT, 30.0f);
+		for(std::list<Creature*>::iterator itr = cList.begin(); itr != cList.end(); ++itr)
+		{
+			if ((*itr)->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE))
+			{
+				(*itr)->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE + UNIT_FLAG_NOT_SELECTABLE);
+				(*itr)->SetInCombatWithZone();
+			}
+		}
         if (m_pInstance)
             m_pInstance->SetData(TYPE_VAULT, IN_PROGRESS);
     }
@@ -922,6 +915,26 @@ struct MANGOS_DLL_DECL mob_watchman_doomgripAI : public ScriptedAI
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
+
+		if (m_pInstance && 
+			(HealthBelowPct(80) && m_uiWarbringerCalled == 0 ||
+			HealthBelowPct(60) && m_uiWarbringerCalled == 1 ||
+			HealthBelowPct(40) && m_uiWarbringerCalled == 2 ||
+			HealthBelowPct(20) && m_uiWarbringerCalled == 3))
+		{
+			std::list<Creature*> cList;
+			GetCreatureListWithEntryInGrid(cList, m_creature, NPC_WARBRINGER_CONSTRUCT, 30.0f);
+			for(std::list<Creature*>::iterator itr = cList.begin(); itr != cList.end(); ++itr)
+			{
+				if ((*itr)->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE))
+				{
+					(*itr)->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE + UNIT_FLAG_NOT_SELECTABLE);
+					(*itr)->SetInCombatWithZone();
+					break;
+				}
+			}
+			m_uiWarbringerCalled++;
+		}
         
         // Drink Healing Potion
         if (m_uiDrinkHealingPotionTimer <= uiDiff && HealthBelowPct(70))

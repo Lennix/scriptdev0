@@ -25,14 +25,14 @@ EndScriptData */
 #include "blackrock_depths.h"
 
 instance_blackrock_depths::instance_blackrock_depths(Map* pMap) : ScriptedInstance(pMap),
-	m_bBannerSpawned(false),
-	m_uiBarAleCount(0),
+    m_bBannerSpawned(false),
+    m_uiBarAleCount(0),
     m_uiBarrelsDestroyedCount(0),
     m_uiCoffersOpenedCount(0),
     m_uiDoomgripsBandDeadCount(0),
     m_uiRingOfTheLawSpecsTimer(1000)
 {
-	Initialize();
+    Initialize();
 };
 
 void instance_blackrock_depths::Initialize()
@@ -66,7 +66,7 @@ void instance_blackrock_depths::OnCreatureCreate(Creature* pCreature)
                 pCreature->setFaction(FACTION_FRIENDLY_FOR_ALL);
             break;
         case NPC_EMPEROR:
-		case NPC_PHALANX:
+        case NPC_PHALANX:
         case NPC_HATEREL:
         case NPC_ANGERREL:
         case NPC_VILEREL:
@@ -75,6 +75,7 @@ void instance_blackrock_depths::OnCreatureCreate(Creature* pCreature)
         case NPC_DOOMREL:
         case NPC_DOPEREL:
         case NPC_FLAMELASH:
+        case NPC_WARBRINGER_CONSTRUCT:
 
         case NPC_KHARAN_MIGHTHAMMER:
         case NPC_COMMANDER_GORSHAK:
@@ -85,7 +86,7 @@ void instance_blackrock_depths::OnCreatureCreate(Creature* pCreature)
         case NPC_SHILL_DINGER:
         case NPC_JAZ:
         case NPC_OGRABISI:
-			break;
+            break;
 
         case NPC_PLUGGER_SPAZZRING:
             if (m_auiEncounter[6] == DONE)
@@ -94,8 +95,8 @@ void instance_blackrock_depths::OnCreatureCreate(Creature* pCreature)
         case NPC_PRIVATE_ROCKNOT:
         case NPC_MISTRESS_NAGMARA:
         case NPC_THELDREN_TRIGGER:
-		case NPC_LORD_ARGELMARCH:
-			break;
+        case NPC_LORD_ARGELMARCH:
+            break;
 
         case NPC_ANVILRAGE_SOLDIER:
         case NPC_ANVILRAGE_MEDIC:
@@ -104,7 +105,7 @@ void instance_blackrock_depths::OnCreatureCreate(Creature* pCreature)
         case NPC_SHADOWFORGE_CITIZEN:
         case NPC_SHADOWFORGE_SANETOR:
         case NPC_ARENA_SPECTATOR:
-			m_uiRingSpectators.push_back(pCreature->GetObjectGuid());
+            m_uiRingSpectators.push_back(pCreature->GetObjectGuid());
             return;
 
         case NPC_ANVILRAGE_RESERVIST:
@@ -128,11 +129,11 @@ void instance_blackrock_depths::OnCreatureCreate(Creature* pCreature)
         case NPC_RAGEREAVER_GOLEM:
             m_uiManufactoryCreatures.push_back(pCreature->GetObjectGuid());
             return;
-		default:
-			return;
+        default:
+            return;
     }
 
-	m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+    m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
 }
 
 void instance_blackrock_depths::OnObjectCreate(GameObject* pGo)
@@ -149,12 +150,12 @@ void instance_blackrock_depths::OnObjectCreate(GameObject* pGo)
         case GO_CELL_DOOR__JAZ__OGRABISI:
         case GO_CELL_DOOR__SHILL:
         case GO_SUPPLY_ROOM_DOOR:
-			break;
+            break;
 
         // Ring of the Law
         case GO_ARENA1:
         case GO_ARENA2:
-			break;
+            break;
         case GO_ARENA3:
             if (m_auiEncounter[0] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
@@ -162,7 +163,7 @@ void instance_blackrock_depths::OnObjectCreate(GameObject* pGo)
         case GO_ARENA4:
         case GO_ARENA_SPOILS:
         case GO_TEMP_BRD_ARENA:
-			break;
+            break;
         case GO_BANNER_OF_PROVOCATION:
             m_bBannerSpawned = true;
             return;
@@ -205,7 +206,7 @@ void instance_blackrock_depths::OnObjectCreate(GameObject* pGo)
         case GO_DARK_KEEPER_NAMEPLATE4:
         case GO_DARK_KEEPER_NAMEPLATE5:
         case GO_DARK_KEEPER_NAMEPLATE6:
-			break;
+            break;
 
         case GO_RELIC_COFFER_DOOR_01:
         case GO_RELIC_COFFER_DOOR_02:
@@ -235,7 +236,7 @@ void instance_blackrock_depths::OnObjectCreate(GameObject* pGo)
         case GO_DARK_IRON_DWARF_RUNE_E01:
         case GO_DARK_IRON_DWARF_RUNE_F01:
         case GO_DARK_IRON_DWARF_RUNE_G01:
-			m_uiFlamelashRunes.push_back(pGo->GetObjectGuid());
+            m_uiFlamelashRunes.push_back(pGo->GetObjectGuid());
             return;
 
         // The Seven
@@ -244,7 +245,7 @@ void instance_blackrock_depths::OnObjectCreate(GameObject* pGo)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
         case GO_TOMB_ENTER:
-		case GO_SPECTRAL_CHALICE:
+        case GO_SPECTRAL_CHALICE:
         case GO_CHEST_SEVEN:
             break;
 
@@ -268,11 +269,11 @@ void instance_blackrock_depths::OnObjectCreate(GameObject* pGo)
             if (m_auiEncounter[9] == DONE || m_auiEncounter[10] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
-		default:
-			return;
+        default:
+            return;
     }
 
-	m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
+    m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
 }
 
 void instance_blackrock_depths::DoUseFlamelashRunes()
@@ -290,7 +291,7 @@ void instance_blackrock_depths::DoUseFlamelashRunes()
 void instance_blackrock_depths::DoAggroManufactory()
 {
     debug_log("SD0: Blackrock Depths: The Manufactory aggroed.");
-	Creature* pLordArgelmarch = GetSingleCreatureFromStorage(NPC_LORD_ARGELMARCH);
+    Creature* pLordArgelmarch = GetSingleCreatureFromStorage(NPC_LORD_ARGELMARCH);
 
     if (m_uiManufactoryCreatures.empty() || !pLordArgelmarch)
         return;
@@ -463,10 +464,10 @@ void instance_blackrock_depths::SetData(uint32 uiType, uint32 uiData)
                 for(GUIDList::iterator itr = m_uiBurningSpirit.begin(); itr != m_uiBurningSpirit.end(); ++itr)
                 {
                     if (Creature* pBurningSpirit = instance->GetCreature(*itr))
-					{
-						pBurningSpirit->SetDeathState(JUST_DIED);
-						pBurningSpirit->RemoveCorpse();
-					}
+                    {
+                        pBurningSpirit->SetDeathState(JUST_DIED);
+                        pBurningSpirit->RemoveCorpse();
+                    }
                 }
                 m_uiBurningSpirit.clear();
             }
@@ -570,8 +571,8 @@ void instance_blackrock_depths::Update(uint32 uiDiff)
                 m_uiRingOfTheLawSpecsTimer = 0;
                 debug_log("SD0: Blackrock Depths: Ring of the Law spectators faction change.");
 
-				GameObject* TempGoArena = GetSingleGameObjectFromStorage(GO_TEMP_BRD_ARENA);
-				Creature* pTheldrenTrigger = GetSingleCreatureFromStorage(NPC_THELDREN_TRIGGER);
+                GameObject* TempGoArena = GetSingleGameObjectFromStorage(GO_TEMP_BRD_ARENA);
+                Creature* pTheldrenTrigger = GetSingleCreatureFromStorage(NPC_THELDREN_TRIGGER);
 
                 if (!m_uiRingSpectators.empty() && (TempGoArena || pTheldrenTrigger))
                 {
