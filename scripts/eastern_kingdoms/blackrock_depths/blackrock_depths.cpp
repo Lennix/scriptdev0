@@ -798,10 +798,6 @@ bool GOUse_go_relic_coffer_door(Player* pPlayer, GameObject* pGo)
 		{
 			GoChest->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
 		}
-		if (GameObject* GoChest = GetClosestGameObjectWithEntry(pGo, GO_SECRET_SAFE, 1.5f))
-		{
-			GoChest->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
-		}
     }
     return false;
 }

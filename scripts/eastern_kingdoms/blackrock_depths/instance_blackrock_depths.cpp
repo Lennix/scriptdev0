@@ -228,6 +228,7 @@ void instance_blackrock_depths::OnObjectCreate(GameObject* pGo)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
 
+		// Prevent exploits with coffers and secret safe
 		case GO_RELIC_COFFER:
 		case GO_DARK_COFFER:
 		case GO_SECRET_SAFE:
@@ -349,11 +350,15 @@ void instance_blackrock_depths::SetData(uint32 uiType, uint32 uiData)
                         ++m_uiCoffersOpenedCount;
                     else if (++m_uiDoomgripsBandDeadCount == 5)
                     {
+						if (GameObject* GoChest = instance->GetGameObject(m_mGoEntryGuidStore[GO_SECRET_SAFE]))
+							GoChest->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
                         HandleGameObject(GO_SECRET_DOOR, true);
                         m_auiEncounter[1] = uiData = DONE;
                     }
                     break;
                 case DONE:
+					if (GameObject* GoChest = instance->GetGameObject(m_mGoEntryGuidStore[GO_SECRET_SAFE]))
+							GoChest->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
                     HandleGameObject(GO_SECRET_DOOR, true);
                     break;
             }
