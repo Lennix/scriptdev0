@@ -25,6 +25,7 @@ EndScriptData */
 go_blacksmithing_plans
 go_postbox
 go_stratholme_gate
+go_scarlet_cannon
 mob_abomination
 mob_freed_soul
 mob_restless_soul
@@ -132,6 +133,29 @@ bool GOUse_go_postbox(Player* pPlayer, GameObject* pGo)
 
     return false;
 }
+/*######
+## go_scarlet_cannon
+######*/
+
+bool GOUse_go_scarlet_cannon(Player* pPlayer, GameObject* pGo)
+{
+    instance_stratholme* m_pInstance = (instance_stratholme*)pGo->GetInstanceData();
+
+    if (!m_pInstance)
+        return false;
+	
+	std::list<GameObject*> lCannonballs;
+    GetGameObjectListWithEntryInGrid(lCannonballs, pGo, GO_CANNONBALL, DEFAULT_VISIBILITY_INSTANCE);
+    if (lCannonballs.empty())
+        debug_log("SD0: Strat: go_scarlet_cannon, no cannonballs with the entry %u were found", GO_CANNONBALL);
+    else
+    {
+        for(std::list<GameObject*>::iterator itr = lCannonballs.begin(); itr != lCannonballs.end(); ++itr)
+            if (GameObject *cannonBall = (*itr))
+				cannonBall->Use(GetClosestCreatureWithEntry(cannonBall, NPC_CRIMSON_RIFLEMAN, 30.0f));
+    }
+}
+
 
 /*######
 ## mob_abomination
@@ -840,6 +864,11 @@ void AddSC_stratholme()
     pNewscript = new Script;
     pNewscript->Name = "go_stratholme_gate";
     pNewscript->pGOUse = &GOUse_go_stratholme_gate;
+    pNewscript->RegisterSelf();
+
+	pNewscript = new Script;
+    pNewscript->Name = "go_scarlet_cannon";
+    pNewscript->pGOUse = &GOUse_go_scarlet_cannon;
     pNewscript->RegisterSelf();
 
     pNewscript = new Script;

@@ -98,6 +98,8 @@ enum GameObjects
     GO_BRAZIER_OF_BECKONING     = 181045,
     GO_BRAZIER_OF_INVOCATION    = 181051,
     GO_HEIRLOOMS                = 181083,         // Jarien & Sothos heirlooms
+
+	GO_CANNONBALL               = 176211
 };
 
 enum Misc
