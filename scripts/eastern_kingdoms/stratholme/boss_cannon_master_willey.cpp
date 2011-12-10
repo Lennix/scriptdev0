@@ -140,6 +140,7 @@ struct MANGOS_DLL_DECL npc_crimson_riflemanAI : public ScriptedAI
     npc_crimson_riflemanAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (instance_stratholme*)pCreature->GetInstanceData();
+		SetCombatMovement(false);
         Reset();
     }
 
