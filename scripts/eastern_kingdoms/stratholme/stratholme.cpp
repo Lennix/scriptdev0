@@ -143,6 +143,8 @@ bool GOUse_go_scarlet_cannon(Player* pPlayer, GameObject* pGo)
 
     if (!m_pInstance)
         return false;
+
+	pGo->SendGameObjectCustomAnim(pGo->GetGUID());
 	
 	std::list<GameObject*> lCannonballs;
     GetGameObjectListWithEntryInGrid(lCannonballs, pGo, GO_CANNONBALL, DEFAULT_VISIBILITY_INSTANCE);
