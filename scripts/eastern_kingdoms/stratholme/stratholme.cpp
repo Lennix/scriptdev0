@@ -152,7 +152,8 @@ bool GOUse_go_scarlet_cannon(Player* pPlayer, GameObject* pGo)
     {
         for(std::list<GameObject*>::iterator itr = lCannonballs.begin(); itr != lCannonballs.end(); ++itr)
             if (GameObject *cannonBall = (*itr))
-				cannonBall->Use(GetClosestCreatureWithEntry(cannonBall, NPC_CRIMSON_RIFLEMAN, 30.0f));
+				if (Creature *rifleman = GetClosestCreatureWithEntry(cannonBall, NPC_CRIMSON_RIFLEMAN, 30.0f))
+					cannonBall->Use(rifleman);
     }
 }
 
