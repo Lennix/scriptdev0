@@ -70,7 +70,7 @@ bool QuestRewarded_go_broken_trap(Player* pPlayer, GameObject* pGo, const Quest*
     if (pQuest->GetQuestId() == QUEST_A_BROKEN_TRAP)
     {
         pPlayer->CLOSE_GOSSIP_MENU();
-        pPlayer->CastSpell(pPlayer, SPELL_TRAP, true);
+
     }
     return true;
 }

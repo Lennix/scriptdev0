@@ -140,7 +140,6 @@ struct MANGOS_DLL_DECL npc_crimson_riflemanAI : public ScriptedAI
     npc_crimson_riflemanAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (instance_stratholme*)pCreature->GetInstanceData();
-		SetCombatMovement(false);
         Reset();
     }
 
@@ -151,6 +150,8 @@ struct MANGOS_DLL_DECL npc_crimson_riflemanAI : public ScriptedAI
     void Reset()
     {
         m_uiShootTimer = urand(0,1000);
+        SetCombatMovement(false);
+        m_creature->SetSheath(SHEATH_STATE_RANGED);
     }
 
     void UpdateAI(const uint32 uiDiff)
