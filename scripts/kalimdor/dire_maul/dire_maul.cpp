@@ -71,13 +71,12 @@ bool QuestRewarded_go_broken_trap(Player* pPlayer, GameObject* pGo, const Quest*
     {
         pPlayer->CLOSE_GOSSIP_MENU();
 
-		// Despawn broken trap and spawn fixed trap
-		if (instance_dire_maul* m_pInstance = (instance_dire_maul*)pGo->GetInstanceData())
-		{
-			pGo->Delete();
-			if (GameObject* fixedTrap = m_pInstance->GetSingleGameObjectFromStorage(GO_FIXED_TRAP))
-				m_pInstance->DoRespawnGameObject(fixedTrap->GetGUID(), 120*HOUR);
-		}
+        // Despawn broken trap and spawn fixed trap
+        if (instance_dire_maul* m_pInstance = (instance_dire_maul*)pGo->GetInstanceData())
+        {
+            pGo->Delete();
+            m_pInstance->DoRespawnGameObject(GO_FIXED_TRAP, 2*HOUR);
+        }
     }
     return true;
 }
@@ -162,7 +161,7 @@ bool GossipHello_npc_ironbark_the_redeemed(Player* pPlayer, Creature* pCreature)
             pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_PLAYER, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
     }
 
-	pPlayer->SEND_GOSSIP_MENU(GOSSIP_IRONBARK, pCreature->GetObjectGuid());
+    pPlayer->SEND_GOSSIP_MENU(GOSSIP_IRONBARK, pCreature->GetObjectGuid());
     return true;
 }
 
