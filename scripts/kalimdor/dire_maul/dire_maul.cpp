@@ -69,8 +69,12 @@ bool QuestRewarded_go_broken_trap(Player* pPlayer, GameObject* pGo, const Quest*
 {
     if (pQuest->GetQuestId() == QUEST_A_BROKEN_TRAP)
     {
-        pPlayer->CLOSE_GOSSIP_MENU();
+		instance_dire_maul* m_pInstance = (instance_dire_maul*)pGo->GetInstanceData();
 
+        pPlayer->CLOSE_GOSSIP_MENU();
+		pGo->SetLootState(GO_JUST_DEACTIVATED);
+		GameObject* fixedTrap = m_pInstance->GetSingleGameObjectFromStorage(GO_BROKEN_TRAP);
+		fixedTrap->SetLootState(GO_ACTIVATED);
     }
     return true;
 }

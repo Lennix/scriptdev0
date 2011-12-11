@@ -186,6 +186,9 @@ void instance_dire_maul::OnObjectCreate(GameObject* pGo)
             return;
         case GO_KNOT_THIMBLEJACK_CACHE:
             break;
+        case GO_FIXED_TRAP:
+            pGo->SetLootState(GO_READY);
+            break;
         // West
         case GO_PYLON_1:
         case GO_PYLON_2:

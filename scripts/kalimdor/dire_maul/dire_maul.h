@@ -97,6 +97,8 @@ enum GameObjects
     GO_GORDOK_INNER_DOOR        = 177217,
     GO_GORDOK_TRIBUTE           = 179564,
     GO_KNOT_THIMBLEJACK_CACHE   = 179501,
+    GO_BROKEN_TRAP              = 179485,
+    GO_FIXED_TRAP               = 179512,
 
     // West
     GO_PYLON_1                  = 177257,
