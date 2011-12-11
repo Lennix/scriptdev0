@@ -110,8 +110,6 @@ struct MANGOS_DLL_DECL boss_cannon_master_willeyAI : public ScriptedAI
                 uint32 j = urand(0,8);
                 Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
                 Creature* pRifleman = m_creature->SummonCreature(NPC_CRIMSON_RIFLEMAN, Spawn[j].x, Spawn[j].y, Spawn[j].z, 0.59f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
-                if (pTarget && pRifleman)
-                    pRifleman->AI()->AttackStart(pTarget);
             }
             m_uiSummonRiflemanTimer = urand(15000,25000);
         }
