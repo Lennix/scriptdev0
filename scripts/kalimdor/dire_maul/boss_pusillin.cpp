@@ -52,11 +52,12 @@ enum ePusillin
 
 static Loc Move[]=
 {
-    {-167.80f,-198.62f,-4.15f,0},
-    {-132.68f,-344.60f,-4.03f,0},
-    {113.72f,-363.17f,-4.15f,0},
-    {20.121f,-707.34f,-12.56f,-2.2f},
-    {2.92f,-715.148f,-12.643f,0.92f}
+    {-167.80f,-198.62f,-4.15f,0},     // 0
+    {-132.68f,-344.60f,-4.03f,0},     // 1
+    {113.72f,-363.17f,-4.15f,0},      // 2
+    {20.121f,-707.34f,-12.56f,-2.2f}, // 3 (Zwischenpunkt)
+    {111.377f,-533.248f,-11.08f,0},   // 4 Upstairs
+    {2.92f,-715.148f,-12.643f,0.92f}  // 5 Upstairs transform
 };
 
 struct MANGOS_DLL_DECL boss_pusillinAI : public ScriptedAI
@@ -100,6 +101,9 @@ struct MANGOS_DLL_DECL boss_pusillinAI : public ScriptedAI
                 m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                 break;
             case 1:
+                m_creature->GetMotionMaster()->MovePoint(0, Move[4].x, Move[4].y, Move[4].z);
+                break;
+            case 2:
                 m_creature->CastSpell(m_creature, SPELL_SPIRIT_OF_RUNN_TUM, false);
                 m_creature->setFaction(FACTION_HOSTILE);
                 m_creature->SetInCombatWithZone();
@@ -156,7 +160,7 @@ bool GossipHello_boss_pusillin(Player* pPlayer, Creature* pCreature)
         {
             case 0:
                 pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_PUSILLIN_PLAYER_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-				pPlayer->SEND_GOSSIP_MENU(GOSSIP_PUSILLIN_1, pCreature->GetObjectGuid());
+                pPlayer->SEND_GOSSIP_MENU(GOSSIP_PUSILLIN_1, pCreature->GetObjectGuid());
                 break;
             case 1:
                 pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_PUSILLIN_PLAYER_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
@@ -206,15 +210,15 @@ bool GossipSelect_boss_pusillin(Player* pPlayer, Creature* pCreature, uint32 uiS
                 break;
             case GOSSIP_ACTION_INFO_DEF + 4:
                 DoScriptText(SAY_PUSILLIN_4, pCreature);
-                pCreature->GetMotionMaster()->MovePoint(0, Move[3].x, Move[3].y, Move[3].z);
+                pCreature->GetMotionMaster()->MovePoint(1, Move[3].x, Move[3].y, Move[3].z);
                 pCreature->SetOrientation(Move[3].o);
                 break;
             case GOSSIP_ACTION_INFO_DEF + 5:
                 DoScriptText(SAY_PUSILLIN_5, pCreature);
                 float fX, fY, fZ;
                 pCreature->GetPosition(fX, fY, fZ);
-                pCreature->GetMotionMaster()->MovePoint(1, Move[4].x, Move[4].y, Move[4].z);
-                pCreature->SetOrientation(Move[4].o);
+                pCreature->GetMotionMaster()->MovePoint(2, Move[5].x, Move[5].y, Move[5].z);
+                pCreature->SetOrientation(Move[5].o);
                 for(uint8 i = 0; i < 2; ++i)
                     if (Creature* Imp = pCreature->SummonCreature(NPC_WILDSPAWN_IMP, fX+irand(-3,3), fY+irand(-3,3), fZ, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000))
                         Imp->AI()->AttackStart(pPlayer);
