@@ -157,11 +157,12 @@ struct MANGOS_DLL_DECL npc_crimson_riflemanAI : public ScriptedAI
     void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-			return;
+            return;
 
         if (m_uiShootTimer <= uiDiff)
         {
             DoCastSpellIfCan(m_creature->getVictim(), SPELL_RIFLEMAN_SHOOT);
+            m_creature->SetSheath(SHEATH_STATE_RANGED);
             m_uiShootTimer = urand(1000,2000);
         }
         else
