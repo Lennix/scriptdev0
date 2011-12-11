@@ -55,8 +55,8 @@ static Loc Move[]=
     {-167.80f,-198.62f,-4.15f,0},
     {-132.68f,-344.60f,-4.03f,0},
     {113.72f,-363.17f,-4.15f,0},
-    {109.19f,-450.66f,-3.27f,0},
-    {87.13f,-450.92f,-2.73f,0}
+    {20.121f,-707.34f,-12.56f,-2.2f},
+    {2.92f,-715.148f,-12.643f,0.92f}
 };
 
 struct MANGOS_DLL_DECL boss_pusillinAI : public ScriptedAI
@@ -207,12 +207,14 @@ bool GossipSelect_boss_pusillin(Player* pPlayer, Creature* pCreature, uint32 uiS
             case GOSSIP_ACTION_INFO_DEF + 4:
                 DoScriptText(SAY_PUSILLIN_4, pCreature);
                 pCreature->GetMotionMaster()->MovePoint(0, Move[3].x, Move[3].y, Move[3].z);
+				pCreature->SetOrientation(Move[3].o);
                 break;
             case GOSSIP_ACTION_INFO_DEF + 5:
                 DoScriptText(SAY_PUSILLIN_5, pCreature);
                 float fX, fY, fZ;
                 pCreature->GetPosition(fX, fY, fZ);
                 pCreature->GetMotionMaster()->MovePoint(1, Move[4].x, Move[4].y, Move[4].z);
+				pCreature->SetOrientation(Move[4].o);
                 for(uint8 i = 0; i < 2; ++i)
                     if (Creature* Imp = pCreature->SummonCreature(NPC_WILDSPAWN_IMP, fX+irand(-3,3), fY+irand(-3,3), fZ, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000))
                         Imp->AI()->AttackStart(pPlayer);
