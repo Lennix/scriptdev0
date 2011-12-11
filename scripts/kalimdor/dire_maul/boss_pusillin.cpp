@@ -55,9 +55,10 @@ static Loc Move[]=
     {-167.80f,-198.62f,-4.15f,0},     // 0
     {-132.68f,-344.60f,-4.03f,0},     // 1
     {113.72f,-363.17f,-4.15f,0},      // 2
-    {111.377f,-533.248f,-11.08f,0},   // 3 (Zwischenpunkt)
-    {20.121f,-707.34f,-12.56f,-2.2f}, // 4 Upstairs
-    {2.92f,-715.148f,-12.643f,0.92f}  // 5 Upstairs transform
+	{112.21f,-469.21f,-2.72f,0},      // 3 (Zwischenpunkt2)
+    {111.377f,-533.248f,-11.08f,0},   // 4 (Zwischenpunkt2)
+    {20.121f,-707.34f,-12.56f,-2.2f}, // 5 Upstairs
+    {2.92f,-715.148f,-12.643f,0.92f}  // 6 Upstairs transform
 };
 
 struct MANGOS_DLL_DECL boss_pusillinAI : public ScriptedAI
@@ -101,9 +102,12 @@ struct MANGOS_DLL_DECL boss_pusillinAI : public ScriptedAI
                 m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                 break;
             case 1:
-                m_creature->GetMotionMaster()->MovePoint(0, Move[4].x, Move[4].y, Move[4].z);
+                m_creature->GetMotionMaster()->MovePoint(2, Move[4].x, Move[4].y, Move[4].z);
                 break;
             case 2:
+                m_creature->GetMotionMaster()->MovePoint(0, Move[5].x, Move[5].y, Move[5].z);
+                break;
+            case 3:
                 m_creature->CastSpell(m_creature, SPELL_SPIRIT_OF_RUNN_TUM, false);
                 m_creature->setFaction(FACTION_HOSTILE);
                 m_creature->SetInCombatWithZone();
@@ -217,7 +221,7 @@ bool GossipSelect_boss_pusillin(Player* pPlayer, Creature* pCreature, uint32 uiS
                 DoScriptText(SAY_PUSILLIN_5, pCreature);
                 float fX, fY, fZ;
                 pCreature->GetPosition(fX, fY, fZ);
-                pCreature->GetMotionMaster()->MovePoint(2, Move[5].x, Move[5].y, Move[5].z);
+                pCreature->GetMotionMaster()->MovePoint(3, Move[6].x, Move[6].y, Move[6].z);
                 pCreature->SetOrientation(Move[5].o);
                 for(uint8 i = 0; i < 2; ++i)
                     if (Creature* Imp = pCreature->SummonCreature(NPC_WILDSPAWN_IMP, fX+irand(-3,3), fY+irand(-3,3), fZ, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000))
