@@ -185,9 +185,7 @@ void instance_dire_maul::OnObjectCreate(GameObject* pGo)
             m_uiGordokTributeGUID.push_back(pGo->GetObjectGuid());
             return;
         case GO_KNOT_THIMBLEJACK_CACHE:
-            break;
         case GO_FIXED_TRAP:
-            pGo->Delete();
             break;
         // West
         case GO_PYLON_1:
