@@ -203,8 +203,8 @@ struct MANGOS_DLL_DECL boss_rend_blackhandAI : public ScriptedAI
         --m_uiSummonCount;
         m_uiSummonList.remove(pSummoned->GetObjectGuid());
 
-        if (m_uiSummonCount == 0 && m_uiEventTimer > 5000)
-            m_uiEventTimer = 5000;
+        if (m_uiSummonCount == 0 && m_uiEventTimer > 20000)
+            m_uiEventTimer = 20000;
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -269,7 +269,7 @@ struct MANGOS_DLL_DECL boss_rend_blackhandAI : public ScriptedAI
                 else if (m_uiEventPhase < 10)
                     m_uiEventTimer = 3500;
                 else if (m_uiEventPhase < 11)
-                    m_uiEventTimer = 55000;
+                    m_uiEventTimer = 25000;
                 else
                     m_bEvent = false;
             }

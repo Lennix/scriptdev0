@@ -46,7 +46,7 @@ EndScriptData */
 #include "dire_maul.h"
 
 // TODO: Fill proper entries if we use multiple GOs for Tribute Run
-const uint32 aTribute[] = {0, 0, 0, 0, 0, 0, 179564};
+const uint32 aTribute[] = {0, 0, 0, 0, 0, 179564};
 
 static Loc Tendris[]=
 {
@@ -55,10 +55,10 @@ static Loc Tendris[]=
 };
 
 instance_dire_maul::instance_dire_maul(Map* pMap) : ScriptedInstance(pMap),
-	// We won't count pylons OnObjectCreate() because they are not all created --> could be exploited
-	m_uiPylonCount(5)
+    // We won't count pylons OnObjectCreate() because they are not all created --> could be exploited
+    m_uiPylonCount(5)
 {
-	Initialize();
+    Initialize();
 };
 
 
@@ -76,7 +76,7 @@ void instance_dire_maul::Initialize()
 
 void instance_dire_maul::CallProtectors()
 {
-	if (Creature* pTendris = GetSingleCreatureFromStorage(NPC_TENDRIS_WARPWOOD))
+    if (Creature* pTendris = GetSingleCreatureFromStorage(NPC_TENDRIS_WARPWOOD))
     {
         float fX, fY, fZ;
         pTendris->GetPosition(fX, fY, fZ);
@@ -107,7 +107,7 @@ void instance_dire_maul::OnCreatureCreate(Creature* pCreature)
         case NPC_ALZZINS_THE_WILDSHAPER:
             break;
         case NPC_ALZZINS_MINION:
-			m_uiAlzzinsMinionGUID.push_back(pCreature->GetObjectGuid());
+            m_uiAlzzinsMinionGUID.push_back(pCreature->GetObjectGuid());
             return;
         // North
         case NPC_GUARD_MOLDAR:
@@ -155,11 +155,11 @@ void instance_dire_maul::OnCreatureCreate(Creature* pCreature)
             if (m_auiEncounter[16] != DONE)
                 pCreature->setFaction(FACTION_FRIENDLY);
             break;
-		default:
-			return;
+        default:
+            return;
     }
 
-	m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+    m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
 }
 
 void instance_dire_maul::OnObjectCreate(GameObject* pGo)
@@ -202,11 +202,11 @@ void instance_dire_maul::OnObjectCreate(GameObject* pGo)
             break;
         case GO_THE_PRINCES_CHEST:
             break;
-		default:
-			return;
+        default:
+            return;
     }
 
-	m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
+    m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
 }
 
 void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
@@ -220,7 +220,7 @@ void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
         case TYPE_ZEVRIM_THORNHOOF:
             m_auiEncounter[1] = uiData;
             if (uiData == DONE)
-				if (Creature* pIronbark = GetSingleCreatureFromStorage(NPC_OLD_IRONBARK))
+                if (Creature* pIronbark = GetSingleCreatureFromStorage(NPC_OLD_IRONBARK))
                 {
                     pIronbark->UpdateEntry(NPC_IRONBARK_THE_REDEEMED);
                     pIronbark->AIM_Initialize();
@@ -291,11 +291,14 @@ void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
             if (uiData == DONE)
             {
                 Creature* pChorush = GetSingleCreatureFromStorage(NPC_CHORUSH_THE_OBSERVER);
-                if (pChorush && pChorush->isAlive() && m_auiEncounter[10] != DONE)
+                if (pChorush)
                 {
-                    pChorush->setFaction(FACTION_FRIENDLY);
-                    pChorush->InterruptNonMeleeSpells(false);
-                    pChorush->AI()->EnterEvadeMode();
+                    if (pChorush->isAlive() && m_auiEncounter[10] != DONE)
+                    {
+                        pChorush->setFaction(FACTION_FRIENDLY);
+                        pChorush->InterruptNonMeleeSpells(false);
+                        pChorush->AI()->EnterEvadeMode();
+                    }
 
                     if (Creature* pMizzle = pChorush->SummonCreature(NPC_MIZZLE_THE_CRAFTY, 839.83f, 549.14f, 34.26f, 4.32f, TEMPSUMMON_DEAD_DESPAWN, 10000))
                     {
@@ -327,10 +330,11 @@ void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
                     }
                 }
 
+                // loop through encounters and choose the tribute chest with the specific loot
                 uint32 uiCount = 0;
                 ObjectGuid uiTributeGUID = ObjectGuid();
 
-                for(uint8 i = 5; i <= 10; ++i)
+                for(uint8 i = 6; i <= 10; ++i)
                     if (m_auiEncounter[i] != DONE)
                         ++uiCount;
 
@@ -339,7 +343,7 @@ void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
                     if (GameObject* pTribute = instance->GetGameObject(*itr))
                         if (pTribute->GetEntry() == aTribute[uiCount])
                         {
-							uiTributeGUID = pTribute->GetObjectGuid();
+                            uiTributeGUID = pTribute->GetObjectGuid();
                             break;
                         }
                 }
@@ -418,10 +422,10 @@ void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
 
 uint32 instance_dire_maul::GetData(uint32 uiType)
 {
-	if (uiType < MAX_ENCOUNTER)
-		return m_auiEncounter[uiType];
+    if (uiType < MAX_ENCOUNTER)
+        return m_auiEncounter[uiType];
 
-	return 0;
+    return 0;
 }
 
 void instance_dire_maul::Load(const char* chrIn)
