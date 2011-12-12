@@ -112,26 +112,8 @@ struct MANGOS_DLL_DECL boss_guardAI : public ScriptedAI
             m_pInstance->SetData(m_uiEncounter, DONE);
     }
 
-    void SpellHit(Unit* pCaster, const SpellEntry* pSpell)
-    {
-        if (m_creature->GetEntry() == NPC_GUARD_SLIPKIK && pSpell->Id == SPELL_FREEZING_TRAP_EFFECT)
-        {
-            m_bEvade = true;
-            m_uiEvadeTimer = 20000;
-        }
-    }
-
     void UpdateAI(const uint32 uiDiff)
     {
-        if (m_bEvade)
-            if (m_uiEvadeTimer <= uiDiff)
-            {
-                m_creature->AI()->EnterEvadeMode();
-                m_bEvade = false;
-            }
-            else
-                m_uiEvadeTimer -= uiDiff;
-
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 

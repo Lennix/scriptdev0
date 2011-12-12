@@ -76,8 +76,6 @@ bool QuestRewarded_go_broken_trap(Player* pPlayer, GameObject* pGo, const Quest*
         {
             pGo->Delete();
             m_pInstance->DoRespawnGameObject(GO_FIXED_TRAP, 2*HOUR);
-            //if (GameObject* fixedTrap = m_pInstance->GetSingleGameObjectFromStorage(GO_FIXED_TRAP))
-            //    fixedTrap->SetOwnerGuid(pPlayer->GetGUID());
         }
     }
     return true;
@@ -354,6 +352,7 @@ enum eMizzle
 {
     GOSSIP_MIZLLE_1         = 6882,
     GOSSIP_MIZLLE_2         = 6895,
+    SPELL_KINGOFTHEGORDOK   = 22799
 };
 
 bool GossipHello_npc_mizzle_the_crafty(Player* pPlayer, Creature* pCreature)
@@ -381,6 +380,7 @@ bool GossipSelect_npc_mizzle_the_crafty(Player* pPlayer, Creature* pCreature, ui
             if (m_pInstance && m_pInstance->GetData(TYPE_TRIBUTE_RUN) != DONE)
                 m_pInstance->SetData(TYPE_TRIBUTE_RUN, DONE);
             pPlayer->CLOSE_GOSSIP_MENU();
+            pCreature->CastSpell(pPlayer, SPELL_KINGOFTHEGORDOK, false);
             break;
     }
     return true;
