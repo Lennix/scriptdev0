@@ -76,8 +76,8 @@ bool QuestRewarded_go_broken_trap(Player* pPlayer, GameObject* pGo, const Quest*
         {
             pGo->Delete();
             m_pInstance->DoRespawnGameObject(GO_FIXED_TRAP, 2*HOUR);
-            if (GameObject* fixedTrap = m_pInstance->GetSingleGameObjectFromStorage(GO_FIXED_TRAP))
-                fixedTrap->SetOwnerGuid(pPlayer->GetGUID());
+            //if (GameObject* fixedTrap = m_pInstance->GetSingleGameObjectFromStorage(GO_FIXED_TRAP))
+            //    fixedTrap->SetOwnerGuid(pPlayer->GetGUID());
         }
     }
     return true;
