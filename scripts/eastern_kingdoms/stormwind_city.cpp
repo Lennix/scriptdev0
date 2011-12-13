@@ -285,298 +285,298 @@ enum eLordGregorLescovar
 
 struct MANGOS_DLL_DECL npc_lord_gregor_lescovarAI : public npc_escortAI
 {
-	npc_lord_gregor_lescovarAI(Creature* pCreature) : npc_escortAI(pCreature)
-	{
-		Reset();
-	}
+    npc_lord_gregor_lescovarAI(Creature* pCreature) : npc_escortAI(pCreature)
+    {
+        Reset();
+    }
 
-	uint32 m_uiGuardReturn_Timer;
-	uint32 EventTimer;
-	uint8 EventPhase;
-	uint8 GardenGuardsCounter;
-	Creature* GardenRoyalGuard[3];
-	Creature* Marzon;
-	Creature* Tyrion;
-	bool StartGuardsReturnTimer;
-	bool CanWalk;
+    uint32 m_uiGuardReturn_Timer;
+    uint32 EventTimer;
+    uint8 EventPhase;
+    uint8 GardenGuardsCounter;
+    Creature* GardenRoyalGuard[3];
+    Creature* Marzon;
+    Creature* Tyrion;
+    bool StartGuardsReturnTimer;
+    bool CanWalk;
 
-	void Reset()
-	{
-		CanWalk = true;
-		if (HasEscortState(STATE_ESCORT_ESCORTING))
-			return;
+    void Reset()
+    {
+        CanWalk = true;
+        if (HasEscortState(STATE_ESCORT_ESCORTING))
+            return;
 
-		m_uiGuardReturn_Timer = 5000;
-		EventTimer = 0;
-		EventPhase = 0;
+        m_uiGuardReturn_Timer = 5000;
+        EventTimer = 0;
+        EventPhase = 0;
 
-		GardenRoyalGuard[0] = 0;
-		GardenRoyalGuard[1] = 0;
-		GardenRoyalGuard[2] = 0;
-		GardenGuardsCounter = 0;
-		Marzon = 0;
-		Tyrion = 0;
+        GardenRoyalGuard[0] = 0;
+        GardenRoyalGuard[1] = 0;
+        GardenRoyalGuard[2] = 0;
+        GardenGuardsCounter = 0;
+        Marzon = 0;
+        Tyrion = 0;
 
-		StartGuardsReturnTimer = false;
-	}
+        StartGuardsReturnTimer = false;
+    }
 
-	bool GetCreaturesForQuest(float fMaxSearchRange = 10.0f)
-	{
-		// Tyrion
-		Tyrion = GetClosestCreatureWithEntry(m_creature, NPC_TYRION, VISIBLE_RANGE);
-		if (!Tyrion)
-		{
-			debug_log("SD0: Creature 'Tyrion' (entry %u) has been not found for quest 'The Attack!'", NPC_TYRION);
-			return false;
-		}
-		else
-		{
-			if (Tyrion->GetEntry() != NPC_TYRION)
-			{
-				debug_log("SD0: GetClosestCreatureWithEntry() failed! Entry of returned unit != entry of searched unit!");
-				return false;
-			}
-		}
+    bool GetCreaturesForQuest(float fMaxSearchRange = 10.0f)
+    {
+        // Tyrion
+        Tyrion = GetClosestCreatureWithEntry(m_creature, NPC_TYRION, VISIBLE_RANGE);
+        if (!Tyrion)
+        {
+            debug_log("SD0: Creature 'Tyrion' (entry %u) has been not found for quest 'The Attack!'", NPC_TYRION);
+            return false;
+        }
+        else
+        {
+            if (Tyrion->GetEntry() != NPC_TYRION)
+            {
+                debug_log("SD0: GetClosestCreatureWithEntry() failed! Entry of returned unit != entry of searched unit!");
+                return false;
+            }
+        }
 
-		// Marzon The Silent Blade
-		Marzon = GetClosestCreatureWithEntry(m_creature, NPC_MARZON_THE_SILENT_BLADE, VISIBLE_RANGE);
-		if (!Marzon)
-		{
-			debug_log("SD0: Creature 'Marzon The Silent Blade' (entry %u) has been not found for quest 'The Attack!'", NPC_MARZON_THE_SILENT_BLADE);
-			return false;
-		}
-		else
-		{
-			if (Marzon->GetEntry() != NPC_MARZON_THE_SILENT_BLADE)
-			{
-				debug_log("SD0: GetClosestCreatureWithEntry() failed! Entry of returned unit != entry of searched unit!");
-				return false;
-			}
-		}
+        // Marzon The Silent Blade
+        Marzon = GetClosestCreatureWithEntry(m_creature, NPC_MARZON_THE_SILENT_BLADE, VISIBLE_RANGE);
+        if (!Marzon)
+        {
+            debug_log("SD0: Creature 'Marzon The Silent Blade' (entry %u) has been not found for quest 'The Attack!'", NPC_MARZON_THE_SILENT_BLADE);
+            return false;
+        }
+        else
+        {
+            if (Marzon->GetEntry() != NPC_MARZON_THE_SILENT_BLADE)
+            {
+                debug_log("SD0: GetClosestCreatureWithEntry() failed! Entry of returned unit != entry of searched unit!");
+                return false;
+            }
+        }
 
-		// Stormwind Royal Guards (Garden)
-		std::list<Creature*> lGardenStormwindRoyalGuards;
-		GetCreatureListWithEntryInGrid(lGardenStormwindRoyalGuards, m_creature, NPC_STORMWIND_ROYAL_GUARD, fMaxSearchRange);
+        // Stormwind Royal Guards (Garden)
+        std::list<Creature*> lGardenStormwindRoyalGuards;
+        GetCreatureListWithEntryInGrid(lGardenStormwindRoyalGuards, m_creature, NPC_STORMWIND_ROYAL_GUARD, fMaxSearchRange);
 
-		if (!lGardenStormwindRoyalGuards.empty())
-		{
-			for (std::list<Creature*>::iterator iter = lGardenStormwindRoyalGuards.begin(); iter != lGardenStormwindRoyalGuards.end(); ++iter)
-			{
-				if (*iter)
-				{
-					Creature* GardenStormwindRoyalGuard = (*iter);
-					if (GardenStormwindRoyalGuard->isDead() || !GardenStormwindRoyalGuard->isAlive())
-						GardenStormwindRoyalGuard->Respawn();
+        if (!lGardenStormwindRoyalGuards.empty())
+        {
+            for (std::list<Creature*>::iterator iter = lGardenStormwindRoyalGuards.begin(); iter != lGardenStormwindRoyalGuards.end(); ++iter)
+            {
+                if (*iter)
+                {
+                    Creature* GardenStormwindRoyalGuard = (*iter);
+                    if (GardenStormwindRoyalGuard->isDead() || !GardenStormwindRoyalGuard->isAlive())
+                        GardenStormwindRoyalGuard->Respawn();
 
-					GardenRoyalGuard[++GardenGuardsCounter] = GardenStormwindRoyalGuard;
-				}
-				debug_log("SD0: Quest: The Attack! Filling 'LibraryRoyalGuard' variable now!");
-			}
-		}
-		else
-		{
-			debug_log("SD0: Creatures 'Stormwind Royal Guard' (entry %u) which is located in Garden of the Stormwind Keep has been not found for quest 'The Attack!'", NPC_STORMWIND_ROYAL_GUARD);
-			return false;
-		}
+                    GardenRoyalGuard[++GardenGuardsCounter] = GardenStormwindRoyalGuard;
+                }
+                debug_log("SD0: Quest: The Attack! Filling 'LibraryRoyalGuard' variable now!");
+            }
+        }
+        else
+        {
+            debug_log("SD0: Creatures 'Stormwind Royal Guard' (entry %u) which is located in Garden of the Stormwind Keep has been not found for quest 'The Attack!'", NPC_STORMWIND_ROYAL_GUARD);
+            return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	void JustDied(Unit* /*pKiller*/)
-	{
-		if (Player* pPlayer = GetPlayerForEscort())
-		{
-			if (EventPhase >= 9)
-				pPlayer->GroupEventHappens(QUEST_THE_ATTACK, m_creature);
-			else
-				pPlayer->FailQuest(QUEST_THE_ATTACK);
-		}
+    void JustDied(Unit* /*pKiller*/)
+    {
+        if (Player* pPlayer = GetPlayerForEscort())
+        {
+            if (EventPhase >= 9)
+                pPlayer->GroupEventHappens(QUEST_THE_ATTACK, m_creature);
+            else
+                pPlayer->FailQuest(QUEST_THE_ATTACK);
+        }
 
-		if (m_creature->getFaction() == FACTION_ENEMYY)
-			m_creature->setFaction(FACTION_NORMAL_LESCOVAR);
-	}
+        if (m_creature->getFaction() == FACTION_ENEMYY)
+            m_creature->setFaction(FACTION_NORMAL_LESCOVAR);
+    }
 
-	void Aggro(Unit* pAttacker) {}
+    void Aggro(Unit* pAttacker) {}
 
-	void WaypointReached(uint32 uiPoint)
-	{
-		Player* pPlayer = GetPlayerForEscort();
-		if (!pPlayer)
-			return;
+    void WaypointReached(uint32 uiPoint)
+    {
+        Player* pPlayer = GetPlayerForEscort();
+        if (!pPlayer)
+            return;
 
-		switch (uiPoint)
-		{
-			case 6:
-				CanWalk = true;
-				if(GetCreaturesForQuest())
-				{
-					if (GardenRoyalGuard[1] && GardenRoyalGuard[1]->isAlive())
-						GardenRoyalGuard[1]->SetFacingToObject(m_creature);
-					if (GardenRoyalGuard[2] && GardenRoyalGuard[2]->isAlive())
-						GardenRoyalGuard[2]->SetFacingToObject(m_creature);
+        switch (uiPoint)
+        {
+            case 6:
+                CanWalk = true;
+                if(GetCreaturesForQuest())
+                {
+                    if (GardenRoyalGuard[1] && GardenRoyalGuard[1]->isAlive())
+                        GardenRoyalGuard[1]->SetFacingToObject(m_creature);
+                    if (GardenRoyalGuard[2] && GardenRoyalGuard[2]->isAlive())
+                        GardenRoyalGuard[2]->SetFacingToObject(m_creature);
                     DoScriptText(SAY_GREGOR_2, m_creature);
-					EventPhase = 1;
-					EventTimer = 3500;
-					CanWalk = false;
-				}
-				break;
-			case 7:
-				EventPhase = 4;
-				EventTimer = 1500;
-				break;
-		}
-	}
+                    EventPhase = 1;
+                    EventTimer = 3500;
+                    CanWalk = false;
+                }
+                break;
+            case 7:
+                EventPhase = 4;
+                EventTimer = 1500;
+                break;
+        }
+    }
 
-	void UpdateAI(const uint32 uiDiff)
-	{
-		if (EventTimer)
-		{
-			if (EventTimer <= uiDiff)
-			{
-				Player* pPlayer = GetPlayerForEscort();
-				if (pPlayer)
-				{
-					switch (EventPhase)
-					{
-						case 1:
-							if (GardenRoyalGuard[1] && GardenRoyalGuard[1]->isAlive() && !GardenRoyalGuard[1]->getVictim())
-							{
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (EventTimer)
+        {
+            if (EventTimer <= uiDiff)
+            {
+                Player* pPlayer = GetPlayerForEscort();
+                if (pPlayer)
+                {
+                    switch (EventPhase)
+                    {
+                        case 1:
+                            if (GardenRoyalGuard[1] && GardenRoyalGuard[1]->isAlive() && !GardenRoyalGuard[1]->getVictim())
+                            {
                                 DoScriptText(SAY_ROYAL_GUARD_2, GardenRoyalGuard[1]);
-								GardenRoyalGuard[1]->GetMotionMaster()->MovePoint(NULL, -8369.35f, 427.65f, 122.27f);
-							}
-							if (GardenRoyalGuard[2] && GardenRoyalGuard[2]->isAlive() && !GardenRoyalGuard[2]->getVictim())
-							{
+                                GardenRoyalGuard[1]->GetMotionMaster()->MovePoint(NULL, -8369.35f, 427.65f, 122.27f);
+                            }
+                            if (GardenRoyalGuard[2] && GardenRoyalGuard[2]->isAlive() && !GardenRoyalGuard[2]->getVictim())
+                            {
                                 DoScriptText(SAY_ROYAL_GUARD_2, GardenRoyalGuard[2]);
-								GardenRoyalGuard[2]->GetMotionMaster()->MovePoint(NULL, -8373.35f, 424.60f, 122.27f);
-							}
-							EventTimer = 3000;
-							CanWalk = false;
-							break;
-						case 2:
-							CanWalk = true;
-							break;
-						case 4:
-							if (Marzon)
-							{
-								if (!Marzon->isAlive() || Marzon->isDead())
-									Marzon->Respawn();
+                                GardenRoyalGuard[2]->GetMotionMaster()->MovePoint(NULL, -8373.35f, 424.60f, 122.27f);
+                            }
+                            EventTimer = 3000;
+                            CanWalk = false;
+                            break;
+                        case 2:
+                            CanWalk = true;
+                            break;
+                        case 4:
+                            if (Marzon)
+                            {
+                                if (!Marzon->isAlive() || Marzon->isDead())
+                                    Marzon->Respawn();
 
-								Marzon->GetMotionMaster()->MovePoint(NULL, -8406.00f, 470.00f, 123.76f);
-							}
-							EventTimer = 13000;
-							CanWalk = false;
-							break;
-						case 5:
+                                Marzon->GetMotionMaster()->MovePoint(NULL, -8406.00f, 470.00f, 123.76f);
+                            }
+                            EventTimer = 13000;
+                            CanWalk = false;
+                            break;
+                        case 5:
                             DoScriptText(SAY_GREGOR_3, m_creature);
-							EventTimer = 5000;
-							CanWalk = false;
-							break;
-						case 6:
-							if (Marzon)
+                            EventTimer = 5000;
+                            CanWalk = false;
+                            break;
+                        case 6:
+                            if (Marzon)
                                 DoScriptText(SAY_MARZON_1, Marzon);
-							EventTimer = 5000;
-							CanWalk = false;
-							break;
-						case 7:
+                            EventTimer = 5000;
+                            CanWalk = false;
+                            break;
+                        case 7:
                             DoScriptText(SAY_GREGOR_4, m_creature);
-							EventTimer = 5000;
-							CanWalk = false;
-							break;
-						case 8:
-							if (Marzon)
+                            EventTimer = 5000;
+                            CanWalk = false;
+                            break;
+                        case 8:
+                            if (Marzon)
                                 DoScriptText(SAY_MARZON_2, Marzon);
-							EventTimer = 4000;
-							CanWalk = false;
-							break;
-						case 9:
-							if (m_creature->IsWithinDist(pPlayer, 25.0f, false))
-							{
-								if (Marzon)
-								{
+                            EventTimer = 4000;
+                            CanWalk = false;
+                            break;
+                        case 9:
+                            if (m_creature->IsWithinDist(pPlayer, 25.0f, false))
+                            {
+                                if (Marzon)
+                                {
                                     DoScriptText(SAY_MARZON_3, Marzon);
-									Marzon->SetFacingToObject(pPlayer);
-								}
+                                    Marzon->SetFacingToObject(pPlayer);
+                                }
                                 DoScriptText(SAY_GREGOR_5, m_creature);
-								m_creature->SetFacingToObject(pPlayer);
-							}
-							EventTimer = 3000;
-							CanWalk = false;
-							break;
-						case 10:
-							if (Marzon)
-							{
-								Marzon->setFaction(FACTION_ENEMYY);
-								Marzon->AI()->AttackStart(pPlayer);
-							}
-							m_creature->setFaction(FACTION_ENEMYY);
-							m_creature->AI()->AttackStart(pPlayer);
-							if (Tyrion)
+                                m_creature->SetFacingToObject(pPlayer);
+                            }
+                            EventTimer = 3000;
+                            CanWalk = false;
+                            break;
+                        case 10:
+                            if (Marzon)
+                            {
+                                Marzon->setFaction(FACTION_ENEMYY);
+                                Marzon->AI()->AttackStart(pPlayer);
+                            }
+                            m_creature->setFaction(FACTION_ENEMYY);
+                            m_creature->AI()->AttackStart(pPlayer);
+                            if (Tyrion)
                                 DoScriptText(SAY_TYRION_2, Tyrion);
-							EventTimer = 7000;
-							CanWalk = false;
-							break;
-						case 11:
-							float mX, mY, mZ;
-							m_creature->GetPosition(mX, mY, mZ);
-							if (GardenRoyalGuard[1] && GardenRoyalGuard[1]->isAlive())
-							{
-								GardenRoyalGuard[1]->GetMotionMaster()->Clear();
-								GardenRoyalGuard[1]->GetMotionMaster()->MovePoint(NULL, mX - 3, mY - 2, mZ);
-							}
-							if (GardenRoyalGuard[2] && GardenRoyalGuard[2]->isAlive())
-							{
-								GardenRoyalGuard[2]->GetMotionMaster()->Clear();
-								GardenRoyalGuard[2]->GetMotionMaster()->MovePoint(NULL, mX + 3, mY + 2, mZ);
-							}
-							EventTimer = 15000;
-							CanWalk = false;
-							break;
-						case 12:
-							if (m_creature->isAlive() && m_creature->getVictim())
-							{
-								if (GardenRoyalGuard[1] && GardenRoyalGuard[1]->isAlive())
-								{
-									GardenRoyalGuard[1]->setFaction(FACTION_ENEMYY);
-									GardenRoyalGuard[1]->AI()->AttackStart(pPlayer);
-									GardenRoyalGuard[1]->GetMotionMaster()->Clear();
-									GardenRoyalGuard[1]->GetMotionMaster()->MoveChase(pPlayer);
-								}
-								if (GardenRoyalGuard[2] && GardenRoyalGuard[2]->isAlive())
-								{
-									GardenRoyalGuard[2]->setFaction(FACTION_ENEMYY);
-									GardenRoyalGuard[2]->AI()->AttackStart(pPlayer);
-									GardenRoyalGuard[2]->GetMotionMaster()->Clear();
-									GardenRoyalGuard[2]->GetMotionMaster()->MoveChase(pPlayer);
-								}
-							}
-							EventTimer = 0;
-							CanWalk = false;
-							break;
-					}
-					++EventPhase;
-				}
-			}
-				else EventTimer -= uiDiff;
-		}
+                            EventTimer = 7000;
+                            CanWalk = false;
+                            break;
+                        case 11:
+                            float mX, mY, mZ;
+                            m_creature->GetPosition(mX, mY, mZ);
+                            if (GardenRoyalGuard[1] && GardenRoyalGuard[1]->isAlive())
+                            {
+                                GardenRoyalGuard[1]->GetMotionMaster()->Clear();
+                                GardenRoyalGuard[1]->GetMotionMaster()->MovePoint(NULL, mX - 3, mY - 2, mZ);
+                            }
+                            if (GardenRoyalGuard[2] && GardenRoyalGuard[2]->isAlive())
+                            {
+                                GardenRoyalGuard[2]->GetMotionMaster()->Clear();
+                                GardenRoyalGuard[2]->GetMotionMaster()->MovePoint(NULL, mX + 3, mY + 2, mZ);
+                            }
+                            EventTimer = 15000;
+                            CanWalk = false;
+                            break;
+                        case 12:
+                            if (m_creature->isAlive() && m_creature->getVictim())
+                            {
+                                if (GardenRoyalGuard[1] && GardenRoyalGuard[1]->isAlive())
+                                {
+                                    GardenRoyalGuard[1]->setFaction(FACTION_ENEMYY);
+                                    GardenRoyalGuard[1]->AI()->AttackStart(pPlayer);
+                                    GardenRoyalGuard[1]->GetMotionMaster()->Clear();
+                                    GardenRoyalGuard[1]->GetMotionMaster()->MoveChase(pPlayer);
+                                }
+                                if (GardenRoyalGuard[2] && GardenRoyalGuard[2]->isAlive())
+                                {
+                                    GardenRoyalGuard[2]->setFaction(FACTION_ENEMYY);
+                                    GardenRoyalGuard[2]->AI()->AttackStart(pPlayer);
+                                    GardenRoyalGuard[2]->GetMotionMaster()->Clear();
+                                    GardenRoyalGuard[2]->GetMotionMaster()->MoveChase(pPlayer);
+                                }
+                            }
+                            EventTimer = 0;
+                            CanWalk = false;
+                            break;
+                    }
+                    ++EventPhase;
+                }
+            }
+                else EventTimer -= uiDiff;
+        }
 
-		// restoring factionID
-		if (GardenRoyalGuard[1] && GardenRoyalGuard[1]->isDead() && GardenRoyalGuard[1]->getFaction() == FACTION_ENEMYY)
-			GardenRoyalGuard[1]->setFaction(FACTION_NORMAL_SW_R_GUARD);
-		if (GardenRoyalGuard[2] && GardenRoyalGuard[2]->isDead() && GardenRoyalGuard[2]->getFaction() == FACTION_ENEMYY)
-			GardenRoyalGuard[2]->setFaction(FACTION_NORMAL_SW_R_GUARD);
-		if (Marzon && Marzon->isDead() && Marzon->getFaction() == FACTION_ENEMYY)
-			Marzon->setFaction(FACTION_NORMAL_MARZON);
+        // restoring factionID
+        if (GardenRoyalGuard[1] && GardenRoyalGuard[1]->isDead() && GardenRoyalGuard[1]->getFaction() == FACTION_ENEMYY)
+            GardenRoyalGuard[1]->setFaction(FACTION_NORMAL_SW_R_GUARD);
+        if (GardenRoyalGuard[2] && GardenRoyalGuard[2]->isDead() && GardenRoyalGuard[2]->getFaction() == FACTION_ENEMYY)
+            GardenRoyalGuard[2]->setFaction(FACTION_NORMAL_SW_R_GUARD);
+        if (Marzon && Marzon->isDead() && Marzon->getFaction() == FACTION_ENEMYY)
+            Marzon->setFaction(FACTION_NORMAL_MARZON);
 
-		if (CanWalk)
-			npc_escortAI::UpdateAI(uiDiff);
+        if (CanWalk)
+            npc_escortAI::UpdateAI(uiDiff);
 
-		if (m_creature->SelectHostileTarget() || m_creature->getVictim())
-			DoMeleeAttackIfReady();
-	}
+        if (m_creature->SelectHostileTarget() || m_creature->getVictim())
+            DoMeleeAttackIfReady();
+    }
 };
 CreatureAI* GetAI_npc_lord_gregor_lescovar(Creature* pCreature)
 {
-	return new npc_lord_gregor_lescovarAI (pCreature);
+    return new npc_lord_gregor_lescovarAI (pCreature);
 }
 
 /*######
@@ -585,178 +585,178 @@ CreatureAI* GetAI_npc_lord_gregor_lescovar(Creature* pCreature)
 
 struct MANGOS_DLL_DECL npc_tyrion_spybotAI : public npc_escortAI
 {
-	npc_tyrion_spybotAI(Creature* pCreature) : npc_escortAI(pCreature)
-	{
-		Reset();
-	}
+    npc_tyrion_spybotAI(Creature* pCreature) : npc_escortAI(pCreature)
+    {
+        Reset();
+    }
 
-	Creature* LibraryRoyalGuard[3];
-	Creature* LordGregor;
-	uint8 LibraryGuardsCounter;
-	uint32 EventTimer;
-	uint8 EventPhase;
-	float m_fDefaultScaleSize;
-	bool CanWalk;
+    Creature* LibraryRoyalGuard[3];
+    Creature* LordGregor;
+    uint8 LibraryGuardsCounter;
+    uint32 EventTimer;
+    uint8 EventPhase;
+    float m_fDefaultScaleSize;
+    bool CanWalk;
 
-	void Reset()
-	{
-		CanWalk = true;
-		if (HasEscortState(STATE_ESCORT_ESCORTING))
-			return;
+    void Reset()
+    {
+        CanWalk = true;
+        if (HasEscortState(STATE_ESCORT_ESCORTING))
+            return;
 
-		LordGregor = 0;
-		LibraryRoyalGuard[0] = 0;
-		LibraryRoyalGuard[1] = 0;
-		LibraryRoyalGuard[2] = 0;
-		LibraryGuardsCounter = 0;
+        LordGregor = 0;
+        LibraryRoyalGuard[0] = 0;
+        LibraryRoyalGuard[1] = 0;
+        LibraryRoyalGuard[2] = 0;
+        LibraryGuardsCounter = 0;
 
-		m_fDefaultScaleSize = 0.00f;
+        m_fDefaultScaleSize = 0.00f;
 
-		EventTimer = 0;
-		EventPhase = 0;
-	}
+        EventTimer = 0;
+        EventPhase = 0;
+    }
 
-	void Aggro(Unit* pAttacker) {}
+    void Aggro(Unit* pAttacker) {}
 
-	bool GetStormwindRoyalGuardsInLibrary(float fMaxSearchRange = 10.0f)
-	{
-		std::list<Creature*> lLibraryStormwindRoyalGuards;
-		GetCreatureListWithEntryInGrid(lLibraryStormwindRoyalGuards, m_creature, NPC_STORMWIND_ROYAL_GUARD, fMaxSearchRange);
+    bool GetStormwindRoyalGuardsInLibrary(float fMaxSearchRange = 10.0f)
+    {
+        std::list<Creature*> lLibraryStormwindRoyalGuards;
+        GetCreatureListWithEntryInGrid(lLibraryStormwindRoyalGuards, m_creature, NPC_STORMWIND_ROYAL_GUARD, fMaxSearchRange);
 
-		if (!lLibraryStormwindRoyalGuards.empty())
-		{
-			for (std::list<Creature*>::iterator iter = lLibraryStormwindRoyalGuards.begin(); iter != lLibraryStormwindRoyalGuards.end(); ++iter)
-			{
-				if (*iter)
-				{
-					Creature* LibraryStormwindRoyalGuard = (*iter);
-					if (LibraryStormwindRoyalGuard->isDead() || !LibraryStormwindRoyalGuard->isAlive())
-						LibraryStormwindRoyalGuard->Respawn();
+        if (!lLibraryStormwindRoyalGuards.empty())
+        {
+            for (std::list<Creature*>::iterator iter = lLibraryStormwindRoyalGuards.begin(); iter != lLibraryStormwindRoyalGuards.end(); ++iter)
+            {
+                if (*iter)
+                {
+                    Creature* LibraryStormwindRoyalGuard = (*iter);
+                    if (LibraryStormwindRoyalGuard->isDead() || !LibraryStormwindRoyalGuard->isAlive())
+                        LibraryStormwindRoyalGuard->Respawn();
 
-					LibraryRoyalGuard[++LibraryGuardsCounter] = LibraryStormwindRoyalGuard;
-				}
-				debug_log("SD0: Quest: The Attack! Filling 'LibraryRoyalGuard' variable now!");
-			}
-		}
-		else
-		{
-			debug_log("SD0: Creatures 'Stormwind Royal Guard' (entry %u) which is located in Library of the Stormwind Keep has been not found for quest 'The Attack!'", NPC_STORMWIND_ROYAL_GUARD);
-			return false;
-		}
+                    LibraryRoyalGuard[++LibraryGuardsCounter] = LibraryStormwindRoyalGuard;
+                }
+                debug_log("SD0: Quest: The Attack! Filling 'LibraryRoyalGuard' variable now!");
+            }
+        }
+        else
+        {
+            debug_log("SD0: Creatures 'Stormwind Royal Guard' (entry %u) which is located in Library of the Stormwind Keep has been not found for quest 'The Attack!'", NPC_STORMWIND_ROYAL_GUARD);
+            return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	void WaypointReached(uint32 uiPoint)
-	{
-		Player* pPlayer = GetPlayerForEscort();
-		if (!pPlayer)
-			return;
+    void WaypointReached(uint32 uiPoint)
+    {
+        Player* pPlayer = GetPlayerForEscort();
+        if (!pPlayer)
+            return;
 
-		switch (uiPoint)
-		{
-			case 0:
-				m_fDefaultScaleSize = m_creature->GetFloatValue(OBJECT_FIELD_SCALE_X);
-				m_creature->SetDisplayId(6703);
-				m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, 1.00f);
-				break;
-			case 2:
-				if (GetStormwindRoyalGuardsInLibrary())
-				{
+        switch (uiPoint)
+        {
+            case 0:
+                m_fDefaultScaleSize = m_creature->GetFloatValue(OBJECT_FIELD_SCALE_X);
+                m_creature->SetDisplayId(6703);
+                m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, 1.00f);
+                break;
+            case 2:
+                if (GetStormwindRoyalGuardsInLibrary())
+                {
                     DoScriptText(SAY_TYRIONA_1, m_creature);
 
-					if (LibraryRoyalGuard[1] && LibraryRoyalGuard[1]->isAlive() && !LibraryRoyalGuard[1]->getVictim())
-						LibraryRoyalGuard[1]->SetFacingToObject(m_creature);
-					if (LibraryRoyalGuard[2] && LibraryRoyalGuard[2]->isAlive() && !LibraryRoyalGuard[2]->getVictim())
-						LibraryRoyalGuard[2]->SetFacingToObject(m_creature);
+                    if (LibraryRoyalGuard[1] && LibraryRoyalGuard[1]->isAlive() && !LibraryRoyalGuard[1]->getVictim())
+                        LibraryRoyalGuard[1]->SetFacingToObject(m_creature);
+                    if (LibraryRoyalGuard[2] && LibraryRoyalGuard[2]->isAlive() && !LibraryRoyalGuard[2]->getVictim())
+                        LibraryRoyalGuard[2]->SetFacingToObject(m_creature);
 
-					EventPhase = 1;
-					EventTimer = 5000;
-					CanWalk = false;
-				}
-				break;
-			case 3:
-				if (LibraryRoyalGuard[1] && LibraryRoyalGuard[1]->isAlive())
-					LibraryRoyalGuard[1]->SetOrientation(5.430000f);
-				if (LibraryRoyalGuard[2] && LibraryRoyalGuard[2]->isAlive())
-					LibraryRoyalGuard[2]->SetOrientation(5.430000f);
-				break;
-			case 6:
+                    EventPhase = 1;
+                    EventTimer = 5000;
+                    CanWalk = false;
+                }
+                break;
+            case 3:
+                if (LibraryRoyalGuard[1] && LibraryRoyalGuard[1]->isAlive())
+                    LibraryRoyalGuard[1]->SetOrientation(5.430000f);
+                if (LibraryRoyalGuard[2] && LibraryRoyalGuard[2]->isAlive())
+                    LibraryRoyalGuard[2]->SetOrientation(5.430000f);
+                break;
+            case 6:
                 DoScriptText(SAY_TYRIONA_3, m_creature);
-				LordGregor = GetClosestCreatureWithEntry(m_creature, NPC_LORD_GREGOR_LESCOVAR, VISIBLE_RANGE);
-				if (LordGregor)
-					LordGregor->SetFacingToObject(m_creature);
-				EventPhase = 4;
-				EventTimer = 5000;
-				CanWalk = false;
-				break;
-		}
-	}
+                LordGregor = GetClosestCreatureWithEntry(m_creature, NPC_LORD_GREGOR_LESCOVAR, VISIBLE_RANGE);
+                if (LordGregor)
+                    LordGregor->SetFacingToObject(m_creature);
+                EventPhase = 4;
+                EventTimer = 5000;
+                CanWalk = false;
+                break;
+        }
+    }
 
-	void UpdateAI(const uint32 uiDiff)
-	{
-		if (EventTimer)
-		{
-			if (EventTimer <= uiDiff)
-			{
-				switch (EventPhase)
-				{
-					case 1:
-						if (LibraryRoyalGuard[1])
-						{
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (EventTimer)
+        {
+            if (EventTimer <= uiDiff)
+            {
+                switch (EventPhase)
+                {
+                    case 1:
+                        if (LibraryRoyalGuard[1])
+                        {
                             DoScriptText(SAY_ROYAL_GUARD_1, LibraryRoyalGuard[1]);
-							m_creature->SetFacingToObject(LibraryRoyalGuard[1]);
-						}
-						EventTimer = 5000;
-						++EventPhase;
-						CanWalk = false;
-						break;
-					case 2:
+                            m_creature->SetFacingToObject(LibraryRoyalGuard[1]);
+                        }
+                        EventTimer = 5000;
+                        ++EventPhase;
+                        CanWalk = false;
+                        break;
+                    case 2:
                         DoScriptText(SAY_TYRIONA_2, m_creature);
-						if (LibraryRoyalGuard[1])
-							LibraryRoyalGuard[1]->HandleEmote(EMOTE_ONESHOT_KNEEL);
-						if (LibraryRoyalGuard[2])
-							LibraryRoyalGuard[2]->HandleEmote(EMOTE_ONESHOT_KNEEL);
-						++EventPhase; // 3 = nothing (It's OK)
-						CanWalk = true;
-						break;
-					case 4:
-						if (LordGregor)
+                        if (LibraryRoyalGuard[1])
+                            LibraryRoyalGuard[1]->HandleEmote(EMOTE_ONESHOT_KNEEL);
+                        if (LibraryRoyalGuard[2])
+                            LibraryRoyalGuard[2]->HandleEmote(EMOTE_ONESHOT_KNEEL);
+                        ++EventPhase; // 3 = nothing (It's OK)
+                        CanWalk = true;
+                        break;
+                    case 4:
+                        if (LordGregor)
                             DoScriptText(SAY_GREGOR_1, LordGregor);
-						EventTimer = 5000;
-						++EventPhase;
-						CanWalk = false;
-						break;
-					case 5:
+                        EventTimer = 5000;
+                        ++EventPhase;
+                        CanWalk = false;
+                        break;
+                    case 5:
                         DoScriptText(SAY_TYRIONA_4, m_creature);
-						EventTimer = 5000;
-						++EventPhase;
-						CanWalk = false;
-						break;
-					case 6:
-						Player* pPlayer = GetPlayerForEscort();
-						if(pPlayer)
-						{
-							if (LordGregor)
-								if (npc_lord_gregor_lescovarAI* pGregorEscortAI = dynamic_cast<npc_lord_gregor_lescovarAI*>(LordGregor->AI()))
-									pGregorEscortAI->Start(false, pPlayer);
-						}
-						m_creature->SetDisplayId(1159);
-						m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, m_fDefaultScaleSize);
-						CanWalk = true; // 1/2 escort complete
-						break;
-				}
-			}
-				else EventTimer -= uiDiff;
-		}
+                        EventTimer = 5000;
+                        ++EventPhase;
+                        CanWalk = false;
+                        break;
+                    case 6:
+                        Player* pPlayer = GetPlayerForEscort();
+                        if(pPlayer)
+                        {
+                            if (LordGregor)
+                                if (npc_lord_gregor_lescovarAI* pGregorEscortAI = dynamic_cast<npc_lord_gregor_lescovarAI*>(LordGregor->AI()))
+                                    pGregorEscortAI->Start(false, pPlayer);
+                        }
+                        m_creature->SetDisplayId(1159);
+                        m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, m_fDefaultScaleSize);
+                        CanWalk = true; // 1/2 escort complete
+                        break;
+                }
+            }
+                else EventTimer -= uiDiff;
+        }
 
-		if (CanWalk)
-			npc_escortAI::UpdateAI(uiDiff);
-	}
+        if (CanWalk)
+            npc_escortAI::UpdateAI(uiDiff);
+    }
 };
 CreatureAI* GetAI_npc_tyrion_spybot(Creature* pCreature)
 {
-	return new npc_tyrion_spybotAI (pCreature);
+    return new npc_tyrion_spybotAI (pCreature);
 }
 
 /*######
@@ -765,18 +765,18 @@ CreatureAI* GetAI_npc_tyrion_spybot(Creature* pCreature)
 
 bool QuestAccept_npc_tyrion(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
-	if (pQuest->GetQuestId() == QUEST_THE_ATTACK)
-	{
-		if (Creature* TyrionSpyBot = GetClosestCreatureWithEntry(pCreature, NPC_TYRIONS_SPYBOT, VISIBLE_RANGE))
-		{
-			if (npc_tyrion_spybotAI* pSpybotEscortAI = dynamic_cast<npc_tyrion_spybotAI*>(TyrionSpyBot->AI()))
-			{
+    if (pQuest->GetQuestId() == QUEST_THE_ATTACK)
+    {
+        if (Creature* TyrionSpyBot = GetClosestCreatureWithEntry(pCreature, NPC_TYRIONS_SPYBOT, VISIBLE_RANGE))
+        {
+            if (npc_tyrion_spybotAI* pSpybotEscortAI = dynamic_cast<npc_tyrion_spybotAI*>(TyrionSpyBot->AI()))
+            {
                 DoScriptText(SAY_SPYBOT, TyrionSpyBot);
-				pSpybotEscortAI->Start(false, pPlayer, pQuest, true, false);
-			}
-		}
-	}
-	return true;
+                pSpybotEscortAI->Start(false, pPlayer, pQuest, true, false);
+            }
+        }
+    }
+    return true;
 }
 
 /*######
@@ -803,7 +803,7 @@ enum eReginaldWindsor
     SPELL_ONYXIA_TRANS            = 17136,
     SPELL_TELEPORT_VISUAL         = 26638,
     SPELL_LIGHTNING_BOLT          = 12167,  // TODO: correct spell id
-    MODELID_LADY_ONYXIA           = 8309,
+    MODELID_LADY_ONYXIA           = 8570,
     MODELID_DRAGONKIN             = 12529,
     MODELID_ONYXIAS_ELITE_GUARD   = 2554,
     MODELID_WINDSORS_HORSE        = 2410,   // 2410 = White Pony
@@ -888,15 +888,15 @@ struct MANGOS_DLL_DECL npc_reginald_windsorAI : public npc_escortAI
         m_uiEventPhase = 0;
         m_uiEventTimer = 0;
 
-		m_uiEscorterGUID.Clear();
-		m_uiWindsorsHorseGUID.Clear();
-		m_uiMarcusGUID.Clear();
-		m_uiAnduinWrynnGUID.Clear();
+        m_uiEscorterGUID.Clear();
+        m_uiWindsorsHorseGUID.Clear();
+        m_uiMarcusGUID.Clear();
+        m_uiAnduinWrynnGUID.Clear();
 
         for(uint8 itr = 0; itr < 6; ++itr)
         {
             MarcusGuard[itr] = 0;
-			m_uiMarcusGuardsGUID[itr].Clear();
+            m_uiMarcusGuardsGUID[itr].Clear();
         }
 
         m_uiKneelAffectedNpcsList.clear();
@@ -942,7 +942,7 @@ struct MANGOS_DLL_DECL npc_reginald_windsorAI : public npc_escortAI
                         pWho->StopMoving();
                         pWho->GetMotionMaster()->MovementExpired();
                         pWho->SetFacingToObject(m_creature);
-						m_uiKneelAffectedNpcsList.push_back(pWho->GetObjectGuid());
+                        m_uiKneelAffectedNpcsList.push_back(pWho->GetObjectGuid());
                         return;
                 }
 
@@ -1325,7 +1325,8 @@ struct MANGOS_DLL_DECL npc_reginald_windsorAI : public npc_escortAI
                         break;
 
                     case 70:
-                        m_creature->SetFacingTo(5.40f);
+                        if (pLadyKatrana)
+                            m_creature->SetFacingToObject(pLadyKatrana);
                         DoScriptText(SAY_SW_WINDSOR_8, m_creature);
                         m_uiEventTimer = 2000;
                         break;
@@ -1440,8 +1441,8 @@ struct MANGOS_DLL_DECL npc_reginald_windsorAI : public npc_escortAI
                         {
                             pLadyKatrana->SetName("Lady Onyxia");
                             //pLadyKatrana->CastSpell(pLadyKatrana, SPELL_ONYXIA_TRANS, true);
-                            //pLadyKatrana->SetDisplayId(MODELID_LADY_ONYXIA);
-                            pLadyKatrana->SetDisplayId(MODELID_DRAGONKIN);
+                            pLadyKatrana->SetDisplayId(MODELID_LADY_ONYXIA);
+                            //pLadyKatrana->SetDisplayId(MODELID_DRAGONKIN);
                         }
                         m_uiEventTimer = 1500;
                         break;
@@ -1502,8 +1503,11 @@ struct MANGOS_DLL_DECL npc_reginald_windsorAI : public npc_escortAI
                         m_uiEventTimer = 1000;
                         break;
                     case 109:
-                        /*if (pLadyKatrana)
-                            pLadyKatrana->CastSpell(m_creature, SPELL_LIGHTNING_BOLT, true);*/
+                        // Respawn guards in throne hall to help in the fight
+                        if (!m_uiSwRoyalGuards.empty())
+                            for(GUIDList::iterator itr = m_uiSwRoyalGuards.begin(); itr != m_uiSwRoyalGuards.end(); ++itr)
+                                if (Creature* pSwRoyalGuard = m_creature->GetMap()->GetCreature(*itr))
+                                    pSwRoyalGuard->Respawn();
                         m_uiEventTimer = 1000;
                         break;
                     case 110:
@@ -1733,7 +1737,7 @@ bool GossipHello_npc_reginald_windsor(Player* pPlayer, Creature* pCreature)
     {
         if (pEscortAI->GetPlayerForWindsorEscort())
         {
-			if (pPlayer->GetObjectGuid() == pEscortAI->GetPlayerForWindsorEscort()->GetObjectGuid())
+            if (pPlayer->GetObjectGuid() == pEscortAI->GetPlayerForWindsorEscort()->GetObjectGuid())
             {
                 if ((pEscortAI->HasEscortState(STATE_ESCORT_ESCORTING) || pEscortAI->HasEscortState(STATE_ESCORT_PAUSED) ))
                 {
@@ -1820,7 +1824,7 @@ struct MANGOS_DLL_DECL npc_squire_roweAI : public npc_escortAI
     {
         m_uiChangeStandStateTimer = 3500;
         bStandStateChanged = false;
-		m_uiReginaldWindsorGUID.Clear();
+        m_uiReginaldWindsorGUID.Clear();
     }
 
     void WaypointReached(uint32 uiPointId)
@@ -1837,7 +1841,7 @@ struct MANGOS_DLL_DECL npc_squire_roweAI : public npc_escortAI
                     if (GetPlayerForEscort())
                         if (npc_reginald_windsorAI* pEscortAI = dynamic_cast<npc_reginald_windsorAI*>(pReginaldWindsor->AI()))
                         {
-							m_uiReginaldWindsorGUID = pReginaldWindsor->GetObjectGuid();
+                            m_uiReginaldWindsorGUID = pReginaldWindsor->GetObjectGuid();
                             pEscortAI->Start(false, 0, 0, true);
                             pEscortAI->m_uiEscorterGUID = GetPlayerForEscort()->GetObjectGuid();
                         }
@@ -1892,7 +1896,7 @@ bool GossipHello_npc_squire_rowe(Player* pPlayer, Creature* pCreature)
                         if (pReginaldWindsor->isInCombat())
                             pReginaldWindsor->CombatStop();
                         pReginaldWindsor->RemoveFromWorld();
-						pEscortAI->m_uiReginaldWindsorGUID.Clear();
+                        pEscortAI->m_uiReginaldWindsorGUID.Clear();
                         pWindsorEscortAI = NULL;
 
                         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Let Marshal Windsor know that I am ready.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
@@ -1977,8 +1981,8 @@ struct MANGOS_DLL_DECL mob_rift_spawnAI : public ScriptedAI
         m_bFreezed = false;
         m_bDefeated = false;
 
-		m_uiUnfilledChestGUID.Clear();
-		m_uiFreezerGUID.Clear();
+        m_uiUnfilledChestGUID.Clear();
+        m_uiFreezerGUID.Clear();
 
         // Make invisible
         //DoCastSpellIfCan(m_creature, SPELL_RIFT_SPAWN_INVISIBILITY);
@@ -2018,7 +2022,7 @@ struct MANGOS_DLL_DECL mob_rift_spawnAI : public ScriptedAI
             {
                 m_bVisible = true;
                 m_bCanReset = false;
-				m_uiFreezerGUID = pCaster->GetObjectGuid();
+                m_uiFreezerGUID = pCaster->GetObjectGuid();
                 //m_creature->RemoveAurasDueToSpell(SPELL_RIFT_SPAWN_INVISIBILITY);
                 m_creature->RemoveAllAuras();
                 //AttackStart(pCaster);
