@@ -271,9 +271,9 @@ struct MANGOS_DLL_DECL npc_feero_ironhandAI : public npc_escortAI
 			pSummon->AI()->AttackStart(m_creature);
 	}*/
 
-	Creature* SpawnAttacker(uint32 creature_entry, float x, float y, float z, uint32 despawn_time = 30000)
+	Creature* SpawnAttacker(uint32 creature_entry, float x, float y, float z, uint32 despawn_time = 120000)
 	{
-		if (SummonedAttacker = m_creature->SummonCreature(creature_entry, x, y, z, 0, (TempSummonType)TEMPSUMMON_CORPSE_TIMED_DESPAWN, despawn_time))
+		if (SummonedAttacker = m_creature->SummonCreature(creature_entry, x, y, z, 0, (TempSummonType)TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, despawn_time))
 			SummonedAttacker->SetFacingToObject(m_creature);
 		return SummonedAttacker;
 	}
