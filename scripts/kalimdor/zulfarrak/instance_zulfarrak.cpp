@@ -72,6 +72,7 @@ void instance_zulfarrak::OnCreatureCreate(Creature* pCreature)
         case NPC_ORO_EYEGOUGE:
         case NPC_MURTA_GRIMGUT:
         case NPC_NEKRUM_GUTCHEWER:
+            pCreature->addUnitState(UNIT_STAT_IGNORE_PATHFINDING);
 			m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
 			break;
         case NPC_DUSTWRAITH:
@@ -207,7 +208,7 @@ void instance_zulfarrak::Update(uint32 uiDiff)
                             if (!pTroll->getVictim())
                             {
                                 pTroll->GetMotionMaster()->Clear();
-                                pTroll->GetMotionMaster()->MovePoint(1, 1886.31f, 1269.72f, 41.65f);
+                                pTroll->GetMotionMaster()->MovePoint(1, 1886.31f, 1269.72f, 41.65f, false);
                                 CreatureCreatePos pos(pTroll->GetMap(), 1886.31f, 1269.72f, 41.65f, 0.0f);
                                 pTroll->SetSummonPoint(pos);
                             }
