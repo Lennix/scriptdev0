@@ -312,7 +312,8 @@ void instance_blackrock_depths::DoAggroManufactory()
     {
         if (Creature* pTarget = instance->GetCreature(*itr))
         {
-            if (pTarget->isAlive())
+            // Check distance to Lord Argelmarch before aggroing
+            if (pTarget->isAlive() && pTarget->IsWithinDistInMap(pLordArgelmarch, 110.0f))
             {
                 pTarget->GetMotionMaster()->MoveChase(pArgTarget);
                 pTarget->AI()->AttackStart(pArgTarget);
