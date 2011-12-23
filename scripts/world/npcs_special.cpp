@@ -673,6 +673,8 @@ struct MANGOS_DLL_DECL npc_garments_of_questsAI : public npc_escortAI
             if (bIsHealed && bCanRun)
                 return;
 
+            uint32 quest = 0;
+
             if (pCaster->GetTypeId() == TYPEID_PLAYER)
             {
                 switch(m_creature->GetEntry())
@@ -680,6 +682,7 @@ struct MANGOS_DLL_DECL npc_garments_of_questsAI : public npc_escortAI
                     case ENTRY_SHAYA:
                         if (((Player*)pCaster)->GetQuestStatus(QUEST_MOON) == QUEST_STATUS_INCOMPLETE)
                         {
+							quest = QUEST_MOON;
                             if (bIsHealed && !bCanRun && Spell->Id == SPELL_FORTITUDE_R1)
                             {
                                 DoScriptText(SAY_SHAYA_THANKS,m_creature,pCaster);
@@ -697,6 +700,7 @@ struct MANGOS_DLL_DECL npc_garments_of_questsAI : public npc_escortAI
                     case ENTRY_ROBERTS:
                         if (((Player*)pCaster)->GetQuestStatus(QUEST_LIGHT_1) == QUEST_STATUS_INCOMPLETE)
                         {
+							quest = QUEST_LIGHT_1;
                             if (bIsHealed && !bCanRun && Spell->Id == SPELL_FORTITUDE_R1)
                             {
                                 DoScriptText(SAY_ROBERTS_THANKS,m_creature,pCaster);
@@ -714,6 +718,7 @@ struct MANGOS_DLL_DECL npc_garments_of_questsAI : public npc_escortAI
                     case ENTRY_DOLF:
                         if (((Player*)pCaster)->GetQuestStatus(QUEST_LIGHT_2) == QUEST_STATUS_INCOMPLETE)
                         {
+							quest = QUEST_LIGHT_2;
                             if (bIsHealed && !bCanRun && Spell->Id == SPELL_FORTITUDE_R1)
                             {
                                 DoScriptText(SAY_DOLF_THANKS,m_creature,pCaster);
@@ -731,6 +736,7 @@ struct MANGOS_DLL_DECL npc_garments_of_questsAI : public npc_escortAI
                     case ENTRY_KORJA:
                         if (((Player*)pCaster)->GetQuestStatus(QUEST_SPIRIT) == QUEST_STATUS_INCOMPLETE)
                         {
+							quest = QUEST_SPIRIT;
                             if (bIsHealed && !bCanRun && Spell->Id == SPELL_FORTITUDE_R1)
                             {
                                 DoScriptText(SAY_KORJA_THANKS,m_creature,pCaster);
@@ -748,6 +754,7 @@ struct MANGOS_DLL_DECL npc_garments_of_questsAI : public npc_escortAI
                     case ENTRY_DG_KEL:
                         if (((Player*)pCaster)->GetQuestStatus(QUEST_DARKNESS) == QUEST_STATUS_INCOMPLETE)
                         {
+							quest = QUEST_DARKNESS;
                             if (bIsHealed && !bCanRun && Spell->Id == SPELL_FORTITUDE_R1)
                             {
                                 DoScriptText(SAY_DG_KEL_THANKS,m_creature,pCaster);
@@ -766,7 +773,7 @@ struct MANGOS_DLL_DECL npc_garments_of_questsAI : public npc_escortAI
 
                 //give quest credit, not expect any special quest objectives
                 if (bCanRun)
-                    ((Player*)pCaster)->TalkedToCreature(m_creature->GetEntry(),m_creature->GetObjectGuid());
+                    ((Player*)pCaster)->AreaExploredOrEventHappens(quest);
             }
         }
     }
