@@ -46,7 +46,7 @@ EndScriptData */
 #include "dire_maul.h"
 
 // TODO: Fill proper entries if we use multiple GOs for Tribute Run
-const uint32 aTribute[] = {0, 0, 0, 0, 0, 179564};
+const uint32 aTribute[] = {300160, 300161, 300162, 300163, 300164};
 
 static Loc Tendris[]=
 {
@@ -334,7 +334,7 @@ void instance_dire_maul::SetData(uint32 uiType, uint32 uiData)
                 uint32 uiCount = 0;
                 ObjectGuid uiTributeGUID = ObjectGuid();
 
-                for(uint8 i = 6; i <= 10; ++i)
+                for(uint8 i = 6; i <= 9; ++i)
                     if (m_auiEncounter[i] != DONE)
                         ++uiCount;
 
