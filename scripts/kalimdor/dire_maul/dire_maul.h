@@ -95,7 +95,11 @@ enum GameObjects
     // North
     GO_GORDOK_COURTYARD_DOOR    = 177219,
     GO_GORDOK_INNER_DOOR        = 177217,
-    GO_GORDOK_TRIBUTE           = 179564,
+    GO_GORDOK_TRIBUTE1          = 300160,
+    GO_GORDOK_TRIBUTE2          = 300161,
+    GO_GORDOK_TRIBUTE3          = 300162,
+    GO_GORDOK_TRIBUTE4          = 300163,
+    GO_GORDOK_TRIBUTE5          = 300164,
     GO_KNOT_THIMBLEJACK_CACHE   = 179501,
     GO_BROKEN_TRAP              = 179485,
     GO_FIXED_TRAP               = 179512,

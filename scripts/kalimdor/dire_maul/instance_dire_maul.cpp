@@ -46,7 +46,7 @@ EndScriptData */
 #include "dire_maul.h"
 
 // TODO: Fill proper entries if we use multiple GOs for Tribute Run
-const uint32 aTribute[] = {36200, 36201, 36202, 36203, 36204};
+const uint32 aTribute[] = {GO_GORDOK_TRIBUTE1, GO_GORDOK_TRIBUTE2, GO_GORDOK_TRIBUTE3, GO_GORDOK_TRIBUTE4, GO_GORDOK_TRIBUTE5};
 
 static Loc Tendris[]=
 {
@@ -181,7 +181,11 @@ void instance_dire_maul::OnObjectCreate(GameObject* pGo)
             m_uiShardGUID.push_back(pGo->GetObjectGuid());
             return;
         // North
-        case GO_GORDOK_TRIBUTE:
+        case GO_GORDOK_TRIBUTE1:
+        case GO_GORDOK_TRIBUTE2:
+        case GO_GORDOK_TRIBUTE3:
+        case GO_GORDOK_TRIBUTE4:
+        case GO_GORDOK_TRIBUTE5:
             m_uiGordokTributeGUID.push_back(pGo->GetObjectGuid());
             return;
         case GO_KNOT_THIMBLEJACK_CACHE:
