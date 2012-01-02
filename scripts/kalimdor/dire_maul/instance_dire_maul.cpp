@@ -46,7 +46,7 @@ EndScriptData */
 #include "dire_maul.h"
 
 // TODO: Fill proper entries if we use multiple GOs for Tribute Run
-const uint32 aTribute[] = {300160, 300161, 300162, 300163, 300164};
+const uint32 aTribute[] = {36200, 36201, 36202, 36203, 36204};
 
 static Loc Tendris[]=
 {
