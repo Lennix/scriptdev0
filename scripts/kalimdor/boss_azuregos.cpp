@@ -82,6 +82,18 @@ struct MANGOS_DLL_DECL boss_azuregosAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
+        // Teleport
+        if (m_uiTeleportTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_ARCANE_VACUUM) == CAST_OK)
+            {
+                DoScriptText(SAY_TELEPORT, m_creature);
+                m_uiTeleportTimer = 30000;
+            }
+        }
+        else
+            m_uiTeleportTimer -= uiDiff;
+
         // Enrage
         if (!m_bEnraged && HealthBelowPct(25))
         {
@@ -136,28 +148,28 @@ struct MANGOS_DLL_DECL boss_azuregosAI : public ScriptedAI
         else
             m_uiReflectionTimer -= uiDiff;
 
-        // Teleport
-        if (m_uiTeleportTimer < uiDiff)
-        {
-            DoScriptText(SAY_TELEPORT, m_creature);
+        //// Teleport
+        //if (m_uiTeleportTimer < uiDiff)
+        //{
+        //    DoScriptText(SAY_TELEPORT, m_creature);
 
-            float fX, fY, fZ;
-            m_creature->GetPosition(fX, fY, fZ);
-            std::vector<ObjectGuid> vGuids;
-            m_creature->FillGuidsListFromThreatList(vGuids);
-            for (std::vector<ObjectGuid>::const_iterator itr = vGuids.begin(); itr != vGuids.end(); ++itr)
-            {
-                Unit* pUnit = m_creature->GetMap()->GetUnit(*itr);
+        //    float fX, fY, fZ;
+        //    m_creature->GetPosition(fX, fY, fZ);
+        //    std::vector<ObjectGuid> vGuids;
+        //    m_creature->FillGuidsListFromThreatList(vGuids);
+        //    for (std::vector<ObjectGuid>::const_iterator itr = vGuids.begin(); itr != vGuids.end(); ++itr)
+        //    {
+        //        Unit* pUnit = m_creature->GetMap()->GetUnit(*itr);
 
-                if (pUnit && pUnit->GetTypeId() == TYPEID_PLAYER)
-                    DoTeleportPlayer(pUnit, fX, fY, fZ+3, pUnit->GetOrientation());
-            }
+        //        if (pUnit && pUnit->GetTypeId() == TYPEID_PLAYER)
+        //            DoTeleportPlayer(pUnit, fX, fY, fZ+3, pUnit->GetOrientation());
+        //    }
 
-            DoResetThreat();
-            m_uiTeleportTimer = 30000;
-        }
-        else
-            m_uiTeleportTimer -= uiDiff;
+        //    DoResetThreat();
+        //    m_uiTeleportTimer = 30000;
+        //}
+        //else
+        //    m_uiTeleportTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
