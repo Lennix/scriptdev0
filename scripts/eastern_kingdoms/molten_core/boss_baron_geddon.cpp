@@ -49,7 +49,7 @@ struct MANGOS_DLL_DECL boss_baron_geddonAI : public ScriptedAI
     uint32 m_uiIgniteManaTimer;
     uint32 m_uiInfernoTimer;
     uint32 m_uiLivingBombTimer;
-    uint32 m_uiArmageddonWorkaroundTimer;
+    uint32 m_uiArmageddonTimer;
 
     void Reset()
     {
@@ -60,7 +60,7 @@ struct MANGOS_DLL_DECL boss_baron_geddonAI : public ScriptedAI
         m_uiIgniteManaTimer = 19000;                              // These times are probably wrong
         m_uiInfernoTimer = 30000;
         m_uiLivingBombTimer = 9000;
-        m_uiArmageddonWorkaroundTimer = 0;
+        m_uiArmageddonTimer = 0;
 
         m_creature->ApplySpellImmune(0, IMMUNITY_DAMAGE, SPELL_SCHOOL_MASK_FIRE, true);
     }
@@ -77,7 +77,7 @@ struct MANGOS_DLL_DECL boss_baron_geddonAI : public ScriptedAI
             m_pInstance->SetData(TYPE_GEDDON, DONE);
     }
 
-    /*void GeddonArmageddonDealDamage()
+    void GeddonArmageddonDealDamage()
     {
         GUIDVector vGuids;
         m_creature->FillGuidsListFromThreatList(vGuids);
@@ -93,7 +93,7 @@ struct MANGOS_DLL_DECL boss_baron_geddonAI : public ScriptedAI
 
         m_creature->SetHealth(0);
         m_creature->SetDeathState(JUST_DIED);
-    }*/
+    }
 
     void UpdateAI(const uint32 uiDiff)
     {
@@ -102,16 +102,17 @@ struct MANGOS_DLL_DECL boss_baron_geddonAI : public ScriptedAI
 
         if (m_bArmageddon)
         {
-            /*if (m_uiArmageddonWorkaroundTimer)
+            if (m_uiArmageddonTimer)
             {
-                if (m_uiArmageddonWorkaroundTimer <= uiDiff)
+                if (m_uiArmageddonTimer <= uiDiff)
                 {
-                    m_uiArmageddonWorkaroundTimer = 0;
+                    m_uiArmageddonTimer = 0;
                     GeddonArmageddonDealDamage();
                 }
                 else
-                    m_uiArmageddonWorkaroundTimer -= uiDiff;
-            }*/
+                    m_uiArmageddonTimer -= uiDiff;
+            }
+            DoMeleeAttackIfReady();
             return;
         }
 
@@ -141,7 +142,7 @@ struct MANGOS_DLL_DECL boss_baron_geddonAI : public ScriptedAI
             DoScriptText(EMOTE_SERVICE, m_creature);
             DoCastSpellIfCan(m_creature, SPELL_ARMAGEDDON, CAST_TRIGGERED);
             
-            //m_uiArmageddonWorkaroundTimer = 8500;   // workaround
+            m_uiArmageddonTimer = 5000;
             return;
         }
 

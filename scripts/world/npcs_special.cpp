@@ -1516,6 +1516,51 @@ CreatureAI* GetAI_mob_mangy_wolf(Creature* pCreature)
     return new mob_mangy_wolfAI(pCreature);
 }
 
+/*######
+## npc_avalanchion
+######*/
+
+#define MOB_THUNDERING_INVADER 14462
+
+struct MANGOS_DLL_DECL npc_avalanchionAI : public ScriptedAI
+{
+    npc_avalanchionAI(Creature* pCreature) : ScriptedAI(pCreature) 
+    {
+        Reset();
+    }
+
+    void Reset()
+    {
+    }
+
+    void JustDied(Unit* /*pKiller*/)
+    {
+		uint32 invaderEntry;
+		switch (m_creature->GetEntry())
+		{
+			case 14464:
+				invaderEntry = 14462;
+				break;
+			default:
+				return;
+		}
+
+		// Despawn Invaders
+        std::list<Creature*> m_lInvaders;
+        GetCreatureListWithEntryInGrid(m_lInvaders, m_creature, invaderEntry, 300.0f);
+
+        if (!m_lInvaders.empty())
+            for(std::list<Creature*>::iterator itr = m_lInvaders.begin(); itr != m_lInvaders.end(); ++itr)
+                if ((*itr))
+					(*itr)->RemoveFromWorld();
+    }
+
+};
+CreatureAI* GetAI_npc_avalanchion(Creature* pCreature)
+{
+    return new npc_avalanchionAI(pCreature);
+}
+
 /* AddSC() */
 
 void AddSC_npcs_special()
@@ -1615,5 +1660,10 @@ void AddSC_npcs_special()
     pNewScript = new Script;
     pNewScript->Name = "mob_mangy_wolf";
     pNewScript->GetAI = &GetAI_mob_mangy_wolf;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_avalanchion";
+    pNewScript->GetAI = &GetAI_npc_avalanchion;
     pNewScript->RegisterSelf();
 }

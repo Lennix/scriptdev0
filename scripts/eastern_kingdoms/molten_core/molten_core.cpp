@@ -144,69 +144,70 @@ struct MANGOS_DLL_DECL CoreHoundTriggerAI : public ScriptedAI
 {
     CoreHoundTriggerAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
+        // Trigger stehen nur rum
 		SetCombatMovement(false);
 		m_creature->SetVisibility(VISIBILITY_OFF);
 		m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED);
-        //m_pInstance = (instance_molten_core*)pCreature->GetInstanceData();
 
         Reset();
     }
 
-	//instance_molten_core* m_pInstance;
+	Creature* pAdds[5];
 
-	//Creature* pAdds[5];
+	bool GetCoreHounds;
 
-	//bool GetCoreHounds;
-
-	//uint32 CoreHound_Timer[5];
-	//uint32 Bite_Timer[5];
-	//uint8 AddCounter;
+	uint32 CoreHound_Timer[5];
+	uint32 Bite_Timer[5];
+	uint8 AddCounter;
 
 	void Reset()
 	{
-		//for (uint8 i = 0; i < 5; ++i)
-		//	CoreHound_Timer[i] = 12000;
+		for (uint8 i = 0; i < 5; ++i)
+			CoreHound_Timer[i] = 12000;
 
 		//for (uint8 i = 0; i < 5; ++i)
 		//	Bite_Timer[i] = 10000;
 
-		//AddCounter = 0;
+		AddCounter = 0;
 
-		//GetCoreHounds = false;
+		GetCoreHounds = false;
 	}
 
 
-	//void UpdateAI(const uint32 diff)
- //   {
-	//	m_creature->CallForHelp(15.0f);
+	void UpdateAI(const uint32 diff)
+    {
+        // Warum??
+		//m_creature->CallForHelp(15.0f);
 
-	//	if (GetCoreHounds == false)
-	//	{
-	//		//Create list of corehounds, 5 per pack
-	//		std::list<Creature*> pList;          
-	//		GetCreatureListWithEntryInGrid(pList,m_creature, NPC_CORE_HOUND, 20.0f);
-	//		for(std::list<Creature*>::iterator i = pList.begin(); i != pList.end(); ++i)
-	//		{
-	//			if (AddCounter < 5)
-	//			{
-	//				pAdds[AddCounter] = *i;
+        // Nachm Spawn erstmal die Hunde registrieren
+		if (GetCoreHounds == false)
+		{
+			// Create list of corehounds, 5 per pack
+			std::list<Creature*> pList;
+			GetCreatureListWithEntryInGrid(pList,m_creature, NPC_CORE_HOUND, 20.0f);
+			for(std::list<Creature*>::iterator i = pList.begin(); i != pList.end(); ++i)
+			{
+				if (AddCounter < 5)
+				{
+					pAdds[AddCounter] = *i;
 
-	//				++AddCounter;
-	//			}
-	//		}
+					++AddCounter;
+				}
+			}
 
-	//		GetCoreHounds = true;
-	//	}
+			GetCoreHounds = true;
+		}
 
-	//	for (uint8 i = 0; i < 5; ++i)
-	//	{
-	//		if (pAdds[i] && pAdds[i]->isInCombat())
-	//			pAdds[i]->CallForHelp(15.0f);				
-	//	}
+        // Vielleicht linken?
+		for (uint8 i = 0; i < 5; ++i)
+		{
+			if (pAdds[i] && pAdds[i]->isInCombat())
+				pAdds[i]->CallForHelp(15.0f);				
+		}
 
-		//No need to make them use serrated bite here
+		//// No need to make them use serrated bite here
 		//for (uint8 i = 0; i < 5; ++i)
 		//{
 		//	if (Bite_Timer[i] < diff)
@@ -225,8 +226,8 @@ struct MANGOS_DLL_DECL CoreHoundTriggerAI : public ScriptedAI
 		//		Bite_Timer[i] -= diff;
 		//}
 
-		//Set timer if a corehound dies
-/*		for (uint8 i = 0; i < 5; ++i)
+		// Set timer if a corehound dies
+		for (uint8 i = 0; i < 5; ++i)
 		{
 			if (pAdds[i] && pAdds[i]->isDead() && CoreHound_Timer[i] > 10000)
 				CoreHound_Timer[i] = 10000;
@@ -238,7 +239,7 @@ struct MANGOS_DLL_DECL CoreHoundTriggerAI : public ScriptedAI
 			{
 				if (CoreHound_Timer[i] < diff)
 				{
-					if (pAdds[0]->isAlive() || pAdds[1]->isAlive() || pAdds[2]->isAlive() ||pAdds[3]->isAlive() ||pAdds[4]->isAlive())
+					if (pAdds[0]->isAlive() || pAdds[1]->isAlive() || pAdds[2]->isAlive() || pAdds[3]->isAlive() || pAdds[4]->isAlive())
 					{
 						pAdds[i]->SetDeathState(ALIVE);
 						pAdds[i]->SetHealthPercent(100);
@@ -251,6 +252,7 @@ struct MANGOS_DLL_DECL CoreHoundTriggerAI : public ScriptedAI
 					{
 						m_creature->SetDeathState(JUST_DIED);
 						m_creature->SetHealthPercent(0);
+                        break;
 					}
 
 					CoreHound_Timer[i] = 12000;
@@ -259,7 +261,7 @@ struct MANGOS_DLL_DECL CoreHoundTriggerAI : public ScriptedAI
 					CoreHound_Timer[i] -= diff;
 			}
 		}
-	}		*/	
+	}	
 };
 
 CreatureAI* GetAI_CoreHoundTrigger(Creature* pCreature)

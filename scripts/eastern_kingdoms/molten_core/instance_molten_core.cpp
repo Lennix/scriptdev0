@@ -545,7 +545,7 @@ void instance_molten_core::SetData(uint32 uiType, uint32 uiData)
                 if (!lCoreRager.empty())
                     for (GUIDList::iterator itr = lCoreRager.begin(); itr != lCoreRager.end(); ++itr)
                         if (Creature* target = instance->GetCreature(*itr))
-                            target->ForcedDespawn();
+                            target->DealDamage(target, target->GetHealth(), NULL, SPELL_DIRECT_DAMAGE, SPELL_SCHOOL_MASK_FIRE, NULL, false);
             break;
         case TYPE_MAJORDOMO:
             m_auiEncounter[8] = uiData;

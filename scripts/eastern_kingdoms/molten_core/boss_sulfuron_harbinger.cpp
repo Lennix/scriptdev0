@@ -154,11 +154,12 @@ struct MANGOS_DLL_DECL mob_flamewaker_priestAI : public ScriptedAI
     void Reset()
     {
         m_uiDarkStrikeTimer = 10000;
-        m_uiHealTimer = urand(15000, 30000);
+        m_uiHealTimer = urand(12000, 18000);
         m_uiShadowWordPainTimer = 2000;
         m_uiImmolateTimer = 8000;
 
         m_creature->ApplySpellImmune(0, IMMUNITY_STATE, SPELL_AURA_MOD_CASTING_SPEED_NOT_STACK, true);
+        m_creature->ApplySpellImmune(0, IMMUNITY_STATE, SPELL_AURA_MOD_HEALING, true);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -181,7 +182,7 @@ struct MANGOS_DLL_DECL mob_flamewaker_priestAI : public ScriptedAI
             if (Unit* pUnit = DoSelectLowestHpFriendly(60.0f, 1))
                 DoCastSpellIfCan(pUnit, SPELL_HEAL);
 
-            m_uiHealTimer = urand(15000, 20000);
+            m_uiHealTimer = urand(12000, 18000);
         }
         else
             m_uiHealTimer -= uiDiff;
