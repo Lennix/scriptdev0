@@ -1,12 +1,12 @@
 /* Copyright (C) 2010 Zataron
-	-->	based on the script of scriptdevzero modified by Marvin Cordes 
+    -->	based on the script of scriptdevzero modified by Marvin Cordes 
 
 /* ScriptData
 SDName: Boss_Onyxia
 SD%Complete: 95
 SDComment: Problems: - Deep Breath emote doesnt work
                      - No flying animation while not moving in the air
-					 - No visual effect for lava eruptions in phase 3
+                     - No visual effect for lava eruptions in phase 3
 SDCategory: Onyxia's Lair
 EndScriptData */
 
@@ -49,8 +49,8 @@ enum
 
     SPELL_BELLOWINGROAR         = 18431,
     SPELL_HEATED_GROUND         = 22191,
-	GO_LAVA_FISSURE             = 178036,
-	LAVA_RANGE                  = 4,
+    GO_LAVA_FISSURE             = 178036,
+    LAVA_RANGE                  = 4,
 
     SPELL_SUMMONWHELP           = 17646,
     //NPC_ONYXIA_WARDER           = 12129,                    // Already defined in onyxias_lair.h
@@ -74,12 +74,12 @@ struct sOnyxMove
 static sOnyxMove aMoveData[8]=
 {
     {0, 1, SPELL_BREATH_WEST_TO_EAST,   -33.5561f, -182.682f, -60.9457f},	//west
-	{1, 4, SPELL_BREATH_NW_TO_SE,         6.8951f, -180.246f, -60.896f},	//north-west
-	{2, 6, SPELL_BREATH_NORTH_TO_SOUTH,  22.8763f, -217.152f, -60.0548f},								//north
+    {1, 4, SPELL_BREATH_NW_TO_SE,         6.8951f, -180.246f, -60.896f},	//north-west
+    {2, 6, SPELL_BREATH_NORTH_TO_SOUTH,  22.8763f, -217.152f, -60.0548f},								//north
     {3, 5, SPELL_BREATH_NE_TO_SW,        10.2191f, -247.912f, -60.896f},	//north-east
     {4, 0, SPELL_BREATH_EAST_TO_WEST,   -31.4963f, -250.123f, -60.1278f},	//east
     {5, 2, SPELL_BREATH_SE_TO_NW,       -63.5156f, -240.096f, -60.477f},	//south-east
-	{6, 7, SPELL_BREATH_SOUTH_TO_NORTH, -65.8444f, -213.809f, -60.2985f},								//south
+    {6, 7, SPELL_BREATH_SOUTH_TO_NORTH, -65.8444f, -213.809f, -60.2985f},								//south
     {7, 3, SPELL_BREATH_SW_TO_NE,       -58.2509f, -189.020f, -60.790f},	//south-west    
 };
 
@@ -120,26 +120,26 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     uint32 m_uiSummonWhelpsTimer;
     uint32 m_uiBellowingRoarTimer;
     uint32 m_uiWhelpTimer;
-	uint32 m_uiLavaTimer;
+    uint32 m_uiLavaTimer;
 
-	// For flying animation
-	uint32 m_uiWingTimer;
+    // For flying animation
+    uint32 m_uiWingTimer;
 
-	// Change movement timer
-	uint32 m_uiChangeMovementTimer;
+    // Change movement timer
+    uint32 m_uiChangeMovementTimer;
 
     uint32 m_uiSummonPlayerTimer;
 
     uint8 m_uiSummonCount;
-	uint8 MaxWhelps;
-	uint32 m_uiRandom;
+    uint8 MaxWhelps;
+    uint32 m_uiRandom;
     bool m_bIsSummoningWhelps;
     bool m_bIsSummoningWarders;
     bool m_bEntranceWardersSpawned;
 
-	//Unit* mTank;
+    //Unit* mTank;
     ObjectGuid m_uiTankGUID;
-	bool FearMode, m_uiIsStanding, m_uiCastingFireBall;
+    bool FearMode, m_uiIsStanding, m_uiCastingFireBall;
 
     void Reset()
     {
@@ -148,7 +148,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
         m_uiPhase = PHASE_START;
         if (m_creature->HasSplineFlag(SPLINEFLAG_FLYING))
-		    m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
+            m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
 
         m_uiFlameBreathTimer = urand(10000, 15000);
         m_uiTailSweepTimer = urand(5000, 8000);
@@ -163,22 +163,22 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         m_uiSummonWhelpsTimer = 30000;
         m_uiBellowingRoarTimer = 10000;
         m_uiWhelpTimer = 1000;
-		m_uiLavaTimer = 6000;
+        m_uiLavaTimer = 6000;
 
-		m_uiChangeMovementTimer = 0;
-		m_uiWingTimer = 0;
+        m_uiChangeMovementTimer = 0;
+        m_uiWingTimer = 0;
 
         m_uiSummonCount = 0;
-		MaxWhelps = MAX_WHELP;
+        MaxWhelps = MAX_WHELP;
         m_bIsSummoningWhelps = false;
 
-		m_uiRandom = 0;
-		//mTank = 0;
-		m_uiTankGUID.Clear();
-		FearMode = false;
+        m_uiRandom = 0;
+        //mTank = 0;
+        m_uiTankGUID.Clear();
+        FearMode = false;
 
-		m_uiIsStanding = false;
-		m_uiCastingFireBall = false;
+        m_uiIsStanding = false;
+        m_uiCastingFireBall = false;
 
         m_creature->ApplySpellImmune(0, IMMUNITY_DAMAGE, SPELL_SCHOOL_MASK_FIRE, true);
     }
@@ -220,31 +220,31 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
             m_pInstance->SetData(TYPE_ONYXIA, DONE);
     }
 
-	void MovementInform(uint32 uiMotionType, uint32 uiPointId)
+    void MovementInform(uint32 uiMotionType, uint32 uiPointId)
     {
         if (m_uiPhase == PHASE_BREATH)
-		{
-			m_uiRandom = urand(-1,1);
+        {
+            m_uiRandom = urand(-1,1);
             if (!m_pPointData)
                 return;
 
             // Deep Breath before Onyxia moves across the room
             if (m_uiRandom == 0)
             {
-				int point = (int)uiPointId;
-				if (uiPointId <= 6)
-					m_creature->SetFacingTo(2 * M_PI_F * (float)(abs(point-6)/8.0f));
-				else if (uiPointId > 6)
-					m_creature->SetFacingTo(2 * M_PI_F * (float)(7/8));
+                int point = (int)uiPointId;
+                if (uiPointId <= 6)
+                    m_creature->SetFacingTo(2 * M_PI_F * (float)(abs(point-6)/8.0f));
+                else if (uiPointId > 6)
+                    m_creature->SetFacingTo(2 * M_PI_F * (float)(7/8));
 
-				m_uiIsStanding = true;
+                m_uiIsStanding = true;
                 //Deep Breath Emote doesnt work!
                 //DoScriptText(EMOTE_BREATH, m_creature); // does not work yet
                 m_creature->MonsterYell(EMOTE_BREATH, LANG_UNIVERSAL, NULL);
                 DoCastSpellIfCan(m_creature->getVictim(), m_pPointData->uiSpellId, CAST_INTERRUPT_PREVIOUS/* | CAST_FORCE_CAST | CAST_TRIGGERED*/);
                 m_uiMovePoint += 3;
 
-				m_uiMovementTimer = 8000;
+                m_uiMovementTimer = 8000;
             }
             else 
                 m_uiMovePoint = m_uiMovePoint + m_uiRandom;
@@ -267,12 +267,12 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ, false);
                 m_uiIsStanding = false;
             }	
-		}
-		else if (uiPointId == 8)
-		{
-			m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
-			DoStartMovement(m_creature->getVictim());	
-		}
+        }
+        else if (uiPointId == 8)
+        {
+            m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
+            DoStartMovement(m_creature->getVictim());	
+        }
     }
 
     void SetNextRandomPoint()
@@ -292,48 +292,33 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        // Summon Player (maybe crashing server)
-        /*if (m_uiSummonPlayerTimer <= uiDiff)
-        {
-            if (m_creature->getVictim()->GetTypeId() == TYPEID_PLAYER && !m_creature->getVictim()->IsWithinDist(m_creature, SUMMON_PLAYER_TRIGGER_DISTANCE))
-            {
-                float fX, fY, fZ, fO;
-                m_creature->GetPosition(fX, fY, fZ);
-                fO = m_creature->GetOrientation();
-                ((Player*)m_creature->getVictim())->TeleportTo(m_creature->GetMapId(), fX, fY, fZ, -fO);
-            }
-            m_uiSummonPlayerTimer = 2000;
-        }
-        else
-            m_uiSummonPlayerTimer -= uiDiff;*/
-
         if (m_uiPhase == PHASE_START || m_uiPhase == PHASE_END)    //Phase 1 or 3
         {
-			// Flame Breath
+            // Flame Breath
             if (m_uiFlameBreathTimer < uiDiff)
             {
                 DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAMEBREATH);
                 m_uiFlameBreathTimer = urand(10000, 15000);
-				m_creature->addUnitState(UNIT_STAT_CAN_NOT_MOVE);
-				m_uiChangeMovementTimer = 2000;
+                m_creature->addUnitState(UNIT_STAT_CAN_NOT_MOVE);
+                m_uiChangeMovementTimer = 2000;
             }
             else
                 m_uiFlameBreathTimer -= uiDiff;
 
-			if (m_uiChangeMovementTimer > 0)
-			{
-				// Flame Breath
-				if (m_uiChangeMovementTimer < uiDiff)
-				{
-					m_creature->clearUnitState(UNIT_STAT_CAN_NOT_MOVE);
-					DoStartMovement(m_creature->getVictim());
-					m_uiChangeMovementTimer = 0;
-				}
-				else
-					m_uiChangeMovementTimer -= uiDiff;
-			}
+            if (m_uiChangeMovementTimer > 0)
+            {
+            	// Flame Breath
+            	if (m_uiChangeMovementTimer < uiDiff)
+            	{
+            		m_creature->clearUnitState(UNIT_STAT_CAN_NOT_MOVE);
+            		DoStartMovement(m_creature->getVictim());
+            		m_uiChangeMovementTimer = 0;
+            	}
+            	else
+            		m_uiChangeMovementTimer -= uiDiff;
+            }
 
-			// Tail Sweep
+            // Tail Sweep
             if (m_uiTailSweepTimer < uiDiff)
             {
                 DoCastSpellIfCan(m_creature, SPELL_TAILSWEEP);
@@ -342,7 +327,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
             else
                 m_uiTailSweepTimer -= uiDiff;
 
-			// Cleave
+            // Cleave
             if (m_uiCleaveTimer < uiDiff)
             {
                 DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE);
@@ -351,10 +336,10 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
             else
                 m_uiCleaveTimer -= uiDiff;
 
-			// Wing Buffet
+            // Wing Buffet
             if (m_uiWingBuffetTimer < uiDiff)
             {
-				m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(), -25);
+                m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(), -25);
                 DoCastSpellIfCan(m_creature->getVictim(), SPELL_WINGBUFFET);
                 m_uiWingBuffetTimer = urand(15000, 20000);
             }
@@ -363,27 +348,27 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
             if (m_uiPhase == PHASE_END)   //Phase 3
             {
-				// Bellowing Roar
+                // Bellowing Roar
                 if (m_uiBellowingRoarTimer < uiDiff)
                 {
-					if (Unit* mTank = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0))
+                    if (Unit* mTank = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0))
                         m_uiTankGUID = mTank->GetObjectGuid();
-					m_uiLavaTimer = 4500;
+                    m_uiLavaTimer = 4500;
                     DoCastSpellIfCan(m_creature->getVictim(), SPELL_BELLOWINGROAR);
                     m_uiBellowingRoarTimer = urand(10000,30000);
                 }
                 else
                     m_uiBellowingRoarTimer -= uiDiff;
 
-				// Make tank lose aggro when feared
+                // Make tank lose aggro when feared
                 if (!FearMode && m_uiTankGUID)
                 {
                     Unit* mTank = m_creature->GetMap()->GetUnit(m_uiTankGUID);
                     if (mTank && mTank->HasAura(SPELL_BELLOWINGROAR))
-				    {
-					    FearMode = true;
-					    m_creature->getThreatManager().modifyThreatPercent(mTank, -99);
-				    }
+                    {
+                        FearMode = true;
+                        m_creature->getThreatManager().modifyThreatPercent(mTank, -99);
+                    }
                 }
 
                 // Make tank regain aggro after fear
@@ -391,10 +376,10 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 {
                     Unit* mTank = m_creature->GetMap()->GetUnit(m_uiTankGUID);
                     if (mTank && !mTank->HasAura(SPELL_BELLOWINGROAR))
-				    {
-					    m_creature->getThreatManager().modifyThreatPercent(mTank, 11000);
-					    FearMode = false;					
-				    }
+                    {
+                        m_creature->getThreatManager().modifyThreatPercent(mTank, 11000);
+                        FearMode = false;					
+                    }
                 }
 
                 // Lava Eruptions after fear ran out
@@ -402,14 +387,14 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 {
                     // Lava animation
                     std::list<GameObject*> goList;
-					GetGameObjectListWithEntryInGrid(goList,m_creature,GO_LAVA_FISSURE,300);
-					for(std::list<GameObject*>::iterator i = goList.begin(); i != goList.end(); ++i)
-						if(GameObject* gobj = *i)
-							gobj->SendGameObjectCustomAnim(gobj->GetObjectGuid());
-					
-					GUIDVector pList;
+                    GetGameObjectListWithEntryInGrid(goList,m_creature,GO_LAVA_FISSURE,300);
+                    for(std::list<GameObject*>::iterator i = goList.begin(); i != goList.end(); ++i)
+                        if(GameObject* gobj = *i)
+                            gobj->SendGameObjectCustomAnim(gobj->GetObjectGuid());
+                    
+                    GUIDVector pList;
                     m_creature->FillGuidsListFromThreatList(pList);
-					// Lets get all players around Onyxia
+                    // Lets get all players around Onyxia
                     if (!pList.empty())
                     {
                         for (GUIDVector::const_iterator itr = pList.begin(); itr != pList.end(); ++itr)
@@ -418,11 +403,11 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                             if (pTarget && pTarget->GetTypeId() == TYPEID_PLAYER)
                             {
                                 goList.clear();
-								// Now lets check which players are near the lava fissures
+                                // Now lets check which players are near the lava fissures
                                 GetGameObjectListWithEntryInGrid(goList,pTarget,GO_LAVA_FISSURE,LAVA_RANGE);
-								for(std::list<GameObject*>::iterator i = goList.begin(); i != goList.end(); ++i)
-									if(GameObject* gobj = *i)
-	                                    ((Player*)pTarget)->EnvironmentalDamage(DAMAGE_LAVA, urand(1300,1600));
+                                for(std::list<GameObject*>::iterator i = goList.begin(); i != goList.end(); ++i)
+                                    if(GameObject* gobj = *i)
+                                        ((Player*)pTarget)->EnvironmentalDamage(DAMAGE_LAVA, urand(1300,1600));
                             }
                         }
                     }
@@ -465,106 +450,107 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 MaxWhelps = urand(4,6);
                 m_uiSummonCount = 0;
                 DoScriptText(SAY_PHASE_3_TRANS, m_creature);
-				m_creature->GetMotionMaster()->Clear(false);
+                m_creature->GetMotionMaster()->Clear(false);
                 DoResetThreat();
                 SetCombatMovement(true);
-				// Land in the middle
+                // Land in the middle
                 m_creature->GetMotionMaster()->MovePoint(8,-26.43f,-217.60f,-86.68f,false);
 
                 return;
             }
 
-			if (m_uiIsStanding || m_uiCastingFireBall)
-			{
-				// Flying animation only while casting deep breath or fireball
-				if (m_uiWingTimer < uiDiff)
-				{
-					m_creature->SendFlyingAnimation(SPELL_FIREBALL);
-					m_uiWingTimer = 1000;
-				}
-				else
-					m_uiWingTimer -= uiDiff;
-			}
-			else
-				m_uiWingTimer = 0;
+            if (m_uiIsStanding || m_uiCastingFireBall)
+            {
+                // Flying animation only while casting deep breath or fireball
+                if (m_uiWingTimer < uiDiff)
+                {
+                    m_creature->SendFlyingAnimation(SPELL_FIREBALL);
+                    m_uiWingTimer = 1000;
+                }
+                else
+                    m_uiWingTimer -= uiDiff;
+            }
+            else
+                m_uiWingTimer = 0;
 
             // Timer runs out once deep breath is done casting
             if (m_uiMovementTimer < uiDiff)
             {
-				if (m_uiIsStanding)
-				{
-					m_uiRandom = urand(-1,1);
+                if (m_uiIsStanding)
+                {
+                    m_uiRandom = urand(-1,1);
 
-					if (!m_pPointData)
-						return;
+                    if (!m_pPointData)
+                        return;
 
-					// Deep Breath before Onyxia moves across the room
-					if (m_uiRandom == 0)
-					{
-						//Deep Breath Emote doesnt work!
-						//DoScriptText(EMOTE_BREATH, m_creature); // does not work yet
-						m_creature->MonsterYell(EMOTE_BREATH, LANG_UNIVERSAL, NULL);
-						DoCastSpellIfCan(m_creature->getVictim(), m_pPointData->uiSpellId, CAST_INTERRUPT_PREVIOUS/* | CAST_FORCE_CAST | CAST_TRIGGERED*/);
-						m_uiMovePoint += 3;
-						m_uiMovementTimer = 8500;
-						m_uiIsStanding = true;
-					}
-					else 
-						m_uiMovePoint = m_uiMovePoint + m_uiRandom;
+                    // Deep Breath before Onyxia moves across the room
+                    if (m_uiRandom == 0)
+                    {
+                        //Deep Breath Emote doesnt work!
+                        //DoScriptText(EMOTE_BREATH, m_creature); // does not work yet
+                        m_creature->MonsterYell(EMOTE_BREATH, LANG_UNIVERSAL, NULL);
+                        DoCastSpellIfCan(m_creature->getVictim(), m_pPointData->uiSpellId, CAST_INTERRUPT_PREVIOUS/* | CAST_FORCE_CAST | CAST_TRIGGERED*/);
+                        m_uiMovePoint += 3;
+                        m_uiMovementTimer = 8500;
+                        m_uiIsStanding = true;
+                    }
+                    else 
+                        m_uiMovePoint = m_uiMovePoint + m_uiRandom;
 
-					if (m_uiMovePoint == -1)
-						m_uiMovePoint = 7;
-					else if (m_uiMovePoint > 7)
-						m_uiMovePoint -= 8;
+                    if (m_uiMovePoint == -1)
+                        m_uiMovePoint = 7;
+                    else if (m_uiMovePoint > 7)
+                        m_uiMovePoint -= 8;
 
-					if (m_uiMovePoint > 7)
-					{
-						error_log("SD0: Onyxia: m_uiMovePoint > 7, possible crash! Reseted to 0");
-						m_uiMovePoint = 0;
-					}
+                    if (m_uiMovePoint > 7)
+                    {
+                        error_log("SD0: Onyxia: m_uiMovePoint > 7, possible crash! Reseted to 0");
+                        m_uiMovePoint = 0;
+                    }
 
-					m_pPointData = &aMoveData[m_uiMovePoint];
+                    m_pPointData = &aMoveData[m_uiMovePoint];
 
-					if (m_uiRandom != 0 && m_pPointData)
-					{
-						m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ, false);
-						m_uiIsStanding = false;
-					}
-				}
+                    if (m_uiRandom != 0 && m_pPointData)
+                    {
+                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ, false);
+                        m_uiIsStanding = false;
+                    }
+                }
             }
             else
                 m_uiMovementTimer -= uiDiff;
 
-			// Engulfing Flames
+            // Engulfing Flames
             if (m_uiEngulfingFlamesTimer < uiDiff)
             {
-				// Only cast engulfing flames when not prepping for deep breath
-				if (!m_uiIsStanding)
-				{
-					if (m_uiCastingFireBall)
-					{
-						m_uiEngulfingFlamesTimer = 8000;
-						m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ, false);
-						m_uiCastingFireBall = false;
-					}
-					else
-					{
-						m_creature->GetMotionMaster()->Clear(false);
-						m_creature->GetMotionMaster()->MoveIdle();
-						if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO , 0)) {
-							m_creature->SetFacingToObject(pTarget);
-							DoCastSpellIfCan(pTarget, SPELL_FIREBALL);
-							m_creature->getThreatManager().modifyThreatPercent(pTarget,-100);
-						}
-						m_uiEngulfingFlamesTimer = 4000;
-						m_uiCastingFireBall = true;
-					}
-				}
+                // Only cast engulfing flames when not prepping for deep breath
+                if (!m_uiIsStanding)
+                {
+                    if (m_uiCastingFireBall)
+                    {
+                        m_uiEngulfingFlamesTimer = 8000;
+                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ, false);
+                        m_uiCastingFireBall = false;
+                    }
+                    else
+                    {
+                        m_creature->GetMotionMaster()->Clear(false);
+                        m_creature->GetMotionMaster()->MoveIdle();
+                        if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO , 0)) 
+                        {
+                            m_creature->SetFacingToObject(pTarget);
+                            DoCastSpellIfCan(pTarget, SPELL_FIREBALL);
+                            m_creature->getThreatManager().modifyThreatPercent(pTarget,-100);
+                        }
+                        m_uiEngulfingFlamesTimer = 4000;
+                        m_uiCastingFireBall = true;
+                    }
+                }
             }
             else
                 m_uiEngulfingFlamesTimer -= uiDiff;           //engulfingflames is supposed to be activated by a fireball but haven't come by
 
-			// Summon Whelps: First Wave spawns 20 whelps, every other wave spawns 16.
+            // Summon Whelps: First Wave spawns 20 whelps, every other wave spawns 16.
             if (m_bIsSummoningWhelps == true)
             {
                 if (m_uiSummonCount < MaxWhelps)
@@ -580,7 +566,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 }
                 else
                 {
-					MaxWhelps = MAX_WHELP - 4;
+                    MaxWhelps = MAX_WHELP - 4;
                     m_bIsSummoningWhelps = false;
                     m_uiSummonCount = 0;
                     m_uiSummonWhelpsTimer = 30000;

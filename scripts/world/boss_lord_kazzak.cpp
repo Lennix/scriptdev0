@@ -87,17 +87,17 @@ struct MANGOS_DLL_DECL boss_lordkazzakAI : public ScriptedAI
 
     void MarkPlayer(Player* pl)
 	{ 
-     int r = 0;
-	 for (r; r < MAX_MARK_TARGETS; r++)
-	 {
-      if (!MarkedPlayer[r])
-	  {
-       MarkedPlayer[r] = pl;
-	   if ((r+1) > MarkedPlayerCounter)
-	    MarkedPlayerCounter = r+1;
-	   break;
-	  }
-	 }
+        int r = 0;
+	    for (r; r < MAX_MARK_TARGETS; r++)
+	    {
+            if (!MarkedPlayer[r])
+	        {
+                MarkedPlayer[r] = pl;
+	            if ((r+1) > MarkedPlayerCounter)
+	                MarkedPlayerCounter = r+1;
+	            break;
+	        }
+	    }
 	}
 
     void JustRespawned()
@@ -147,50 +147,58 @@ struct MANGOS_DLL_DECL boss_lordkazzakAI : public ScriptedAI
         {
             DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOWVOLLEY);
             ShadowVolley_Timer = urand(8000,11000);
-        }else ShadowVolley_Timer -= diff;
+        }
+        else 
+            ShadowVolley_Timer -= diff;
 
         //Cleave_Timer
         if (Cleave_Timer < diff)
         {
             DoCastSpellIfCan(m_creature->getVictim(),SPELL_CLEAVE);
             Cleave_Timer = urand(6000,8000);
-        }else Cleave_Timer -= diff;
+        }
+        else
+            Cleave_Timer -= diff;
 
         //ThunderClap_Timer
         if (ThunderClap_Timer < diff)
         {
             DoCastSpellIfCan(m_creature,SPELL_THUNDERCLAP);
             ThunderClap_Timer = urand(11000,14000);
-        }else ThunderClap_Timer -= diff;
+        }
+        else 
+            ThunderClap_Timer -= diff;
 
         //VoidBolt_Timer
         if (VoidBolt_Timer < diff)
         {
             DoCastSpellIfCan(m_creature->getVictim(),SPELL_VOIDBOLT);
             VoidBolt_Timer = urand(16000,20000);
-        }else VoidBolt_Timer -= diff;
+        }
+        else 
+            VoidBolt_Timer -= diff;
 
 		//Mark of Kazzak Explode
 		if (MarkedPlayerCounter > 0)
 		{
-		 int i = 0;
-		 for (i; i < MarkedPlayerCounter; i++)
-		 {
-          if (MarkedPlayer[i])
-		  {
-		   if (MarkedPlayer[i]->isAlive() && MarkedPlayer[i]->HasAura(SPELL_MARKOFKAZZAK))
-		   {
-            if (MarkedPlayer[i]->GetPower(POWER_MANA) < 150)
+		    int i = 0;
+		    for (i; i < MarkedPlayerCounter; i++)
 		    {
-		     MarkedPlayer[i]->RemoveAura(SPELL_MARKOFKAZZAK,EFFECT_INDEX_0);
-			 MarkedPlayer[i]->CastSpell(MarkedPlayer[i],SPELL_EXPLODE,true);
-			 MarkedPlayer[i] = 0;
+                if (MarkedPlayer[i])
+		        {
+		            if (MarkedPlayer[i]->isAlive() && MarkedPlayer[i]->HasAura(SPELL_MARKOFKAZZAK))
+		            {
+                        if (MarkedPlayer[i]->GetPower(POWER_MANA) < 150)
+		                {
+		                    MarkedPlayer[i]->RemoveAura(SPELL_MARKOFKAZZAK,EFFECT_INDEX_0);
+			                MarkedPlayer[i]->CastSpell(MarkedPlayer[i],SPELL_EXPLODE,true);
+			                MarkedPlayer[i] = 0;
+		                }
+		            }
+		            else
+		                MarkedPlayer[i] = 0;
+		        }
 		    }
-		   }
-		   else
-		    MarkedPlayer[i] = 0;
-		  }
-		 }
 		}
 
         //MarkOfKazzak_Timer
@@ -203,7 +211,9 @@ struct MANGOS_DLL_DECL boss_lordkazzakAI : public ScriptedAI
 				MarkPlayer((Player*)victim);
                 MarkOfKazzak_Timer = 18000;
             }
-        }else MarkOfKazzak_Timer -= diff;
+        }
+        else 
+            MarkOfKazzak_Timer -= diff;
 
         //Enrage_Timer
         if (Enrage_Timer < diff)
@@ -211,17 +221,21 @@ struct MANGOS_DLL_DECL boss_lordkazzakAI : public ScriptedAI
             DoScriptText(EMOTE_FRENZY, m_creature);
             DoCastSpellIfCan(m_creature,SPELL_ENRAGE);
             Enrage_Timer = 30000;
-        }else Enrage_Timer -= diff;
+        }
+        else 
+            Enrage_Timer -= diff;
 
 		//Twisted_Reflection_Timer
-        if(Twisted_Reflection_Timer < diff)
+        if (Twisted_Reflection_Timer < diff)
         {
 			if (Unit* u = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
 			{
-             DoCastSpellIfCan(u, SPELL_TWISTEDREFLECTION);
-             Twisted_Reflection_Timer = 18000;
+                DoCastSpellIfCan(u, SPELL_TWISTEDREFLECTION);
+                Twisted_Reflection_Timer = 18000;
 			}
-        }else Twisted_Reflection_Timer -= diff;
+        }
+        else 
+            Twisted_Reflection_Timer -= diff;
 
         DoMeleeAttackIfReady();
     }

@@ -33,7 +33,7 @@ class MANGOS_DLL_DECL instance_onyxias_lair : public ScriptedInstance
 
         void Initialize();
 
-		bool IsEncounterInProgress() const;
+        bool IsEncounterInProgress() const;
 
         void OnCreatureCreate(Creature* pCreature);
 
@@ -46,7 +46,7 @@ class MANGOS_DLL_DECL instance_onyxias_lair : public ScriptedInstance
         uint32 m_auiEncounter[MAX_ENCOUNTER];
         std::string strInstData;
 
-		GUIDList m_uiOnyxiaWarderGUID;;
+        GUIDList m_uiOnyxiaWarderGUID;;
 };
 
 #endif

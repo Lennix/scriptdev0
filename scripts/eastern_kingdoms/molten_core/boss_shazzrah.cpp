@@ -56,7 +56,7 @@ struct MANGOS_DLL_DECL boss_shazzrahAI : public ScriptedAI
         m_uiShazzrahCurseTimer = 10000;
         m_uiCounterspellTimer = 15000;
         m_uiDeadenMagicTimer = 25000;
-        m_uiGateOfShazzrahTimer = 30000;
+        m_uiGateOfShazzrahTimer = urand(10000, 30000);
     }
 
     void JustReachedHome()
@@ -125,7 +125,7 @@ struct MANGOS_DLL_DECL boss_shazzrahAI : public ScriptedAI
                 m_creature->AddThreat(pTarget, 50.0f);
                 m_creature->AI()->AttackStart(pTarget);
             }
-            m_uiGateOfShazzrahTimer = urand(30000, 45000);
+            m_uiGateOfShazzrahTimer = urand(40000, 45000);
         }
         else
             m_uiGateOfShazzrahTimer -= uiDiff;
