@@ -1,4 +1,7 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/*
+ * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
+ * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -24,9 +27,7 @@ EndScriptData */
 #include "precompiled.h"
 #include "blackwing_lair.h"
 
-#define GOSSIP_ITEM         "Start Event <Needs Gossip Text>"
-
-enum eVaelastrasz
+enum
 {
     SAY_LINE_1                  = -1469026,
     SAY_LINE_2                  = -1469027,
@@ -34,24 +35,24 @@ enum eVaelastrasz
     SAY_HALFLIFE                = -1469029,
     SAY_KILLTARGET              = -1469030,
     SAY_NEFARIUS_CORRUPT_1      = -1469006,                 // When he corrupts Vaelastrasz
-    SAY_NEFARIUS_CORRUPT_2      = -1469032,
-    SAY_TECHNICIAN_RUN          = -1469034,
+    SAY_NEFARIUS_CORRUPT_2      = -1469031,
+    SAY_TECHNICIAN_RUN          = -1469033,
 
-    SPELL_BURNING_ADRENALINE    = 23620,
-    SPELL_CLEAVE                = 19983,        // 20684                   // Chain cleave is most likely named something uiDifferent and contains a dummy effect
     SPELL_ESSENCE_OF_THE_RED    = 23513,
-    SPELL_FIRE_NOVA             = 23462,
     SPELL_FLAME_BREATH          = 23461,
-    SPELL_SUMMON_PLAYER         = 20279,
+    SPELL_FIRE_NOVA             = 23462,
     SPELL_TAIL_SWEEP            = 15847,
+    SPELL_BURNING_ADRENALINE    = 23620,
+    SPELL_CLEAVE                = 20684,                    // Chain cleave is most likely named something different and contains a dummy effect
+
     SPELL_NEFARIUS_CORRUPTION   = 23642,
 
     GOSSIP_ITEM_VAEL_1          = -3469003,
     GOSSIP_ITEM_VAEL_2          = -3469004,
     // Vael Gossip texts might be 7156 and 7256; At the moment are missing from DB
     // For the moment add the default values
-    GOSSIP_TEXT_VAEL_1          = 384,
-    GOSSIP_TEXT_VAEL_2          = 384,
+    GOSSIP_TEXT_VAEL_1          = 7156,
+    GOSSIP_TEXT_VAEL_2          = 7256,
 
     FACTION_HOSTILE             = 14,
 
@@ -62,12 +63,14 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 {
     boss_vaelastraszAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (instance_blackwing_lair*)pCreature->GetInstanceData();
-        pCreature->SetStandState(UNIT_STAND_STATE_SLEEP);
+        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
         Reset();
+
+        // Set stand state to dead before the intro event
+        m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
     }
 
-    instance_blackwing_lair* m_pInstance;
+    ScriptedInstance* m_pInstance;
 
     ObjectGuid m_nefariusGuid;
     uint32 m_uiIntroTimer;
@@ -80,8 +83,8 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
     uint32 m_uiCleaveTimer;
     uint32 m_uiFlameBreathTimer;
     uint32 m_uiFireNovaTimer;
-    uint32 m_uiBurningAdrenalineTimer;
-    uint32 m_uiBurningAdrenalineCount;
+    uint32 m_uiBurningAdrenalineCasterTimer;
+    uint32 m_uiBurningAdrenalineTankTimer;
     uint32 m_uiTailSweepTimer;
     bool m_bHasYelled;
 
@@ -95,14 +98,11 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
         m_uiSpeechNum                    = 0;
         m_uiCleaveTimer                  = 8000;            // These times are probably wrong
         m_uiFlameBreathTimer             = 11000;
-        m_uiBurningAdrenalineTimer       = 15000;
-        m_uiBurningAdrenalineCount       = 0;
-        m_uiFireNovaTimer                = 5000;
+        m_uiBurningAdrenalineCasterTimer = 15000;
+        m_uiBurningAdrenalineTankTimer   = 45000;			//caster kriegt den auch
+        m_uiFireNovaTimer                = 3000;
         m_uiTailSweepTimer               = 20000;
         m_bHasYelled = false;
-
-        // Creature should have only 1/3 of hp
-        m_creature->SetHealth(uint32(m_creature->GetMaxHealth()*.3));
     }
 
     void BeginIntro()
@@ -116,6 +116,9 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 
     void BeginSpeech(Player* pTarget)
     {
+        //remove gossip
+        m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+
         // Stand up and begin speach
         m_playerGuid = pTarget->GetObjectGuid();
 
@@ -144,6 +147,8 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 
         // Buff players on aggro
         DoCastSpellIfCan(m_creature, SPELL_ESSENCE_OF_THE_RED);
+
+        m_creature->SetHealthPercent(30);
     }
 
     void JustDied(Unit* pKiller)
@@ -160,7 +165,7 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 
     void JustSummoned(Creature* pSummoned)
     {
-        if (pSummoned->GetEntry() == NPC_VICTOR_NEFARIUS)
+        if (pSummoned->GetEntry() == NPC_LORD_NEFARIAN)
         {
             // Set not selectable, so players won't interact with it
             pSummoned->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
@@ -177,7 +182,7 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
                 switch (m_uiIntroPhase)
                 {
                     case 0:
-                        m_creature->SummonCreature(NPC_VICTOR_NEFARIUS, aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], aNefariusSpawnLoc[2], aNefariusSpawnLoc[3], TEMPSUMMON_TIMED_DESPAWN, 25000);
+                        m_creature->SummonCreature(NPC_LORD_NEFARIAN, aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], aNefariusSpawnLoc[2], aNefariusSpawnLoc[3], TEMPSUMMON_TIMED_DESPAWN, 25000);
                         m_uiIntroTimer = 1000;
                         break;
                     case 1:
@@ -244,72 +249,92 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
             return;
 
         // Yell if hp lower than 15%
-        if (!m_bHasYelled && HealthBelowPct(15))
+        if (m_creature->GetHealthPercent() < 15.0f && !m_bHasYelled)
         {
-            m_bHasYelled = true;
             DoScriptText(SAY_HALFLIFE, m_creature);
+            m_bHasYelled = true;
         }
 
-        // Burning Adrenaline
-        if (m_uiBurningAdrenalineTimer < uiDiff)
-        {
-            // Every third (each 45s) adrenaline cast on tank, next two on player with mana
-            if (Unit* pTarget = m_uiBurningAdrenalineCount % 3 ? SelectUnitWithPower(POWER_MANA) : m_creature->getVictim())
-            {
-                if (DoCastSpellIfCan(pTarget, SPELL_BURNING_ADRENALINE, CAST_TRIGGERED) == CAST_OK)
-                {
-                    m_uiBurningAdrenalineTimer = 15000;
-                    ++m_uiBurningAdrenalineCount;
-                }
-            }
-        }
-        else
-            m_uiBurningAdrenalineTimer -= uiDiff;
-
-        // Cleave
+        // Cleave Timer
         if (m_uiCleaveTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
-                m_uiCleaveTimer = 15000;
+            m_creature->CastSpell(m_creature, SPELL_CLEAVE, true);
+            m_uiCleaveTimer = 15000;
         }
         else
             m_uiCleaveTimer -= uiDiff;
 
-        // Fire Nova
+        // Fire Nova Timer
         if (m_uiFireNovaTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIRE_NOVA) == CAST_OK)
-                m_uiFireNovaTimer = 5000;
+            m_creature->CastSpell(m_creature, SPELL_FIRE_NOVA, true);
+            m_uiFireNovaTimer = 3000;
         }
         else
             m_uiFireNovaTimer -= uiDiff;
 
-        // Flame Breath
-        if (m_uiFlameBreathTimer < uiDiff)
+        // Burning Adrenaline Caster Timer
+        if (m_uiBurningAdrenalineCasterTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAME_BREATH) == CAST_OK)
-                m_uiFlameBreathTimer = urand(4000, 8000);
+            std::vector<Unit*> vManaPlayers;
+
+            // Scan for mana targets in threat list
+            ThreatList const& tList = m_creature->getThreatManager().getThreatList();
+            vManaPlayers.reserve(tList.size());
+            for (ThreatList::const_iterator iter = tList.begin();iter != tList.end(); ++iter)
+            {
+                Unit* pTempTarget = m_creature->GetMap()->GetUnit((*iter)->getUnitGuid());
+
+                if (pTempTarget && pTempTarget->getPowerType() == POWER_MANA && pTempTarget->GetTypeId() == TYPEID_PLAYER)
+                    vManaPlayers.push_back(pTempTarget);
+            }
+
+            if (!vManaPlayers.empty())
+            {
+                Unit* pTarget = vManaPlayers[urand(0, vManaPlayers.size() - 1)];
+                m_creature->CastSpell(pTarget, SPELL_BURNING_ADRENALINE, true);
+            }
+
+            m_uiBurningAdrenalineCasterTimer = 15000;
         }
         else
-            m_uiFlameBreathTimer -= uiDiff;
+            m_uiBurningAdrenalineCasterTimer -= uiDiff;
 
-        // Tail Sweep
+        // Burning Adrenaline Tank Timer
+        if (m_uiBurningAdrenalineTankTimer < uiDiff)
+        {
+            // have the victim cast the spell on himself otherwise the third effect aura will be applied
+            // to Vael instead of the player
+            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,0);
+            if (pTarget)
+                m_creature->CastSpell(pTarget, SPELL_BURNING_ADRENALINE, true); 
+
+            m_uiBurningAdrenalineTankTimer = 45000;
+        }
+        else
+            m_uiBurningAdrenalineTankTimer -= uiDiff;
+
+        // Tail Sweep Timer
         if (m_uiTailSweepTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_TAIL_SWEEP) == CAST_OK)
-                m_uiTailSweepTimer = 20000;
+            if (DoCastSpellIfCan(m_creature, SPELL_TAIL_SWEEP) == CAST_OK)
+                m_uiTailSweepTimer = 15000;
         }
         else
             m_uiTailSweepTimer -= uiDiff;
 
+        // Flame Breath Timer
+        if (m_uiFlameBreathTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAME_BREATH) == CAST_OK)
+                m_uiFlameBreathTimer = urand(6000, 10000);
+        }
+        else
+            m_uiFlameBreathTimer -= uiDiff;
+
         DoMeleeAttackIfReady();
     }
 };
-
-CreatureAI* GetAI_boss_vaelastrasz(Creature* pCreature)
-{
-    return new boss_vaelastraszAI(pCreature);
-}
 
 bool GossipSelect_boss_vaelastrasz(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
 {
@@ -338,6 +363,11 @@ bool GossipHello_boss_vaelastrasz(Player* pPlayer, Creature* pCreature)
     pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_VAEL_1, pCreature->GetObjectGuid());
 
     return true;
+}
+
+CreatureAI* GetAI_boss_vaelastrasz(Creature* pCreature)
+{
+    return new boss_vaelastraszAI(pCreature);
 }
 
 bool AreaTrigger_at_vaelastrasz(Player* pPlayer, AreaTriggerEntry const* pAt)
