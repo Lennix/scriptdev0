@@ -43,7 +43,8 @@ enum eRanaros
     SPELL_LAVA_BURST            = 21158,    //Deals ~1000 AoE damage, shouldnt even be used by ragnaros
     SPELL_RAGNAROS_EMERGE       = 20568,
     SPELL_RAGNAROS_SUBMERGE     = 21107,
-    SPELL_RAGNAROS_SUBMERGE_    = 20567,
+    SPELL_RAGNAROS_SUBMERGE_VISUAL	= 20567,
+	SPELL_RAGNAROS_SUBMERGE_ROOT	= 23973,
     SPELL_SONS_OF_FLAME_DUMMY   = 21108,
     SPELL_FIREBALL              = 22425,    // probably wrong id, currently Fireball Volley (hit all enemy targets, causes 1000-2000 fire dmg)
 	TRIGGER                     = 777778,
@@ -208,6 +209,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                 {
                     // Emerge animation
                     m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE);
+					m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_ROOT);
                     DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_EMERGE);
 
                     m_uiEmergeTimer = 3000; // maybe 2900 as cast time
@@ -346,7 +348,8 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                 m_creature->AttackStop();
                 if (m_creature->IsNonMeleeSpellCasted(false))
                     m_creature->InterruptNonMeleeSpells(false);
-                //DoCastSpellIfCan(m_creature, 23973);
+				//Without SUBMERGE_ROOT Ragnaros stays visible
+                DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE_ROOT);
                 m_creature->setFaction(FACTION_FRIENDLY);
                 m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
 
@@ -371,7 +374,6 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
 				}
                 //DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE_);   // Animation of submerge
                 DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE, CAST_INTERRUPT_PREVIOUS);      // Passive
-
                 m_bSubmerged = true;
                 m_uiEmergeTimer = 90000;
                 return;
