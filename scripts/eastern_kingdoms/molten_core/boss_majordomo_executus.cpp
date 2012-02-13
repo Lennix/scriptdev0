@@ -56,8 +56,8 @@ enum eMajordomoExecutus
 
     // Ragnaros's "underwater" spells
     SPELL_RAGNAROS_EMERGE       = 20568,
-    SPELL_RAGNAROS_SUBMERGE     = 21107,
-    SPELL_RAGNAROS_SUBMERGE_    = 20567,
+    SPELL_RAGNAROS_SUBMERGE_FADE = 21107,
+    SPELL_RAGNAROS_SUBMERGE_VISUAL = 20567,
 };
 
 #define SPAWN_RAG_X             838.51f
@@ -215,8 +215,8 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public npc_escortAI
                             pRagnaros->setFaction(FACTION_FRIENDLY);
                             pRagnaros->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                             m_creature->SetFacingTo(5.25f);
-                            pRagnaros->CastSpell(pRagnaros, SPELL_RAGNAROS_SUBMERGE_, true);
-                            pRagnaros->CastSpell(pRagnaros, SPELL_RAGNAROS_SUBMERGE,  true);
+                            pRagnaros->CastSpell(pRagnaros, SPELL_RAGNAROS_SUBMERGE_VISUAL, true);
+                            pRagnaros->CastSpell(pRagnaros, SPELL_RAGNAROS_SUBMERGE_FADE,  true);
                         }
                         m_uiEventTimer = 3000;
                         break;
@@ -229,7 +229,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public npc_escortAI
                     case 22:
                         if (Creature* pRagnaros = GetRagnaros())
                         {
-                            pRagnaros->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE);
+                            pRagnaros->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_FADE);
                             pRagnaros->CastSpell(pRagnaros, SPELL_RAGNAROS_EMERGE, false);
                         }
                         m_uiEventTimer = 5000;  // maybe 7000 will be better

@@ -33,21 +33,17 @@ enum eRanaros
     SAY_KILL                    = -1409017,
     SAY_MAGMA_BLAST             = -1409018,
 
-	SPELL_HAND_OF_RAGNAROS      = 19780,
-    SPELL_ELEMENTAL_FIRE        = 20564,    
-    SPELL_ERUPTION              = 17731,    //Doesnt work
-    SPELL_MIGHT_OF_RAGNAROS     = 21154,    //Doesnt do anything except for summoning a dummy, need 19780 (Hand of Ragnaros) or Hammer of Ragnaros
-    SPELL_MAGMA_BLAST           = 20565,    
-    SPELL_MELT_WEAPON           = 21387,
-    SPELL_WRATH_OF_RAGNAROS     = 20566,    //Melee Knockback
-    SPELL_LAVA_BURST            = 21158,    //Deals ~1000 AoE damage, shouldnt even be used by ragnaros
-    SPELL_RAGNAROS_EMERGE       = 20568,
-    SPELL_RAGNAROS_SUBMERGE     = 21107,
-    SPELL_RAGNAROS_SUBMERGE_VISUAL	= 20567,
-	SPELL_RAGNAROS_SUBMERGE_ROOT	= 23973,
-    SPELL_SONS_OF_FLAME_DUMMY   = 21108,
-    SPELL_FIREBALL              = 22425,    // probably wrong id, currently Fireball Volley (hit all enemy targets, causes 1000-2000 fire dmg)
-	TRIGGER                     = 777778,
+    SPELL_HAND_OF_RAGNAROS      = 19780,    // Fire Damage, knocking back and stun
+    SPELL_ELEMENTAL_FIRE        = 20564,    // DoT 4800 dmg/8sec
+    SPELL_MIGHT_OF_RAGNAROS     = 21154,    // Summons gameobject for trigger cast
+    SPELL_MAGMA_BLAST           = 20565,    // Only casted then noone in melee range
+    SPELL_MELT_WEAPON           = 21387,    // Dura Lost for weapons
+    SPELL_WRATH_OF_RAGNAROS     = 20566,    // Melee Knockback
+    SPELL_RAGNAROS_EMERGE       = 20568,    // Emerge animation
+    SPELL_RAGNAROS_SUBMERGE_FADE = 21107,   // Apply: mod_stealth
+    SPELL_RAGNAROS_SUBMERGE_VISUAL = 20567, // Dummy effect
+    SPELL_RAGNAROS_SUBMERGE_ROOT = 23973,
+    SPELL_SONS_OF_FLAME_DUMMY   = 21108,    // Summon sons of flame
 };
 
 static float Sons[8][4]=
@@ -88,11 +84,11 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
     uint32 m_uiSubmergeTimer;
     uint32 m_uiWrathOfRagnarosTimer;
     uint32 m_uiFireballTimer;
-	uint32 m_uiMeltWeaponTimer;
+    uint32 m_uiMeltWeaponTimer;
 
     uint8  m_uiEmergePhase;
 
-	Creature* Trigger;
+    Creature* Trigger;
 
     void Reset()
     {
@@ -103,7 +99,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
 
         m_uiElementalFireTimer = 3000;
         m_uiEmergeTimer = 0;
-		m_uiMeltWeaponTimer = 10000;
+        m_uiMeltWeaponTimer = 10000;
         m_uiEruptionTimer = 15000;
         m_uiMightOfRagnarosTimer = 20000;
         m_uiLavaBurstTimer = 10000;
@@ -114,11 +110,11 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
 
         m_uiEmergePhase = 0;
 
-		m_creature->RemoveAurasDueToSpell(SPELL_MELT_WEAPON);
+        m_creature->RemoveAurasDueToSpell(SPELL_MELT_WEAPON);
 
-		Trigger = 0;
+        Trigger = 0;
     }
-	
+    
     void JustReachedHome()
     {
         if (m_pInstance)
@@ -138,9 +134,9 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
 
     void Aggro(Unit* /*pAttacker*/)
     {
-		//Start combat with all players in order to prevent ooc rezzing!
-		m_creature->SetInCombatWithZone();
-		m_creature->CastSpell(m_creature, SPELL_MELT_WEAPON, false);
+        //Start combat with all players in order to prevent ooc rezzing!
+        m_creature->SetInCombatWithZone();
+        m_creature->CastSpell(m_creature, SPELL_MELT_WEAPON, false);
         if (m_pInstance)
             m_pInstance->SetData(TYPE_RAGNAROS, IN_PROGRESS);
     }
@@ -208,8 +204,8 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                 if (++m_uiEmergePhase == 1)
                 {
                     // Emerge animation
-                    m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE);
-					m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_ROOT);
+                    m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_ROOT);
+                    m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_FADE);
                     DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_EMERGE);
 
                     m_uiEmergeTimer = 3000; // maybe 2900 as cast time
@@ -239,108 +235,59 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
             else
                 m_uiElementalFireTimer -= uiDiff;
 
-			// Melt Weapon Recast to prevent  bug
+            // Melt Weapon Recast to prevent  bug
             if (m_uiMeltWeaponTimer <= uiDiff)
             {               
-                 m_uiMeltWeaponTimer = 10000;
-				 m_creature->RemoveAurasDueToSpell(SPELL_MELT_WEAPON);
-				 m_creature->CastSpell(m_creature, SPELL_MELT_WEAPON, false);
+                m_uiMeltWeaponTimer = 10000;
+                m_creature->RemoveAurasDueToSpell(SPELL_MELT_WEAPON);
+                m_creature->CastSpell(m_creature, SPELL_MELT_WEAPON, false);
             }
             else
                 m_uiMeltWeaponTimer -= uiDiff;
 
-            // Eruption
-            //if (m_uiEruptionTimer <= uiDiff)
-            //{
-            //    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_ERUPTION) == CAST_OK)
-            //        m_uiEruptionTimer = urand(20000, 45000);
-            //}
-            //else
-            //    m_uiEruptionTimer -= uiDiff;
-
-            // Eruption
-			if (m_uiEruptionTimer <= uiDiff)
-			{
-				m_uiEruptionTimer = urand(20000, 45000);
-			    GUIDVector tList;
-                m_creature->FillGuidsListFromThreatList(tList);
-                if (!tList.empty())
-                {
-                    for (GUIDVector::const_iterator i = tList.begin(); i != tList.end(); ++i)
-                    {
-						Unit* pPlayer = m_creature->GetMap()->GetUnit(*i);
-						if (pPlayer && pPlayer->GetTypeId() == TYPEID_PLAYER)
-							if (((((Player*)pPlayer)->m_LavaActive == true) && !(((Player*)pPlayer)->IsInWater())) || ((Player*)pPlayer)->IsInWater())
-								((Player*)pPlayer)->EnvironmentalDamage(DAMAGE_LAVA, urand(1300,1600));
-						   //Damage
-					}
-				}
-			}
-			else
-				m_uiEruptionTimer -= uiDiff;
-
+            /*
             // Might Of Ragnaros
-			if (Trigger) {
-             Trigger->CastSpell(Trigger,SPELL_LAVA_BURST,false);
-			 Trigger = 0;
-			} 
+            if (Trigger) 
+            {
+                Trigger->CastSpell(Trigger,SPELL_LAVA_BURST,false);
+                Trigger = 0;
+            } 
 
             if (m_uiMightOfRagnarosTimer <= uiDiff)
             {
                 if (Player* pManaPlayer = DoSelectRandomManaPlayer())
-					if (DoCastSpellIfCan(pManaPlayer, SPELL_MIGHT_OF_RAGNAROS) == CAST_OK)
-					{
-						//Need a trigger to cast self-targeted aoe spells
-						Trigger = m_creature->SummonCreature(TRIGGER, pManaPlayer->GetPositionX(), pManaPlayer->GetPositionY(), pManaPlayer->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_DESPAWN, 3000);
-						if (Trigger)
-						{
-							Trigger->setFaction(14);
-							Trigger->SetVisibility(VISIBILITY_OFF);
-							Trigger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-							Trigger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-							Trigger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED);
-					        Trigger->CastSpell(Trigger,SPELL_HAND_OF_RAGNAROS,false);
-					        //Trigger->CastSpell(Trigger,SPELL_WRATH_OF_RAGNAROS,false);	
-						}
+                {
+                    if (DoCastSpellIfCan(pManaPlayer, SPELL_MIGHT_OF_RAGNAROS) == CAST_OK)
+                    {
+                        //Need a trigger to cast self-targeted aoe spells
+                        Trigger = m_creature->SummonCreature(TRIGGER, pManaPlayer->GetPositionX(), pManaPlayer->GetPositionY(), pManaPlayer->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_DESPAWN, 3000);
+                        if (Trigger)
+                        {
+                            Trigger->setFaction(14);
+                            Trigger->SetVisibility(VISIBILITY_OFF);
+                            Trigger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                            Trigger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                            Trigger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED);
+                            Trigger->CastSpell(Trigger,SPELL_HAND_OF_RAGNAROS,false);	
+                        }
                         DoScriptText(SAY_MIGHT, m_creature);
 
-					}
+                    }
+                }
                 m_uiMightOfRagnarosTimer = urand(20000, 30000);
             }
             else
                 m_uiMightOfRagnarosTimer -= uiDiff;
-
+            */
             // Wrath Of Ragnaros
             if (m_uiWrathOfRagnarosTimer <= uiDiff)
             {
-				//He should not wait until he actually has a target to knock back
-                //if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_WRATH_OF_RAGNAROS) == CAST_OK)
-                //{
-				    DoCastSpellIfCan(m_creature, SPELL_WRATH_OF_RAGNAROS);
-                    DoScriptText(SAY_WRATH, m_creature);
-                    m_uiWrathOfRagnarosTimer = 20000;
-                //}
+                DoCastSpellIfCan(m_creature, SPELL_WRATH_OF_RAGNAROS);
+                DoScriptText(SAY_WRATH, m_creature);
+                m_uiWrathOfRagnarosTimer = 20000;
             }
             else
                 m_uiWrathOfRagnarosTimer -= uiDiff;
-
-            // Lava Burst //shouldnt be used by ragnaros!
-            //if (m_uiLavaBurstTimer <= uiDiff)
-            //{
-            //    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_LAVA_BURST) == CAST_OK)
-            //        m_uiLavaBurstTimer = 10000;
-            //}
-            //else
-            //    m_uiLavaBurstTimer -= uiDiff;
-
-            // Fireball //shouldnt be used by ragnaros!
-            //if (m_uiFireballTimer <= uiDiff)
-            //{
-            //    if (DoCastSpellIfCan(m_creature, SPELL_FIREBALL) == CAST_OK)
-            //        m_uiFireballTimer = urand(10000, 20000);
-            //}
-            //else
-            //    m_uiFireballTimer -= uiDiff;
 
             // Submerge Timer
             if (m_uiSubmergeTimer <= uiDiff)
@@ -348,7 +295,8 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                 m_creature->AttackStop();
                 if (m_creature->IsNonMeleeSpellCasted(false))
                     m_creature->InterruptNonMeleeSpells(false);
-				//Without SUBMERGE_ROOT Ragnaros stays visible
+                
+                // Without SPELL_RAGNAROS_SUBMERGE_ROOT Ragnaros stays visible
                 DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE_ROOT);
                 m_creature->setFaction(FACTION_FRIENDLY);
                 m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
@@ -362,18 +310,18 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                     DoScriptText(SAY_SUMMON, m_creature);
 
                 for(uint8 i = 0; i < 8; ++i)
-				{
+                {
                     if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-					{
+                    {
                         if (Creature* pSon = m_creature->SummonCreature(NPC_SON_OF_FLAME, Sons[i][0], Sons[i][1], Sons[i][2], Sons[i][3], TEMPSUMMON_DEAD_DESPAWN, 10000))
-						{
+                        {
                             pSon->SetMeleeDamageSchool(SPELL_SCHOOL_FIRE);
-							pSon->AI()->AttackStart(pTarget);
-						}
-					}
-				}
-                //DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE_);   // Animation of submerge
-                DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE, CAST_INTERRUPT_PREVIOUS);      // Passive
+                            pSon->AI()->AttackStart(pTarget);
+                        }
+                    }
+                }
+                DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE_FADE, CAST_INTERRUPT_PREVIOUS); // Passive
+
                 m_bSubmerged = true;
                 m_uiEmergeTimer = 90000;
                 return;
@@ -404,31 +352,22 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                     {
                         if (Unit* pTarget = m_creature->GetMap()->GetUnit(*itr))
                         {
-							//Set threat of all targets who are not in melee range to a very low value
+                            //Set threat of all targets who are not in melee range to a very low value
                             if (!m_creature->CanReachWithMeleeAttack(pTarget))
-								m_creature->getThreatManager().modifyThreatPercent(pTarget,-75);
-							else
-								m_creature->getThreatManager().addThreat(pTarget, 500.0f);
+                                m_creature->getThreatManager().modifyThreatPercent(pTarget,-75);
+                            else
+                                m_creature->getThreatManager().addThreat(pTarget, 500.0f);
                         }
                     }
-					//Proceed to Magma Blast casting if there's no target in melee range
-					if (m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
-						return;
+                    //Proceed to Magma Blast casting if there's no target in melee range
+                    if (m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
+                        return;
                 }
-
-				 //    // Must to be a new target
-                 //if (m_creature->getVictim()->GetObjectGuid() != pTarget->GetObjectGuid())
-                 //{
-                 //    DoResetThreat();
-                 //    //AttackStart(pTarget);
-                 //    m_creature->getThreatManager().addThreat(pTarget, 1000.0f);
-                 //    return;
-                 //}
 
                 // Magma Blast
                 if (m_uiMagmaBlastTimer <= uiDiff)
                 {   
-					Unit* bTarget = vGuids.size() > 1 ? m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,1) : m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,0);
+                    Unit* bTarget = vGuids.size() > 1 ? m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,1) : m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,0);
                     if (DoCastSpellIfCan(bTarget, SPELL_MAGMA_BLAST) == CAST_OK)
                     {
                         DoScriptText(SAY_MAGMA_BLAST, m_creature);
