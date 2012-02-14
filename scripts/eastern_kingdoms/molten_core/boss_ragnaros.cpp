@@ -78,13 +78,11 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
 
     uint32 m_uiElementalFireTimer;
     uint32 m_uiEmergeTimer;
-    uint32 m_uiEruptionTimer;
     uint32 m_uiMightOfRagnarosTimer;
     uint32 m_uiLavaBurstTimer;
     uint32 m_uiMagmaBlastTimer;
     uint32 m_uiSubmergeTimer;
     uint32 m_uiWrathOfRagnarosTimer;
-    uint32 m_uiFireballTimer;
     uint32 m_uiMeltWeaponTimer;
 
     uint8  m_uiEmergePhase;
@@ -101,12 +99,10 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         m_uiElementalFireTimer = 3000;
         m_uiEmergeTimer = 0;
         m_uiMeltWeaponTimer = 10000;
-        m_uiEruptionTimer = 15000;
         m_uiMightOfRagnarosTimer = 20000;
         m_uiMagmaBlastTimer = 2000;
         m_uiSubmergeTimer = 180000;
         m_uiWrathOfRagnarosTimer = 30000;
-        m_uiFireballTimer = urand(10000,20000);
         m_uiLavaBurstTimer = 3000;
 
         m_uiEmergePhase = 0;
@@ -151,8 +147,8 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
     {
         --m_uiSummonCount;
 
-        if (m_uiSummonCount == 0 && m_bSubmerged && m_uiEmergeTimer > 2000)
-            m_uiEmergeTimer = 2000;
+        if (m_uiSummonCount == 0 && m_bSubmerged)
+            m_uiEmergeTimer = 0;
     }
 
     Player* DoSelectRandomNonMeleePlayer()
