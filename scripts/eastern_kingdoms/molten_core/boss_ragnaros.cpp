@@ -154,7 +154,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
             m_uiEmergeTimer = 2000;
     }
 
-    Player* DoSelectRandomManaPlayer()
+    Player* DoSelectRandomNonMeleePlayer()
     {
         if (!m_creature->CanHaveThreatList())
             return 0;
@@ -174,7 +174,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                         continue;
 
                     // An enemy is not in the meele range and it is a player with mana power
-                    if (!m_creature->CanReachWithMeleeAttack(pTarget) && pTarget->getPowerType() == POWER_MANA)
+                    if (!m_creature->CanReachWithMeleeAttack(pTarget))
                         vManaPlayers.push_back((Player*)pTarget);
                 }
             }
@@ -245,40 +245,20 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
             else
                 m_uiMeltWeaponTimer -= uiDiff;
 
-            /*
-            // Might Of Ragnaros
-            if (Trigger) 
-            {
-                Trigger->CastSpell(Trigger,SPELL_LAVA_BURST,false);
-                Trigger = 0;
-            } 
-
             if (m_uiMightOfRagnarosTimer <= uiDiff)
             {
-                if (Player* pManaPlayer = DoSelectRandomManaPlayer())
+                if (Player* pManaPlayer = DoSelectRandomNonMeleePlayer())
                 {
                     if (DoCastSpellIfCan(pManaPlayer, SPELL_MIGHT_OF_RAGNAROS) == CAST_OK)
                     {
-                        //Need a trigger to cast self-targeted aoe spells
-                        Trigger = m_creature->SummonCreature(TRIGGER, pManaPlayer->GetPositionX(), pManaPlayer->GetPositionY(), pManaPlayer->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_DESPAWN, 3000);
-                        if (Trigger)
-                        {
-                            Trigger->setFaction(14);
-                            Trigger->SetVisibility(VISIBILITY_OFF);
-                            Trigger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-                            Trigger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-                            Trigger->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED);
-                            Trigger->CastSpell(Trigger,SPELL_HAND_OF_RAGNAROS,false);	
-                        }
                         DoScriptText(SAY_MIGHT, m_creature);
-
+                        m_uiMightOfRagnarosTimer = urand(20000, 30000);
                     }
                 }
-                m_uiMightOfRagnarosTimer = urand(20000, 30000);
             }
             else
                 m_uiMightOfRagnarosTimer -= uiDiff;
-            */
+
             // Wrath Of Ragnaros
             if (m_uiWrathOfRagnarosTimer <= uiDiff)
             {
@@ -367,11 +347,14 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                 // Magma Blast
                 if (m_uiMagmaBlastTimer <= uiDiff)
                 {   
-                    Unit* bTarget = vGuids.size() > 1 ? m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,1) : m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,0);
-                    if (DoCastSpellIfCan(bTarget, SPELL_MAGMA_BLAST) == CAST_OK)
+                    if (Unit* bTarget = DoSelectRandomNonMeleePlayer())
                     {
-                        DoScriptText(SAY_MAGMA_BLAST, m_creature);
-                        m_uiMagmaBlastTimer = 2500;
+                        if (DoCastSpellIfCan(bTarget, SPELL_MAGMA_BLAST) == CAST_OK)
+                        {
+                            // Dont shout that every time
+                            if(urand(1,4) == 1) DoScriptText(SAY_MAGMA_BLAST, m_creature);
+                            m_uiMagmaBlastTimer = 2500;
+                        }
                     }
                 }
                 else
@@ -386,11 +369,61 @@ CreatureAI* GetAI_boss_ragnaros(Creature* pCreature)
     return new boss_ragnarosAI(pCreature);
 }
 
+enum eFlameOfRagnaros
+{
+    SPELL_INTENSE_HEAT = 21155,
+    SPELL_INSTAKILL_SELF = 28748
+};
+
+struct MANGOS_DLL_DECL flame_of_ragnarosAI : public ScriptedAI
+{
+    flame_of_ragnarosAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_pInstance = (instance_molten_core*)pCreature->GetInstanceData();
+        Reset();
+    }
+
+    uint32 m_castStep;
+
+    instance_molten_core* m_pInstance;
+
+    void Reset()
+    {
+        m_castStep = 0;
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        // Bum machen und gut ist
+        switch (m_castStep)
+        {
+            case 0:
+                if (DoCastSpellIfCan(m_creature, SPELL_INTENSE_HEAT) == CAST_OK)
+                    m_castStep++;
+                break;
+            case 1:
+                if (DoCastSpellIfCan(m_creature, SPELL_INSTAKILL_SELF) == CAST_OK)
+                    m_castStep++;
+                break;
+        }
+    }
+};
+
+CreatureAI* GetAI_flame_of_ragnaros(Creature* pCreature)
+{
+    return new flame_of_ragnarosAI(pCreature);
+}
+
 void AddSC_boss_ragnaros()
 {
     Script* pNewScript;
     pNewScript = new Script;
     pNewScript->Name = "boss_ragnaros";
     pNewScript->GetAI = &GetAI_boss_ragnaros;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "flame_of_ragnaros";
+    pNewScript->GetAI = &GetAI_flame_of_ragnaros;
     pNewScript->RegisterSelf();
 }
