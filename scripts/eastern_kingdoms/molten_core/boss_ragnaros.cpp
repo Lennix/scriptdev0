@@ -103,7 +103,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         m_uiMagmaBlastTimer = 2000;
         m_uiSubmergeTimer = 180000;
         m_uiWrathOfRagnarosTimer = 30000;
-        m_uiLavaBurstTimer = 3000;
+        m_uiLavaBurstTimer = urand(1000, 20000);
 
         m_uiEmergePhase = 0;
 
@@ -196,7 +196,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         if (m_uiLavaBurstTimer <= uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_LAVA_BURST_DUMMY) == CAST_OK)
-                m_uiLavaBurstTimer = 3000;
+                m_uiLavaBurstTimer = urand(1000, 20000);
         }
         else
                 m_uiLavaBurstTimer -= uiDiff;
