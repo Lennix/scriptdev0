@@ -44,6 +44,7 @@ enum eRanaros
     SPELL_RAGNAROS_SUBMERGE_VISUAL = 20567, // Dummy effect
     SPELL_RAGNAROS_SUBMERGE_ROOT = 23973,
     SPELL_SONS_OF_FLAME_DUMMY   = 21108,    // Summon sons of flame
+    SPELL_LAVA_BURST_DUMMY      = 21908
 };
 
 static float Sons[8][4]=
@@ -102,11 +103,11 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         m_uiMeltWeaponTimer = 10000;
         m_uiEruptionTimer = 15000;
         m_uiMightOfRagnarosTimer = 20000;
-        m_uiLavaBurstTimer = 10000;
         m_uiMagmaBlastTimer = 2000;
         m_uiSubmergeTimer = 180000;
         m_uiWrathOfRagnarosTimer = 30000;
         m_uiFireballTimer = urand(10000,20000);
+        m_uiLavaBurstTimer = 3000;
 
         m_uiEmergePhase = 0;
 
@@ -195,6 +196,14 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         // Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
+        // Lava Burst
+        if (m_uiLavaBurstTimer <= uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_LAVA_BURST_DUMMY) == CAST_OK)
+                m_uiLavaBurstTimer = 3000;
+        }
+        else
+                m_uiLavaBurstTimer -= uiDiff;
 
         if (m_bSubmerged)
         {
