@@ -292,6 +292,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                         else
                             DoScriptText(SAY_SUMMON, m_creature);
 
+                        m_uiSubmergeTimer = 1000;
                         m_uiPhase++;
                         return;
                     }
@@ -300,7 +301,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                         if (DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE_FADE) == CAST_OK)
                         {
                             m_uiPhase++;
-                            m_uiSubmergeTimer = 10000;
+                            m_uiSubmergeTimer = 5000;
                         }
                         return;
                     }
