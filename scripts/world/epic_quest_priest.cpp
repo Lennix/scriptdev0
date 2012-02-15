@@ -103,7 +103,7 @@ struct Eris : public ScriptedAI
 			DespawnArchers();
 			if (abuse)
 			{
-				Say(std::string("Another player joined the EpicQuest area!"));
+                m_creature->MonsterSay("Another player joined the EpicQuest area!", LANG_UNIVERSAL);
 				abuse = false;
 			}
 			if (plr)
