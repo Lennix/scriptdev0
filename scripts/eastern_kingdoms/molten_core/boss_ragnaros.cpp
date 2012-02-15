@@ -33,6 +33,8 @@ enum eRanaros
     SAY_KILL                    = -1409017,
     SAY_MAGMA_BLAST             = -1409018,
 
+    CREATURE_SON_OF_FLAME   = 12143,
+
     SPELL_HAND_OF_RAGNAROS      = 19780,    // Fire Damage, knocking back and stun
     SPELL_ELEMENTAL_FIRE        = 20564,    // DoT 4800 dmg/8sec
     SPELL_MIGHT_OF_RAGNAROS     = 21154,    // Summons gameobject for trigger cast
@@ -43,8 +45,10 @@ enum eRanaros
     SPELL_RAGNAROS_SUBMERGE_FADE = 21107,   // Apply: mod_stealth
     SPELL_RAGNAROS_SUBMERGE_VISUAL = 20567, // Dummy effect
     SPELL_RAGNAROS_SUBMERGE_ROOT = 23973,
+    SPELL_RAGNAROS_SUBMERGE_EFFECT = 21859,
     SPELL_SONS_OF_FLAME_DUMMY   = 21108,    // Summon sons of flame
-    SPELL_LAVA_BURST_DUMMY      = 21908
+    SPELL_LAVA_BURST_DUMMY      = 21908,
+    SPELL_SONS_OF_FLAMES_DUMMY  =  21108 
 };
 
 static float Sons[8][4]=
@@ -73,7 +77,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
 
     bool m_bSubmerged;
     bool m_bSubmergedOnce;
-
+    bool GetpSon;
     uint32 m_uiSummonCount;
 
     uint32 m_uiElementalFireTimer;
@@ -84,29 +88,37 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
     uint32 m_uiSubmergeTimer;
     uint32 m_uiWrathOfRagnarosTimer;
     uint32 m_uiMeltWeaponTimer;
-
-    uint8  m_uiEmergePhase;
-
+    uint8  m_uiPhase;
     Creature* Trigger;
+    std::list<Creature*> pSons;
 
     void Reset()
     {
+        if (!pSons.empty())
+        {
+            for(std::list<Creature*>::iterator i = pSons.begin(); i != pSons.end(); ++i)
+			{
+                (*i)->ForcedDespawn();
+            }
+            pSons.clear();
+        }
         m_bSubmerged = false;
         m_bSubmergedOnce = false;
-
+        GetpSon = false;
         m_uiSummonCount = 0;
-
         m_uiElementalFireTimer = 3000;
         m_uiEmergeTimer = 0;
         m_uiMeltWeaponTimer = 10000;
         m_uiMightOfRagnarosTimer = 20000;
         m_uiMagmaBlastTimer = 2000;
-        m_uiSubmergeTimer = 180000;
+        m_uiSubmergeTimer = 30000; //180000;
         m_uiWrathOfRagnarosTimer = 30000;
-        m_uiLavaBurstTimer = urand(1000, 20000);
+        m_uiLavaBurstTimer = urand(1000, 10000);
 
-        m_uiEmergePhase = 0;
-
+        m_uiPhase = 0;
+       
+        m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_FADE);
+        m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_EFFECT);
         m_creature->RemoveAurasDueToSpell(SPELL_MELT_WEAPON);
 
         Trigger = 0;
@@ -136,19 +148,6 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         m_creature->CastSpell(m_creature, SPELL_MELT_WEAPON, false);
         if (m_pInstance)
             m_pInstance->SetData(TYPE_RAGNAROS, IN_PROGRESS);
-    }
-
-    void JustSummoned(Creature* /*pSummoned*/)
-    {
-        ++m_uiSummonCount;
-    }
-
-    void SummonedCreatureJustDied(Creature* /*pSummoned*/)
-    {
-        --m_uiSummonCount;
-
-        if (m_uiSummonCount == 0 && m_bSubmerged)
-            m_uiEmergeTimer = 0;
     }
 
     Player* DoSelectRandomNonMeleePlayer()
@@ -192,24 +191,29 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         // Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
+
         // Lava Burst
         if (m_uiLavaBurstTimer <= uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_LAVA_BURST_DUMMY) == CAST_OK)
-                m_uiLavaBurstTimer = urand(1000, 20000);
+                m_uiLavaBurstTimer = urand(1000, 10000);
         }
         else
-                m_uiLavaBurstTimer -= uiDiff;
+            m_uiLavaBurstTimer -= uiDiff;
 
         if (m_bSubmerged)
         {
+            bool sonsDead = true;
+            for(std::list<Creature*>::iterator i = pSons.begin(); i != pSons.end(); ++i)
+                if ((*i)->isAlive())
+                    sonsDead = false;
+
             // Emerge
-            if (m_uiEmergeTimer <= uiDiff)
+            if (m_uiEmergeTimer <= uiDiff || sonsDead)
             {
-                if (++m_uiEmergePhase == 1)
+                if (++m_uiPhase == 1)
                 {
                     // Emerge animation
-                    m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_ROOT);
                     m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_FADE);
                     DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_EMERGE);
 
@@ -218,11 +222,10 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                 else
                 {
                     // Ragnaros is fully emerged
-                    m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-                    m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
-
+                    m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_EFFECT);
+                    GetpSon = false;
                     m_bSubmerged = false;
-                    m_uiEmergePhase = 0;
+                    m_uiPhase = 0;
                     m_uiSubmergeTimer = 180000; // 180000
                 }
             }
@@ -231,6 +234,89 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         }
         else
         {
+            // Submerge Timer
+            if (m_uiSubmergeTimer <= uiDiff)
+            {
+                // Submerge haben wir auch mehrere Phasen
+                switch (m_uiPhase)
+                {
+                    case 0:
+                    {
+                        m_creature->AttackStop();
+                        if (m_creature->IsNonMeleeSpellCasted(false))
+                            m_creature->InterruptNonMeleeSpells(false);
+                
+                        if (DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE_EFFECT, CAST_INTERRUPT_PREVIOUS) == CAST_OK)
+                            m_uiPhase++;
+
+                        return;
+                    }
+                    case 1:
+                    {
+                        if (DoCastSpellIfCan(m_creature, SPELL_SONS_OF_FLAMES_DUMMY) == CAST_OK)
+                            m_uiPhase++;
+
+                        return;
+                    }
+                    case 2:
+                    {
+                        pSons.clear();
+			            // Create list of Sons, 8 in total
+			            GetCreatureListWithEntryInGrid(pSons, m_creature, NPC_SON_OF_FLAME, 300.0f);
+			            for(std::list<Creature*>::iterator i = pSons.begin(); i != pSons.end(); ++i)
+			            {
+                            if ((*i)->isAlive())
+				            {
+                                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                                {
+                                    (*i)->SetMeleeDamageSchool(SPELL_SCHOOL_FIRE);
+                                    (*i)->AI()->AttackStart(pTarget);
+                                }
+				            }
+                        }
+                        if (!pSons.empty())
+                            m_uiPhase++;
+                        
+                        return;
+                    }
+                    case 3:
+                    {
+                        if (!m_bSubmergedOnce)
+                        {
+                            DoScriptText(SAY_SUMMON_FIRST, m_creature);
+                            m_bSubmergedOnce = true;
+                        }
+                        else
+                            DoScriptText(SAY_SUMMON, m_creature);
+
+                        m_uiPhase++;
+                        return;
+                    }
+                    case 4:
+                    {
+                            if (DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE_FADE) == CAST_OK)
+                            {
+                                m_uiPhase++;
+                            }
+
+                        return;
+                    }
+                    case 5:
+                    {
+                        //m_creature->SetVisibility(VISIBILITY_OFF);
+                        m_bSubmerged = true;
+                        m_uiEmergeTimer = 90000;
+                        m_uiPhase = 0;
+                        return;
+                    }
+                }
+            }
+            else
+                m_uiSubmergeTimer -= uiDiff;
+
+            if (m_uiPhase > 0)
+                return;
+
             // Elemental Fire
             if (m_uiElementalFireTimer <= uiDiff)
             {
@@ -273,46 +359,6 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
             }
             else
                 m_uiWrathOfRagnarosTimer -= uiDiff;
-
-            // Submerge Timer
-            if (m_uiSubmergeTimer <= uiDiff)
-            {
-                m_creature->AttackStop();
-                if (m_creature->IsNonMeleeSpellCasted(false))
-                    m_creature->InterruptNonMeleeSpells(false);
-                
-                // Without SPELL_RAGNAROS_SUBMERGE_ROOT Ragnaros stays visible
-                DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE_ROOT);
-                m_creature->setFaction(FACTION_FRIENDLY);
-                m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-
-                if (!m_bSubmergedOnce)
-                {
-                    DoScriptText(SAY_SUMMON_FIRST, m_creature);
-                    m_bSubmergedOnce = true;
-                }
-                else
-                    DoScriptText(SAY_SUMMON, m_creature);
-
-                for(uint8 i = 0; i < 8; ++i)
-                {
-                    if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                    {
-                        if (Creature* pSon = m_creature->SummonCreature(NPC_SON_OF_FLAME, Sons[i][0], Sons[i][1], Sons[i][2], Sons[i][3], TEMPSUMMON_DEAD_DESPAWN, 10000))
-                        {
-                            pSon->SetMeleeDamageSchool(SPELL_SCHOOL_FIRE);
-                            pSon->AI()->AttackStart(pTarget);
-                        }
-                    }
-                }
-                DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE_FADE, CAST_INTERRUPT_PREVIOUS); // Passive
-
-                m_bSubmerged = true;
-                m_uiEmergeTimer = 90000;
-                return;
-            }
-            else
-                m_uiSubmergeTimer -= uiDiff;
 
             // If we are within range melee the target
             if (m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
