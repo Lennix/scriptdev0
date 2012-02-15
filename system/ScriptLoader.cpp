@@ -20,6 +20,7 @@ extern void AddSC_item_scripts();
 extern void AddSC_npc_building_mount_guard();
 extern void AddSC_npc_professions();
 extern void AddSC_npcs_special();
+extern void AddSC_Priest_Epic_Quest();
 
 //eastern kingdoms
 extern void AddSC_alterac_valley();                         // alterac valley
@@ -293,6 +294,7 @@ void AddScripts()
     AddSC_npc_building_mount_guard();
     AddSC_npc_professions();
     AddSC_npcs_special();
+    AddSC_Priest_Epic_Quest();
 
     //eastern kingdoms
     AddSC_alterac_valley();                                 //alterac valley
