@@ -1,4 +1,7 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/*
+ * Copyright (C) 2006-2011 ScriptDev2 <http://www.scriptdev2.com/>
+ * Copyright (C) 2010-2011 ScriptDev0 <http://github.com/mangos-zero/scriptdev0>
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,73 +20,115 @@
 /* ScriptData
 SDName: Boss_Chromaggus
 SD%Complete: 95
-SDComment:
+SDComment: chromatic mutation needs test, chromaggus trigger button is not implemented
 SDCategory: Blackwing Lair
 EndScriptData */
 
 #include "precompiled.h"
 #include "blackwing_lair.h"
 
-enum eChromaggus
+enum
 {
     EMOTE_GENERIC_FRENZY_KILL   = -1000001,
     EMOTE_SHIMMER               = -1469003,
 
-    SPELL_BROOD_AFFLICTION      = 23173,                    // handled in core
-    SPELL_ENRAGE                = 23128,
-    SPELL_FRENZY                = 23537,
+    // These spells are actually called elemental shield
+    // What they do is decrease all damage by 75% then they increase
+    // One school of damage by 1100%
+    SPELL_FIRE_VULNERABILITY    = 22277,
+    SPELL_FROST_VULNERABILITY   = 22278,
+    SPELL_SHADOW_VULNERABILITY  = 22279,
+    SPELL_NATURE_VULNERABILITY  = 22280,
+    SPELL_ARCANE_VULNERABILITY  = 22281,
 
-    // Breaths
-    SPELL_CORROSIVE_ACID        = 23313,                    // Corrosive Acid 23313, 23314
-    SPELL_FROST_BURN            = 23187,                    // Frost burn 23187, 23189
-    SPELL_IGNITE_FLESH          = 23315,                    // Ignite Flesh 23315,23316
+    MAX_BREATHS                 = 5,
+    MAX_VULNERABILITY			= 5,
+    MAX_AFFLICTION				= 5,
     SPELL_INCINERATE            = 23308,                    // Incinerate 23308,23309
     SPELL_TIME_LAPSE            = 23310,                    // Time lapse 23310, 23311(old threat mod that was removed in 2.01)
+    SPELL_CORROSIVE_ACID        = 23313,                    // Corrosive Acid 23313, 23314
+    SPELL_IGNITE_FLESH          = 23315,                    // Ignite Flesh 23315,23316
+    SPELL_FROST_BURN            = 23187,                    // Frost burn 23187, 23189
 
-    SPELL_FIRE_VURNALBILTY      = 22277,
-    SPELL_FROST_VURNALBILTY     = 22278,
-    SPELL_SHADOW_VURNALBILTY    = 22279,
-    SPELL_NATURE_VURNALBILTY    = 22280,
-    SPELL_ARCANE_VURNALBILTY    = 22281,
+    // Brood Affliction 23173 - Scripted Spell that cycles through all targets within 100 yards and has a chance to cast one of the afflictions on them
+    // Since Scripted spells arn't coded I'll just write a function that does the same thing
+    SPELL_BROODAF_BLUE          = 23153,                    // Blue affliction 23153
+    SPELL_BROODAF_BLACK         = 23154,                    // Black affliction 23154
+    SPELL_BROODAF_RED           = 23155,                    // Red affliction 23155 (23168 on death)
+    SPELL_BROODAF_BRONZE        = 23170,                    // Bronze Affliction  23170
+    SPELL_BROODAF_GREEN         = 23169,                    // Brood Affliction Green 23169
+
+    SPELL_CHROMATIC_MUT_1       = 23174,                    // Spell cast on player if they get 4 debuffs
+
+    SPELL_FRENZY                = 28371,                    // The frenzy spell may be wrong
+    SPELL_ENRAGE                = 28747
 };
 
-uint32 aBreaths[5] = {SPELL_CORROSIVE_ACID, SPELL_FROST_BURN, SPELL_IGNITE_FLESH, SPELL_INCINERATE, SPELL_TIME_LAPSE};
-uint32 aVurn[5] = {SPELL_FIRE_VURNALBILTY, SPELL_FROST_VURNALBILTY, SPELL_SHADOW_VURNALBILTY, SPELL_NATURE_VURNALBILTY, SPELL_ARCANE_VURNALBILTY};
+static const uint32 aPossibleBreaths[MAX_BREATHS] = {SPELL_INCINERATE, SPELL_TIME_LAPSE, SPELL_CORROSIVE_ACID, SPELL_IGNITE_FLESH, SPELL_FROST_BURN};
+static const uint32 aPossibleVulnerabilities[MAX_VULNERABILITY] = {SPELL_FIRE_VULNERABILITY, SPELL_FROST_VULNERABILITY, SPELL_SHADOW_VULNERABILITY, SPELL_NATURE_VULNERABILITY, SPELL_ARCANE_VULNERABILITY};
+static const uint32 aPossibleAfflictions[MAX_AFFLICTION] = {SPELL_BROODAF_BLUE, SPELL_BROODAF_BLACK, SPELL_BROODAF_RED, SPELL_BROODAF_BRONZE, SPELL_BROODAF_GREEN};
 
 struct MANGOS_DLL_DECL boss_chromaggusAI : public ScriptedAI
 {
     boss_chromaggusAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_uiBreath1Spell = aBreaths[urand(0,4)];
-        m_uiBreath2Spell = aBreaths[urand(0,4)];
-        //m_uiBreath1Spell = SPELL_TIME_LAPSE;
-        //m_uiBreath2Spell = SPELL_TIME_LAPSE;
+        // Select the 2 different breaths that we are going to use until despawned
+        // 5 possiblities for the first breath, 4 for the second, 20 total possiblites
 
-        while(m_uiBreath1Spell == m_uiBreath2Spell)
-            m_uiBreath2Spell = aBreaths[urand(0,4)];
+        // select two different numbers between 0..MAX_BREATHS-1
+        uint8 uiPos1 = urand(0, MAX_BREATHS - 1);
+        uint8 uiPos2;
+        do uiPos2 = urand(0, MAX_BREATHS - 1); while (uiPos1 == uiPos2);
 
-        //pCreature->setFaction(54);
+        m_uiBreathOneSpell = aPossibleBreaths[uiPos1];
+        m_uiBreathTwoSpell = aPossibleBreaths[uiPos2];
+
+        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        Reset();
     }
 
-    uint32 m_uiBreath1Spell;
-    uint32 m_uiBreath2Spell;
-    uint32 m_uiCurrentVurlnSpell;
+    ScriptedInstance* m_pInstance;
 
-    uint32 m_uiAfflictionTimer;
-    uint32 m_uiBreath1Timer;
-    uint32 m_uiBreath2Timer;
-    uint32 m_uiFrenzyTimer;
+    uint32 m_uiBreathOneSpell;
+    uint32 m_uiBreathTwoSpell;
+    uint32 m_uiCurrentVulnerabilitySpell;
+
     uint32 m_uiShimmerTimer;
+    uint32 m_uiBreathTimer;
+    uint32 m_uiAfflictionTimer;
+    uint32 m_uiFrenzyTimer;
+    bool m_switchBreath;
+    bool m_bEnraged;
 
     void Reset()
     {
-        m_uiCurrentVurlnSpell = 0;
+        m_uiCurrentVulnerabilitySpell = 0;                  // We use this to store our last vulnerability spell so we can remove it later
 
-        m_uiAfflictionTimer = 10000;
-        m_uiBreath1Timer = 30000;
-        m_uiBreath2Timer = 60000;
-        m_uiFrenzyTimer = 20000;
-        m_uiShimmerTimer = 0;
+        m_uiShimmerTimer    = 0;                            // Time till we change vurlnerabilites
+        m_uiBreathTimer		= 30000;                        // First breath is 30 seconds
+        m_uiAfflictionTimer = 3000;                        // This is special - 5 seconds means that we cast this on 1 pPlayer every 5 sconds
+        m_uiFrenzyTimer     = urand(5000, 12000);
+
+        m_switchBreath		= false;
+        m_bEnraged          = false;
+    }
+
+    void Aggro(Unit* pWho)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_CHROMAGGUS, IN_PROGRESS);
+    }
+
+    void JustDied(Unit* pKiller)
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_CHROMAGGUS, DONE);
+    }
+
+    void JustReachedHome()
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_CHROMAGGUS, FAIL);
     }
 
     Player* GetNotTimeLapsedPlayer()
@@ -93,7 +138,6 @@ struct MANGOS_DLL_DECL boss_chromaggusAI : public ScriptedAI
             return NULL;
 
         Player* pPlayer = NULL;
-
         for (ThreatList::const_iterator itr = tList.begin();itr != tList.end(); ++itr)
         {
             Unit* pUnit = m_creature->GetMap()->GetUnit((*itr)->getUnitGuid());
@@ -104,7 +148,6 @@ struct MANGOS_DLL_DECL boss_chromaggusAI : public ScriptedAI
                 break;
             }
         }
-
         return pPlayer;
     }
 
@@ -113,16 +156,37 @@ struct MANGOS_DLL_DECL boss_chromaggusAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        // Enrage
-        if (HealthBelowPct(20))
-            DoCastSpellIfCan(m_creature, SPELL_ENRAGE, CAST_FORCE_TARGET_SELF + CAST_AURA_NOT_PRESENT);
-
-        // Breath 1
-        if (m_uiBreath1Timer <= uiDiff)
+        // --- SHIMMER ---
+        if (m_uiShimmerTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), m_uiBreath1Spell) == CAST_OK)
+            // Remove old vulnerability spell
+            if (m_uiCurrentVulnerabilitySpell)
+                m_creature->RemoveAurasDueToSpell(m_uiCurrentVulnerabilitySpell);
+            // Cast new random vurlnabilty on self
+            uint32 uiSpell;
+            do uiSpell = aPossibleVulnerabilities[urand(0,4)]; while(uiSpell == m_uiCurrentVulnerabilitySpell);
+            if (DoCastSpellIfCan(m_creature, uiSpell) == CAST_OK)
             {
-                if (m_uiBreath1Spell == SPELL_TIME_LAPSE)
+                m_uiCurrentVulnerabilitySpell = uiSpell;
+                DoScriptText(EMOTE_SHIMMER, m_creature);
+                m_uiShimmerTimer = 45000;
+            }
+        }
+        else
+            m_uiShimmerTimer -= uiDiff;
+        
+        // --- BREATH ---
+        if (m_uiBreathTimer < uiDiff)
+        {
+            uint32 breathSpell;
+            if (!m_switchBreath)
+                breathSpell = m_uiBreathOneSpell;
+            else
+                breathSpell = m_uiBreathTwoSpell;
+            //needs LOS
+            if (DoCastSpellIfCan(m_creature, breathSpell) == CAST_OK)
+            {
+                if (breathSpell == SPELL_TIME_LAPSE)
                 {
                     DoResetThreat();
                     if (Player* pNonStunned = GetNotTimeLapsedPlayer())
@@ -130,33 +194,47 @@ struct MANGOS_DLL_DECL boss_chromaggusAI : public ScriptedAI
                         AttackStart(pNonStunned);
                     }
                 }
-                m_uiBreath1Timer = 60000;
+                m_uiBreathTimer = 30000;
+                m_switchBreath = !m_switchBreath;
             }
         }
         else
-            m_uiBreath1Timer -= uiDiff;
-
-        // Breath 2
-        if (m_uiBreath2Timer <= uiDiff)
+            m_uiBreathTimer -= uiDiff;
+        
+        // --- AFFLICTION ---
+        if (m_uiAfflictionTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), m_uiBreath2Spell) == CAST_OK)
+            uint32 m_uiSpellAfflict = aPossibleAfflictions[urand(0,4)];
+            std::vector<ObjectGuid> vGuids;
+            m_creature->FillGuidsListFromThreatList(vGuids);
+            for (std::vector<ObjectGuid>::const_iterator i = vGuids.begin();i != vGuids.end(); ++i)
             {
-                if (m_uiBreath2Spell == SPELL_TIME_LAPSE)
+                Unit* pUnit = m_creature->GetMap()->GetUnit(*i);
+                if (pUnit)
                 {
-                    DoResetThreat();
-                    if (Player* pNonStunned = GetNotTimeLapsedPlayer())
+                    // Cast affliction, needs no LOS
+                    m_creature->CastSpell(pUnit, m_uiSpellAfflict, true);
+                    // Chromatic mutation if target is effected by 4 afflictions
+                    uint8 afflictionCounter = 0;
+                    for (uint8 i = 0; i < 5; i++)
                     {
-                        AttackStart(pNonStunned);
+                        if (pUnit->HasAura(aPossibleAfflictions[i], EFFECT_INDEX_0))
+                            afflictionCounter++;
+                    }
+                    if (afflictionCounter > 3)
+                    {
+                        pUnit->RemoveAllAuras();
+                        m_creature->CastSpell(pUnit,SPELL_CHROMATIC_MUT_1,true);
                     }
                 }
-                m_uiBreath2Timer = 60000;
             }
+            m_uiAfflictionTimer = 10000;
         }
         else
-            m_uiBreath2Timer -= uiDiff;
-
-        // Frenzy
-        if (m_uiFrenzyTimer <= uiDiff)
+            m_uiAfflictionTimer -= uiDiff;
+        
+        // --- FRENZY ---
+        if (m_uiFrenzyTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_FRENZY) == CAST_OK)
             {
@@ -167,38 +245,17 @@ struct MANGOS_DLL_DECL boss_chromaggusAI : public ScriptedAI
         else
             m_uiFrenzyTimer -= uiDiff;
 
-        // Affliction
-        if (m_uiAfflictionTimer <= uiDiff)
+        // --- ENRAGE ---
+        if (!m_bEnraged && m_creature->GetHealthPercent() < 20.0f)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_BROOD_AFFLICTION) == CAST_OK)
-                m_uiAfflictionTimer = urand(10000,12000);
+            DoCastSpellIfCan(m_creature, SPELL_ENRAGE);
+            m_bEnraged = true;
         }
-        else
-            m_uiAfflictionTimer -= uiDiff;
-
-        // Shimmer
-        if (m_uiShimmerTimer <= uiDiff)
-        {
-            if (m_uiCurrentVurlnSpell)
-                m_creature->RemoveAurasDueToSpell(m_uiCurrentVurlnSpell);
-
-            uint32 spell = aVurn[urand(0,4)];
-            while (spell == m_uiCurrentVurlnSpell)
-                spell = aVurn[urand(0,4)];
-
-            if (DoCastSpellIfCan(m_creature, spell) == CAST_OK)
-            {
-                m_uiCurrentVurlnSpell = spell;
-                DoScriptText(EMOTE_SHIMMER, m_creature);
-                m_uiShimmerTimer = 45000;
-            }
-        }
-        else
-            m_uiShimmerTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
+
 CreatureAI* GetAI_boss_chromaggus(Creature* pCreature)
 {
     return new boss_chromaggusAI(pCreature);
@@ -207,6 +264,7 @@ CreatureAI* GetAI_boss_chromaggus(Creature* pCreature)
 void AddSC_boss_chromaggus()
 {
     Script* pNewScript;
+
     pNewScript = new Script;
     pNewScript->Name = "boss_chromaggus";
     pNewScript->GetAI = &GetAI_boss_chromaggus;
