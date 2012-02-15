@@ -111,10 +111,10 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         m_uiMeltWeaponTimer = 10000;
         m_uiMightOfRagnarosTimer = 20000;
         m_uiMagmaBlastTimer = 2000;
-        m_uiSubmergeTimer = 30000; //180000;
+        m_uiSubmergeTimer = 180000; //180000;
         m_uiWrathOfRagnarosTimer = 30000;
         m_uiLavaBurstTimer = urand(1000, 10000);
-
+        m_creature->SetVisibility(VISIBILITY_ON);
         m_uiPhase = 0;
        
         m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_FADE);
@@ -191,8 +191,11 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         // Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
-
         // Lava Burst
+        if (!m_bSubmerged && m_uiSubmergeTimer > m_uiLavaBurstTimer && m_uiPhase >= 4)
+        {
+            m_uiLavaBurstTimer = m_uiSubmergeTimer + 500;
+        }
         if (m_uiLavaBurstTimer <= uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_LAVA_BURST_DUMMY) == CAST_OK)
@@ -214,9 +217,9 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                 if (++m_uiPhase == 1)
                 {
                     // Emerge animation
+                    m_creature->SetVisibility(VISIBILITY_ON);
                     m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_FADE);
                     DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_EMERGE);
-
                     m_uiEmergeTimer = 3000; // maybe 2900 as cast time
                 }
                 else
@@ -294,16 +297,16 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                     }
                     case 4:
                     {
-                            if (DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE_FADE) == CAST_OK)
-                            {
-                                m_uiPhase++;
-                            }
-
+                        if (DoCastSpellIfCan(m_creature, SPELL_RAGNAROS_SUBMERGE_FADE) == CAST_OK)
+                        {
+                            m_uiPhase++;
+                            m_uiSubmergeTimer = 10000;
+                        }
                         return;
                     }
                     case 5:
                     {
-                        //m_creature->SetVisibility(VISIBILITY_OFF);
+                        m_creature->SetVisibility(VISIBILITY_OFF);
                         m_bSubmerged = true;
                         m_uiEmergeTimer = 90000;
                         m_uiPhase = 0;
