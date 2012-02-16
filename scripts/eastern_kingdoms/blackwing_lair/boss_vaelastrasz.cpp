@@ -178,7 +178,7 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
                 {
                     case 0:
 						//normally nef can not move, needs implementation
-                        pNef = m_creature->SummonCreature(NPC_LORD_NEFARIAN, aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], aNefariusSpawnLoc[2], aNefariusSpawnLoc[3], TEMPSUMMON_TIMED_DESPAWN, 25000);
+                        pNef = m_creature->SummonCreature(NPC_VICTOR_NEFARIUS, aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], aNefariusSpawnLoc[2], aNefariusSpawnLoc[3], TEMPSUMMON_TIMED_DESPAWN, 25000);
 						pNef->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                         m_uiIntroTimer = 1000;
                         break;
