@@ -1451,7 +1451,7 @@ CreatureAI* GetAI_npc_winter_reveler(Creature* pCreature)
 enum eTheCleaner
 {
     SAY_THE_CLEANER_SPAWN   = -1000667,
-    SPELL_IMMUNE_ALL        = 1302,        // 1302 29230
+    SPELL_IMMUNE_ALL        = 29230,        // 1302 29230
 };
 
 struct MANGOS_DLL_DECL mob_the_cleanerAI : public ScriptedAI
@@ -1459,6 +1459,7 @@ struct MANGOS_DLL_DECL mob_the_cleanerAI : public ScriptedAI
     mob_the_cleanerAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         DoScriptText(SAY_THE_CLEANER_SPAWN, pCreature);
+        m_creature->CastSpell(m_creature, SPELL_IMMUNE_ALL, true);
         Reset();
     }
 
@@ -1471,14 +1472,14 @@ struct MANGOS_DLL_DECL mob_the_cleanerAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff)
     {
-        // Immune All (spell 1302 in testing)
+        /*// Immune All (spell 1302 in testing)
         if (m_uiImmuneAllTimer <= uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_IMMUNE_ALL) == CAST_OK)
                 m_uiImmuneAllTimer = 44000;
         }
         else
-            m_uiImmuneAllTimer -= uiDiff;
+            m_uiImmuneAllTimer -= uiDiff;*/
 
         ScriptedAI::UpdateAI(uiDiff);
     }
