@@ -29,39 +29,35 @@ enum
 
 	NUM_PEASANTS = 12,
 	NUM_ARCHERS = 10,
-
-	EVENT_RANGE = 50,
-
-	EYE_OF_SHADOW = 18665,
 };
 
 const float archerPosis[NUM_ARCHERS][4] =
 {
-	{ 3380.255f, -3060.907f, 182.504f, 2.359f },
-	{ 3382.333f, -3057.745f, 181.919f, 2.371f },
-	{ 3371.479f, -3070.499f, 175.159f, 2.025f },
+	{ 3376.750f, -3041.969f, 172.639f, 2.359f },
+	{ 3383.315f, -3056.466f, 181.094f, 2.371f },
+	{ 3377.810f, -3059.429f, 180.500f, 2.025f },
 	{ 3358.776f, -3074.729f, 174.090f, 1.350f },
-	{ 3347.300f, -3070.288f, 177.841f, 1.279f },
-	{ 3366.956f, -3023.204f, 171.213f, 3.382f },
-	{ 3334.764f, -3052.669f, 175.158f, 1.357f },
-	{ 3317.438f, -3037.754f, 165.531f, 0.265f },
-	{ 3325.897f, -3022.678f, 170.103f, 6.144f },
+	{ 3371.300f, -3068.288f, 175.841f, 1.279f },
+	{ 3348.956f, -3070.904f, 177.813f, 3.382f },
+	{ 3333.764f, -3051.669f, 174.158f, 1.357f },
+	{ 3313.438f, -3036.754f, 168.531f, 0.265f },
+	{ 3327.897f, -3021.678f, 170.103f, 6.144f },
 	{ 3362.131f, -3010.514f, 183.945f, 3.602f }
 };
 
 const float peasantPosis[NUM_PEASANTS][3] =
 {
 	{ 3364.0f, -3054.0f, 165.5f },
-	{ 3363.0f, -3054.4f, 165.5f },
-	{ 3362.0f, -3054.5f, 165.5f },
-	{ 3361.0f, -3053.3f, 165.5f },
-	{ 3360.0f, -3055.0f, 165.5f },
-	{ 3365.0f, -3052.0f, 165.5f },
-	{ 3364.0f, -3054.0f, 165.5f },
-	{ 3363.0f, -3053.0f, 165.5f },
-	{ 3362.0f, -3053.6f, 165.5f },
-	{ 3361.4f, -3052.0f, 165.5f },
-	{ 3361.0f, -3054.0f, 165.5f },
+	{ 3363.0f, -3051.4f, 165.5f },
+	{ 3362.0f, -3052.5f, 165.5f },
+	{ 3361.0f, -3054.3f, 165.5f },
+	{ 3366.0f, -3052.0f, 165.5f },
+	{ 3365.0f, -3051.0f, 165.5f },
+	{ 3367.0f, -3054.0f, 165.5f },
+	{ 3368.0f, -3053.0f, 165.5f },
+	{ 3369.0f, -3051.6f, 165.5f },
+	{ 3370.4f, -3052.0f, 165.5f },
+	{ 3371.0f, -3054.0f, 165.5f },
 	{ 3360.0f, -3053.9f, 165.5f }
 };
 
@@ -98,7 +94,10 @@ struct Eris : public ScriptedAI
 		m_creature->setFaction(35);
 	}
 
+	void JustRespawned() { m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER); }
+
 	void Reset() { DespawnArchers(); }
+
 
 	void UpdateAI(const uint32 time)
 	{
@@ -110,10 +109,8 @@ struct Eris : public ScriptedAI
 			running = false;
 			DespawnArchers();
 			if (plr)
-			{
-				plr->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
 				plr->FailQuest(QUESTID);
-			}
+			DespawnEris();
 		}
 		//quest complete
 		if(saved >= 50)
@@ -128,6 +125,19 @@ struct Eris : public ScriptedAI
 			waveTimer = 0;
 			SpawnWave();
 		}
+		/*
+		The footsoldiers spawn after each Blessing of Nordrassil and again after different times after death. The spawn of footsoldiers increases with each blessing.
+		X: +25 secounds 2 footsoldiers (will respawn after 20 or 25 secounds alternately)
+		X: +45 (25+20) secounds 2 footsoldiers 
+		X: +70 (45+25) secounds 2 footsoldiers
+		X: +90 (70+20) secounds 2 footsoldiers
+		X: ... until quest is finished. (previous amount plus 20 or 25 secounds)
+
+		X: +30 secounds 1 footsoldier spawns (will always spawn each 30 secounds, same like above and until the quest is done)
+
+		X: +60 secounds 3 footsoldiers spawn (will always spawn each 60 secounds, same like above and until the quest is done)
+		So basically after each wave the numbers increase by 1.
+		*/
 		if(wave > 2 && soldierTimer >= 15000)
 		{
 			soldierTimer = 0;
@@ -187,6 +197,9 @@ struct Eris : public ScriptedAI
 
 	void SpawnArchers()
 	{
+		//event starts here after quest was accepted, therefore u will be unable to start the quest again while the event is in progress
+		m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+
 		if(running)
 			return;
 
@@ -223,6 +236,13 @@ struct Eris : public ScriptedAI
 
 		gotCleaner.clear();
 	}
+
+	void DespawnEris()
+	{
+		m_creature->ForcedDespawn(0);
+		//testphase! normal respawn after 15 minutes(900sec)
+		m_creature->SetRespawnTime(60);
+	}
 		
 	void Say(std::stringstream& msg)
 	{
@@ -237,7 +257,7 @@ struct Eris : public ScriptedAI
 	void BuffPlr()
 	{
 		if(running && plr)
-			m_creature->CastSpell(plr, NORDRASSIL, true);
+			plr->CastSpell(plr, NORDRASSIL, true);
 	}
 
 	void Saved()
@@ -260,17 +280,12 @@ struct Eris : public ScriptedAI
 	{
 		if(quest->GetQuestId() == QUESTID)
 		{
-			if (plr->HasItemCount(EYE_OF_SHADOW ,1))
+			if(g_pEris && !g_pEris->running)
 			{
-				if(g_pEris && !g_pEris->running)
-				{
-					g_pEris->plr = plr;
-					plr->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-					g_pEris->SpawnArchers();
-				}
+				g_pEris->plr = plr;
+				g_pEris->SpawnArchers();
 			}
-			else
-				plr->FailQuest(QUESTID);
+
 		}
 		return true;
 	}
@@ -297,21 +312,30 @@ struct Peasant : public npc_escortAI
 	Peasant(Creature* creature) : npc_escortAI(creature), firstTick(true), despawned(false), eventPlayer(0)
 	{
 		endPos = urand(0, 2);
+
 		//player are able to heal them
 		m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP);
+
+		//slow
+		m_creature->SetSpeedRate(MOVE_WALK,0.5);
+
+		//create random peasant stats
+		uint8 randomLevel = urand(0,1);
+		if (randomLevel == 0)
+		{
+			m_creature->SetLevel(51);
+			m_creature->SetMaxHealth(1700);
+		}
+		else {
+			m_creature->SetLevel(52);
+			m_creature->SetMaxHealth(1800);
+		}
+
 		//fight will remove invisibilty
 		//m_creature->CastSpell(creature, INVISIBILITY, true);
-		//get the event player
-		Map::PlayerList const &PlayerList = m_creature->GetMap()->GetPlayers();
-        for (Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
-        {
-			Player* m_pPlayer = itr->getSource();
-			if(m_pPlayer)
-			{
-				if (m_pPlayer->getClass() == CLASS_PRIEST && m_pPlayer->IsActiveQuest(QUESTID))
-					eventPlayer = m_pPlayer;
-			}
-		}
+
+		//get event player
+		eventPlayer = g_pEris->plr;
 
 		Start();
 	}
@@ -359,7 +383,11 @@ struct Peasant : public npc_escortAI
 		m_creature->AddObjectToRemoveList();
 
 		if(peasants.empty())
+		{
 			g_pEris->BuffPlr();
+			//footsoldiers spawn after each Blessing of Nordrassil and again after different times after death
+			g_pEris->SpawnSoldiers();
+		}
 	}
 
 	void Erase()
@@ -387,13 +415,33 @@ struct Archer : public ScriptedAI
 {
 	uint32 bowShotTime;
 	uint32 bowShotTimer;
+	Player* eventPlayer;
 
-	Archer(Creature* creature) : ScriptedAI(creature), bowShotTimer(0)
+	Archer(Creature* creature) : ScriptedAI(creature), bowShotTimer(0), eventPlayer(0)
 	{
 		//fight will remove invisibilty
 		//m_creature->CastSpell(creature, INVISIBILITY, true);
+
+		//right stats for archers
+		m_creature->SetBaseWeaponDamage(RANGED_ATTACK, MINDAMAGE, 162);
+		m_creature->SetBaseWeaponDamage(RANGED_ATTACK, MAXDAMAGE, 186);
+		m_creature->UpdateDamagePhysical(RANGED_ATTACK);
+		m_creature->SetArmor(3791);
+
+		//get a bow
+		SetEquipmentSlots(false, EQUIP_UNEQUIP, EQUIP_UNEQUIP, 6231);
+
+		//get immune
+		m_creature->CastSpell(creature, IMMUNITY, true);
+
+		//dont move
 		SetCombatMovement(false);
+
+		//shoot timer
 		bowShotTime = 2000 + urand(0, 400); 
+
+		//get eventPlayer
+		eventPlayer = g_pEris->plr;
 	}
 
 	void Reset() {}
@@ -406,13 +454,18 @@ struct Archer : public ScriptedAI
 			bowShotTimer = 0;
 			size_t rndTarget = urand(0, peasants.size()-1);
 			if(rndTarget >= peasants.size())
-				return;
-
-			Creature* target = peasants[rndTarget];
-			DoCastSpellIfCan(target, SHOOT);
+			{
+				if (eventPlayer && eventPlayer->isAlive())
+					DoCastSpellIfCan(eventPlayer, SHOOT);
+				else 
+					return;
+			}
+			else {
+				Creature* target = peasants[rndTarget];
+				DoCastSpellIfCan(target, SHOOT);
+			}
 		}
 	}
-
 
 	static CreatureAI* GetAI(Creature* creature)
 	{
@@ -429,17 +482,15 @@ struct Soldier : public ScriptedAI
 	{
 		//fight will remove invisibilty
 		//m_creature->CastSpell(creature, INVISIBILITY, true);
-		//get the event player
-		Map::PlayerList const &PlayerList = m_creature->GetMap()->GetPlayers();
-        for (Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
-        {
-			Player* m_pPlayer = itr->getSource();
-			if(m_pPlayer)
-			{
-				if (m_pPlayer->getClass() == CLASS_PRIEST && m_pPlayer->IsActiveQuest(QUESTID))
-					eventPlayer = m_pPlayer;
-			}
-		}
+
+		//right stats for soldiers
+		m_creature->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, 108);
+		m_creature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, 126);
+		m_creature->UpdateDamagePhysical(BASE_ATTACK);
+		m_creature->SetArmor(3435);
+
+		//get event player
+		eventPlayer = g_pEris->plr;
 	}
 
 	 //check if other player have joined the fight
@@ -478,7 +529,6 @@ struct Soldier : public ScriptedAI
 			if(rnd >= peasants.size())
 				return;
 			target = peasants[rnd];
-			m_creature->SetInCombatWith(eventPlayer);
 			AttackStart(target);
 		}
 
@@ -493,7 +543,13 @@ struct Soldier : public ScriptedAI
 		m_creature->SetHealthPercent(0);
 	}
 
-	void Reset() { JustDied(0); }
+	void Reset() 
+	{ 
+		if (eventPlayer && eventPlayer->isAlive())
+			AttackStart(eventPlayer);
+		else
+			JustDied(0); 
+	}
 
 	static CreatureAI* GetAI(Creature* creature)
 	{
