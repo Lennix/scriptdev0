@@ -1472,14 +1472,12 @@ struct MANGOS_DLL_DECL mob_the_cleanerAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff)
     {
-        /*// Immune All (spell 1302 in testing)
-        if (m_uiImmuneAllTimer <= uiDiff)
-        {
-            if (DoCastSpellIfCan(m_creature, SPELL_IMMUNE_ALL) == CAST_OK)
-                m_uiImmuneAllTimer = 44000;
-        }
-        else
-            m_uiImmuneAllTimer -= uiDiff;*/
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+		{
+			m_creature->ForcedDespawn();
+			m_creature->AddObjectToRemoveList();
+            return;
+		}
 
         ScriptedAI::UpdateAI(uiDiff);
     }
