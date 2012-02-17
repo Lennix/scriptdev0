@@ -212,7 +212,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                 if ((*i)->isAlive())
                 {
                     sonsDead = false;
-                    if ((*i)->GetTargetGuid() == 0)
+                    if (!(*i)->getVictim())
                     {
                         if (Unit* pTarget = GetPlayerAtMinimumRange(70.0f))
                         {
