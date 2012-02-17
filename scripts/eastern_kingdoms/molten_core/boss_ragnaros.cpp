@@ -89,6 +89,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
     uint32 m_uiWrathOfRagnarosTimer;
     uint32 m_uiMeltWeaponTimer;
     uint8  m_uiPhase;
+    bool sonsDead;
     Creature* Trigger;
     std::list<Creature*> pSons;
 
@@ -105,6 +106,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         m_bSubmerged = false;
         m_bSubmergedOnce = false;
         GetpSon = false;
+        sonsDead = true;
         m_uiSummonCount = 0;
         m_uiElementalFireTimer = 3000;
         m_uiEmergeTimer = 0;
@@ -204,25 +206,16 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         else
             m_uiLavaBurstTimer -= uiDiff;
 
+        for(std::list<Creature*>::iterator i = pSons.begin(); i != pSons.end(); ++i)
+        {
+            if ((*i)->isAlive())
+                sonsDead = false;
+                
+        }
+
         if (m_bSubmerged)
         {
-            bool sonsDead = true;
-            for(std::list<Creature*>::iterator i = pSons.begin(); i != pSons.end(); ++i)
-            {
-                if ((*i)->isAlive())
-                {
-                    sonsDead = false;
-                    if (!(*i)->getVictim())
-                    {
-                        if (Unit* pTarget = GetPlayerAtMinimumRange(70.0f))
-                        {
-                       
-                                        (*i)->SetMeleeDamageSchool(SPELL_SCHOOL_FIRE);
-                                        (*i)->AI()->AttackStart(pTarget);
-                        }
-                    }
-                }
-            }
+            sonsDead = true;
 
             // Emerge
             if (m_uiEmergeTimer <= uiDiff || sonsDead)
@@ -283,11 +276,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
 			            {
                             if ((*i)->isAlive())
 				            {
-                                if (Unit* pTarget = GetPlayerAtMinimumRange(70.0f))
-                                {
-                                    (*i)->SetMeleeDamageSchool(SPELL_SCHOOL_FIRE);
-                                    (*i)->AI()->AttackStart(pTarget);
-                                }
+                                (*i)->SetMeleeDamageSchool(SPELL_SCHOOL_FIRE);
 				            }
                         }
                         if (!pSons.empty())
