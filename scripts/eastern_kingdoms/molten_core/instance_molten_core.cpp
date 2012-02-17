@@ -99,6 +99,8 @@ void instance_molten_core::HandleRune(uint32 uiEntry, uint32 uiData)
 
 bool instance_molten_core::CanSpawnDomoOrRagnaros(bool spawn_majordomo)
 {
+    return true;
+
     // Majordomo IF
     if (spawn_majordomo)
     {

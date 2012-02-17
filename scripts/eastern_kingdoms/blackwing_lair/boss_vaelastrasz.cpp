@@ -19,8 +19,8 @@
 
 /* ScriptData
 SDName: Boss_Vaelastrasz
-SD%Complete: 75
-SDComment: Burning Adrenaline not correctly implemented in core
+SD%Complete: 100
+SDComment:
 SDCategory: Blackwing Lair
 EndScriptData */
 
@@ -63,11 +63,15 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 {
     boss_vaelastraszAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        Reset();
-
         // Set stand state to dead before the intro event
         m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
+		m_creature->setFaction(35);
+		m_creature->SetMaxHealth(3331000);
+		m_creature->SetOrientation(4.90);
+		m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+        m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+		m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+		Reset();
     }
 
     ScriptedInstance* m_pInstance;
@@ -96,12 +100,12 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
         m_uiIntroPhase                   = 0;
         m_uiSpeechTimer                  = 0;
         m_uiSpeechNum                    = 0;
-        m_uiCleaveTimer                  = 8000;            // These times are probably wrong
-        m_uiFlameBreathTimer             = 11000;
+        m_uiCleaveTimer                  = urand(5000,12000);           
+        m_uiFlameBreathTimer             = urand(8000,13000);
         m_uiBurningAdrenalineCasterTimer = 15000;
-        m_uiBurningAdrenalineTankTimer   = 45000;			//caster kriegt den auch
+        m_uiBurningAdrenalineTankTimer   = 45000;			
         m_uiFireNovaTimer                = 3000;
-        m_uiTailSweepTimer               = 20000;
+        m_uiTailSweepTimer               = urand(14000,2000);
         m_bHasYelled = false;
     }
 
@@ -116,8 +120,8 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 
     void BeginSpeech(Player* pTarget)
     {
-        //remove gossip
-        m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+		//remove gossip
+		m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
 
         // Stand up and begin speach
         m_playerGuid = pTarget->GetObjectGuid();
@@ -148,7 +152,7 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
         // Buff players on aggro
         DoCastSpellIfCan(m_creature, SPELL_ESSENCE_OF_THE_RED);
 
-        m_creature->SetHealthPercent(30);
+		m_creature->SetHealthPercent(30);
     }
 
     void JustDied(Unit* pKiller)
@@ -163,39 +167,33 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
             m_pInstance->SetData(TYPE_VAELASTRASZ, FAIL);
     }
 
-    void JustSummoned(Creature* pSummoned)
-    {
-        if (pSummoned->GetEntry() == NPC_VICTOR_NEFARIUS)
-        {
-            // Set not selectable, so players won't interact with it
-            pSummoned->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-            m_nefariusGuid = pSummoned->GetObjectGuid();
-        }
-    }
-
     void UpdateAI(const uint32 uiDiff)
     {
         if (m_uiIntroTimer)
         {
             if (m_uiIntroTimer <= uiDiff)
             {
+				Creature * pNef = 0;
                 switch (m_uiIntroPhase)
                 {
                     case 0:
-                        m_creature->SummonCreature(NPC_VICTOR_NEFARIUS, aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], aNefariusSpawnLoc[2], aNefariusSpawnLoc[3], TEMPSUMMON_TIMED_DESPAWN, 25000);
+						//normally nef can not move, needs implementation
+                        pNef = m_creature->SummonCreature(NPC_VICTOR_NEFARIUS, aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], aNefariusSpawnLoc[2], aNefariusSpawnLoc[3], TEMPSUMMON_TIMED_DESPAWN, 25000);
+						pNef->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                         m_uiIntroTimer = 1000;
                         break;
                     case 1:
-                        if (Creature* pNefarius = m_creature->GetMap()->GetCreature(m_nefariusGuid))
+                        if (pNef)
                         {
-                            pNefarius->CastSpell(m_creature, SPELL_NEFARIUS_CORRUPTION, true);
-                            DoScriptText(SAY_NEFARIUS_CORRUPT_1, pNefarius);
+							//channelspell doesnt work out of combat
+                            pNef->CastSpell(m_creature, SPELL_NEFARIUS_CORRUPTION, true);
+                            DoScriptText(SAY_NEFARIUS_CORRUPT_1, pNef);
                         }
                         m_uiIntroTimer = 16000;
                         break;
                     case 2:
-                        if (Creature* pNefarius = m_creature->GetMap()->GetCreature(m_nefariusGuid))
-                            DoScriptText(SAY_NEFARIUS_CORRUPT_2, pNefarius);
+                        if (pNef)
+                            DoScriptText(SAY_NEFARIUS_CORRUPT_2, pNef);
 
                         // Set npc flags now
                         m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
@@ -258,16 +256,16 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
         // Cleave Timer
         if (m_uiCleaveTimer < uiDiff)
         {
-            m_creature->CastSpell(m_creature, SPELL_CLEAVE, true);
-            m_uiCleaveTimer = 15000;
+			m_creature->CastSpell(m_creature, SPELL_CLEAVE, true);
+            m_uiCleaveTimer = urand(8000,15000);
         }
         else
             m_uiCleaveTimer -= uiDiff;
 
-        // Fire Nova Timer
+		// Fire Nova Timer
         if (m_uiFireNovaTimer < uiDiff)
         {
-            m_creature->CastSpell(m_creature, SPELL_FIRE_NOVA, true);
+			m_creature->CastSpell(m_creature, SPELL_FIRE_NOVA, true);
             m_uiFireNovaTimer = 3000;
         }
         else
@@ -290,10 +288,10 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
             }
 
             if (!vManaPlayers.empty())
-            {
-                Unit* pTarget = vManaPlayers[urand(0, vManaPlayers.size() - 1)];
-                m_creature->CastSpell(pTarget, SPELL_BURNING_ADRENALINE, true);
-            }
+			{
+				Unit* pTarget = vManaPlayers[urand(0, vManaPlayers.size() - 1)];
+				m_creature->CastSpell(pTarget, SPELL_BURNING_ADRENALINE, true);
+			}
 
             m_uiBurningAdrenalineCasterTimer = 15000;
         }
@@ -305,9 +303,9 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
         {
             // have the victim cast the spell on himself otherwise the third effect aura will be applied
             // to Vael instead of the player
-            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,0);
-            if (pTarget)
-                m_creature->CastSpell(pTarget, SPELL_BURNING_ADRENALINE, true); 
+			Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,0);
+			if (pTarget)
+				m_creature->CastSpell(pTarget, SPELL_BURNING_ADRENALINE, true); 
 
             m_uiBurningAdrenalineTankTimer = 45000;
         }
@@ -318,12 +316,12 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
         if (m_uiTailSweepTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_TAIL_SWEEP) == CAST_OK)
-                m_uiTailSweepTimer = 15000;
+                m_uiTailSweepTimer = urand(10000,15000);
         }
         else
             m_uiTailSweepTimer -= uiDiff;
 
-        // Flame Breath Timer
+		// Flame Breath Timer
         if (m_uiFlameBreathTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAME_BREATH) == CAST_OK)
@@ -365,11 +363,6 @@ bool GossipHello_boss_vaelastrasz(Player* pPlayer, Creature* pCreature)
     return true;
 }
 
-CreatureAI* GetAI_boss_vaelastrasz(Creature* pCreature)
-{
-    return new boss_vaelastraszAI(pCreature);
-}
-
 bool AreaTrigger_at_vaelastrasz(Player* pPlayer, AreaTriggerEntry const* pAt)
 {
     if (pAt->id == AREATRIGGER_VAEL_INTRO)
@@ -392,6 +385,11 @@ bool AreaTrigger_at_vaelastrasz(Player* pPlayer, AreaTriggerEntry const* pAt)
     }
 
     return false;
+}
+
+CreatureAI* GetAI_boss_vaelastrasz(Creature* pCreature)
+{
+    return new boss_vaelastraszAI(pCreature);
 }
 
 void AddSC_boss_vaelastrasz()

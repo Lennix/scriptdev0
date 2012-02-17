@@ -1,5 +1,11 @@
 #include "precompiled.h"
 #include "escort_ai.h"
+/*author: zero
+ *script complete: 75 %
+ *archers, peasents and soldiers normally invisble for other player, while creatures out of combat they will be invisible until they enter combat(core problem)!
+ * but dont worry the cleaner will do that shit ;)
+ * event player needs cleaner implementation if other player help him
+ */
 
 enum
 {
@@ -7,14 +13,16 @@ enum
 	PEASANT = 14485,
 	SOLDIER = 14486,
 	ARCHER = 14489,
+	CLEANER = 14503,
 
 	/* Spells */
 	SEETHINGPLAGUE = 23072,
 	SHOOT = 23073,
 	ENTERTHELIGHT = 23107,
-	NORDRASSIL = 27527,
+	NORDRASSIL = 23108,
 	DEATHSDOOR = 23127,
 	INVISIBILITY = 23196,
+	IMMUNITY = 29230,
 
 	/* Generic */
 	QUESTID = 7622,
@@ -67,13 +75,13 @@ const float soldierPosis[3][4] =
 std::vector<Creature*> archers;
 std::vector<Creature*> peasants;
 std::vector<Creature*> soldiers;
+std::vector<Unit*> gotCleaner;
 
 struct Eris;
 Eris* g_pEris;
 
 struct Eris : public ScriptedAI
 {
-	bool abuse;
 	bool running;
 	uint32 wave;
 	uint32 maxPlagued;
@@ -83,7 +91,7 @@ struct Eris : public ScriptedAI
 	uint32 soldierTimer;
 	Player* plr;
 
-	Eris(Creature* creature) : ScriptedAI(creature), abuse(false), running(false), wave(1), maxPlagued(1), saved(0), died(0), waveTimer(40000), soldierTimer(0), plr(0)
+	Eris(Creature* creature) : ScriptedAI(creature), running(false), wave(1), maxPlagued(1), saved(0), died(0), waveTimer(40000), soldierTimer(0), plr(0)
 	{
 		//m_creature->CastSpell(m_creature, ENTERTHELIGHT, true);
 		m_creature->CastSpell(m_creature, INVISIBILITY, true);
@@ -97,17 +105,15 @@ struct Eris : public ScriptedAI
 		waveTimer += time;
 		soldierTimer += time;
 		//quest fails
-		if(abuse || died >= 15 || (plr && plr->isDead()))
+		if(died >= 15 || (plr && plr->isDead()))
 		{
 			running = false;
 			DespawnArchers();
-			if (abuse)
-			{
-                m_creature->MonsterSay("Another player joined the EpicQuest area!", LANG_UNIVERSAL);
-				abuse = false;
-			}
 			if (plr)
+			{
+				plr->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
 				plr->FailQuest(QUESTID);
+			}
 		}
 		//quest complete
 		if(saved >= 50)
@@ -125,27 +131,24 @@ struct Eris : public ScriptedAI
 		if(wave > 2 && soldierTimer >= 15000)
 		{
 			soldierTimer = 0;
-			abuse = SpawnSoldiers();
+			SpawnSoldiers();
 		}
 	}
 
-	bool SpawnSoldiers()
+	void SpawnSoldiers()
 	{
-		bool abuse = false;
 		uint32 count = 3 + urand(0, 4);
 
 		for(uint32 i = 0, n = 0; i < count; ++i)
 		{
-			Creature* cr = m_creature->SummonCreature(SOLDIER, soldierPosis[n][0], soldierPosis[n][1], soldierPosis[n][2], soldierPosis[n][3], TEMPSUMMON_MANUAL_DESPAWN, DAY*IN_MILLISECONDS);
+			Creature* cr = m_creature->SummonCreature(SOLDIER, soldierPosis[n][0], soldierPosis[n][1], soldierPosis[n][2], soldierPosis[n][3], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5000);
 			if(cr)
 			{
 				soldiers.push_back(cr);
-				abuse = isEventAbused(cr);
 				if(++n > 2)
 					n = 0;
 			}
 		}
-		return abuse;
 	}
 
 	void DespawnSoldiers()
@@ -163,7 +166,7 @@ struct Eris : public ScriptedAI
 		uint32 plagued = 0;
 		for(int i = 0; i < NUM_PEASANTS; ++i)
 		{
-			Creature* peas = m_creature->SummonCreature(PEASANT, peasantPosis[i][0], peasantPosis[i][1], peasantPosis[i][2], 1.505f, TEMPSUMMON_CORPSE_DESPAWN, DAY*IN_MILLISECONDS);
+			Creature* peas = m_creature->SummonCreature(PEASANT, peasantPosis[i][0], peasantPosis[i][1], peasantPosis[i][2], 1.505f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5000);
 			if(peas)
 			{
 				peasants.push_back(peas);
@@ -182,26 +185,6 @@ struct Eris : public ScriptedAI
 			maxPlagued++;
 	}
 
-	bool isEventAbused(Creature *cCheck)
-	{
-		bool fail = false;
-		Map::PlayerList const &PlayerList = m_creature->GetMap()->GetPlayers();
-        for (Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
-        {
-			Player* m_pPlayer = itr->getSource();
-			if (m_pPlayer != plr && !fail)
-			{
-				if (m_creature->IsWithinDistInMap(m_pPlayer,EVENT_RANGE))
-					fail = true;
-				else if (plr->IsWithinDistInMap(m_pPlayer,EVENT_RANGE))
-					fail = true;
-				else if (cCheck->IsWithinDistInMap(m_pPlayer,EVENT_RANGE))
-					fail = true;
-			}
-		}
-		return fail;
-	}
-
 	void SpawnArchers()
 	{
 		if(running)
@@ -212,7 +195,7 @@ struct Eris : public ScriptedAI
 		{
 			Creature* creature = m_creature->SummonCreature(ARCHER, archerPosis[i][0], archerPosis[i][1], archerPosis[i][2], archerPosis[i][3], TEMPSUMMON_MANUAL_DESPAWN, DAY*IN_MILLISECONDS);
 			if(creature)
-				archers.push_back(creature);
+				archers.push_back(creature);			
 		}
 	}
 
@@ -237,6 +220,8 @@ struct Eris : public ScriptedAI
 		peasants.clear();
 
 		DespawnSoldiers();
+
+		gotCleaner.clear();
 	}
 		
 	void Say(std::stringstream& msg)
@@ -252,7 +237,7 @@ struct Eris : public ScriptedAI
 	void BuffPlr()
 	{
 		if(running && plr)
-			DoCastSpellIfCan(m_creature, NORDRASSIL);
+			m_creature->CastSpell(plr, NORDRASSIL, true);
 	}
 
 	void Saved()
@@ -280,6 +265,7 @@ struct Eris : public ScriptedAI
 				if(g_pEris && !g_pEris->running)
 				{
 					g_pEris->plr = plr;
+					plr->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
 					g_pEris->SpawnArchers();
 				}
 			}
@@ -306,18 +292,56 @@ struct Peasant : public npc_escortAI
 	uint32 endPos;
 	bool firstTick;
 	bool despawned;
+	Player* eventPlayer;
 
-	Peasant(Creature* creature) : npc_escortAI(creature), firstTick(true), despawned(false)
+	Peasant(Creature* creature) : npc_escortAI(creature), firstTick(true), despawned(false), eventPlayer(0)
 	{
 		endPos = urand(0, 2);
+		//player are able to heal them
+		m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP);
+		//fight will remove invisibilty
+		//m_creature->CastSpell(creature, INVISIBILITY, true);
+		//get the event player
+		Map::PlayerList const &PlayerList = m_creature->GetMap()->GetPlayers();
+        for (Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
+        {
+			Player* m_pPlayer = itr->getSource();
+			if(m_pPlayer)
+			{
+				if (m_pPlayer->getClass() == CLASS_PRIEST && m_pPlayer->IsActiveQuest(QUESTID))
+					eventPlayer = m_pPlayer;
+			}
+		}
+
 		Start();
+	}
+
+	//check if other player have healed the taregt
+	void HealBy(Unit* pHealer, uint32 uiAmountHealed)
+	{
+		if (eventPlayer)
+		 {
+			 if (pHealer != eventPlayer)
+			 {
+				 uiAmountHealed = 0;
+				 bool gotCleaned = false;
+				 for(std::vector<Unit*>::const_iterator it = gotCleaner.begin(); it != gotCleaner.end(); ++it)
+				 {
+					 if ((*it) == pHealer)
+						 gotCleaned = true;
+				 }
+				 if (!gotCleaned && pHealer->GetTypeId() == TYPEID_PLAYER)
+				 {
+					 gotCleaner.push_back(pHealer);
+					 Creature* pCleaner = m_creature->SummonCreature(CLEANER, pHealer->GetPositionX(), pHealer->GetPositionY(), pHealer->GetPositionZ(), 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);
+					 pCleaner->AI()->AttackStart(pHealer);
+				 }
+			 }
+		 }
 	}
 
 	//override, so the mob wont run to the attacker
 	void AttackStart(Unit* ) {}
-
-	//override, so the mob wont attack the attacker
-	void UpdateEscortAI(const uint32 time) { m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT|UNIT_FLAG_PVP); }
 
 	void WaypointReached(uint32 uiPointId)
 	{
@@ -329,9 +353,8 @@ struct Peasant : public npc_escortAI
 	}
 
 	void Despawn()
-	{
-		std::vector<Creature*>::iterator it = std::find(peasants.begin(), peasants.end(), m_creature);
-		peasants.erase(it);
+	{	
+		Erase();
 		m_creature->ForcedDespawn();
 		m_creature->AddObjectToRemoveList();
 
@@ -339,11 +362,17 @@ struct Peasant : public npc_escortAI
 			g_pEris->BuffPlr();
 	}
 
+	void Erase()
+	{
+		std::vector<Creature*>::iterator it = std::find(peasants.begin(), peasants.end(), m_creature);
+		peasants.erase(it);
+	}
+
 	void JustDied(Unit*)
 	{
 		if(!despawned && g_pEris)
 			g_pEris->Died();
-		Despawn();
+		Erase();
 	}
 
 	void Reset() {}
@@ -361,11 +390,12 @@ struct Archer : public ScriptedAI
 
 	Archer(Creature* creature) : ScriptedAI(creature), bowShotTimer(0)
 	{
+		//fight will remove invisibilty
+		//m_creature->CastSpell(creature, INVISIBILITY, true);
+		SetCombatMovement(false);
 		bowShotTime = 2000 + urand(0, 400); 
 	}
 
-	//override, so the mob wont run to the attacker
-	void AttackStart(Unit*) {}
 	void Reset() {}
 
 	void UpdateAI(const uint32 time)
@@ -393,16 +423,62 @@ struct Archer : public ScriptedAI
 struct Soldier : public ScriptedAI
 {
 	Creature* target;
-	Soldier(Creature* creature) : ScriptedAI(creature), target(0) {}
+	Player* eventPlayer;
+
+	Soldier(Creature* creature) : ScriptedAI(creature), target(0), eventPlayer(0) 
+	{
+		//fight will remove invisibilty
+		//m_creature->CastSpell(creature, INVISIBILITY, true);
+		//get the event player
+		Map::PlayerList const &PlayerList = m_creature->GetMap()->GetPlayers();
+        for (Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
+        {
+			Player* m_pPlayer = itr->getSource();
+			if(m_pPlayer)
+			{
+				if (m_pPlayer->getClass() == CLASS_PRIEST && m_pPlayer->IsActiveQuest(QUESTID))
+					eventPlayer = m_pPlayer;
+			}
+		}
+	}
+
+	 //check if other player have joined the fight
+	 void DamageTaken(Unit* pDoneBy, uint32& uiDamage) 
+	 {
+		 if (eventPlayer)
+		 {
+			 if (pDoneBy != eventPlayer)
+			 {
+				 uiDamage = 0;
+				 bool gotCleaned = false;
+				 for(std::vector<Unit*>::const_iterator it = gotCleaner.begin(); it != gotCleaner.end(); ++it)
+				 {
+					 if ((*it) == pDoneBy)
+						 gotCleaned = true;
+				 }
+				 if (!gotCleaned && pDoneBy->GetTypeId() == TYPEID_PLAYER)
+				 {
+					 gotCleaner.push_back(pDoneBy);
+					 Creature* pCleaner = m_creature->SummonCreature(CLEANER, pDoneBy->GetPositionX(), pDoneBy->GetPositionY(), pDoneBy->GetPositionZ(), 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);		 
+					 pCleaner->AI()->AttackStart(pDoneBy);
+				 }
+			 }
+		 }
+	 }
 
 	void UpdateAI(const uint32 time)
 	{
 		if(!m_creature->isInCombat() || target == 0)
 		{
+			//get in combat with all peasants
+			for(std::vector<Creature*>::const_iterator it = peasants.begin(); it != peasants.end(); ++it)
+				AttackStart((*it));
+			//find a random peasant to attack
 			uint32 rnd = urand(0, peasants.size()-1);
 			if(rnd >= peasants.size())
 				return;
 			target = peasants[rnd];
+			m_creature->SetInCombatWith(eventPlayer);
 			AttackStart(target);
 		}
 
@@ -413,8 +489,8 @@ struct Soldier : public ScriptedAI
 	{
 		std::vector<Creature*>::iterator i = std::find(soldiers.begin(), soldiers.end(), m_creature);
 		soldiers.erase(i);
-		m_creature->ForcedDespawn();
-		m_creature->AddObjectToRemoveList();
+		m_creature->SetDeathState(JUST_DIED);
+		m_creature->SetHealthPercent(0);
 	}
 
 	void Reset() { JustDied(0); }
