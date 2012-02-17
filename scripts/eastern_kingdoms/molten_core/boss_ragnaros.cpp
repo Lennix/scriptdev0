@@ -208,8 +208,21 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         {
             bool sonsDead = true;
             for(std::list<Creature*>::iterator i = pSons.begin(); i != pSons.end(); ++i)
+            {
                 if ((*i)->isAlive())
+                {
                     sonsDead = false;
+                    if ((*i)->GetTargetGuid() == 0)
+                    {
+                        if (Unit* pTarget = GetPlayerAtMinimumRange(70.0f))
+                        {
+                       
+                                        (*i)->SetMeleeDamageSchool(SPELL_SCHOOL_FIRE);
+                                        (*i)->AI()->AttackStart(pTarget);
+                        }
+                    }
+                }
+            }
 
             // Emerge
             if (m_uiEmergeTimer <= uiDiff || sonsDead)
@@ -270,7 +283,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
 			            {
                             if ((*i)->isAlive())
 				            {
-                                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                                if (Unit* pTarget = GetPlayerAtMinimumRange(70.0f))
                                 {
                                     (*i)->SetMeleeDamageSchool(SPELL_SCHOOL_FIRE);
                                     (*i)->AI()->AttackStart(pTarget);
