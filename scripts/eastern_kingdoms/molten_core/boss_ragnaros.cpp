@@ -113,7 +113,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         m_uiMeltWeaponTimer = 10000;
         m_uiMightOfRagnarosTimer = 20000;
         m_uiMagmaBlastTimer = 2000;
-        m_uiSubmergeTimer = 3000; //180000;
+        m_uiSubmergeTimer = 180000; //180000;
         m_uiWrathOfRagnarosTimer = 30000;
         m_uiLavaBurstTimer = urand(1000, 10000);
         m_creature->SetVisibility(VISIBILITY_ON);
