@@ -149,13 +149,14 @@ struct MANGOS_DLL_DECL mob_suppression_triggerAI : public Scripted_NoMovementAI
             return;
         }
 
-        if (SuppressionTimer < uiDiff)
+        // Erstmal deaktivieren
+        /*if (SuppressionTimer < uiDiff)
         {
             SuppressionTimer = urand(1000,2000);
             DoCastSpellIfCan(m_creature, SPELL_SUPPRESSION_AURA);
         }
         else
-            SuppressionTimer -= uiDiff;
+            SuppressionTimer -= uiDiff;*/
 	}
 };
 

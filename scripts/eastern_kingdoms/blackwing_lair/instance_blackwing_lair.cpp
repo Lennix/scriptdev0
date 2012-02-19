@@ -38,8 +38,8 @@ void instance_blackwing_lair::Initialize()
 {
     memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
 
-	m_lBlackwingGuardsman.clear();
-	m_lBlackDragonEgg.clear();
+    m_lBlackwingGuardsman.clear();
+    m_lBlackDragonEgg.clear();
     m_lDragonTrio.clear();
     m_lTempList.clear();
 }
@@ -48,19 +48,19 @@ void instance_blackwing_lair::OnCreatureCreate(Creature* pCreature)
 {
     switch(pCreature->GetEntry())
     {
-		case NPC_BLACKWING_GUARDSMAN:
-			m_lBlackwingGuardsman.push_back(pCreature->GetObjectGuid());
-			return;
+        case NPC_BLACKWING_GUARDSMAN:
+            m_lBlackwingGuardsman.push_back(pCreature->GetObjectGuid());
+            return;
         case NPC_BLACKWING_TECHNICIAN:
             // Sort creatures so we can get only the ones near Vaelastrasz
             if (pCreature->IsWithinDist2d(aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], 50.0f))
                 m_lTechnicianGuids.push_back(pCreature->GetObjectGuid());
             return;
-		case NPC_GRETHOK_THE_CONTROLLER:
+        case NPC_GRETHOK_THE_CONTROLLER:
         case NPC_RAZORGORE:
         case NPC_VAELASTRASZ:
         case NPC_BROODLORD:
-		case NPC_NEFARIAN:
+        case NPC_NEFARIAN:
             break;
         case NPC_FIREMAW:
         case NPC_EBONROC:
@@ -70,12 +70,15 @@ void instance_blackwing_lair::OnCreatureCreate(Creature* pCreature)
         case NPC_CHROMAGGUS:
             if (GetData(TYPE_DRAGON_TRIO) != DONE)
                 pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+            // VALUE_BREATH1, VALUE_BREATH2 and so forth are the ID-specific spells
+            if (GetData(VALUE_BREATH1) == NOT_STARTED && GetData(VALUE_BREATH2) == NOT_STARTED)
+                SetData(VALUE_BREATH1, DONE);
             return;
-		default:
-			return;
+        default:
+            return;
     }
 
-	m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+    m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
 }
 
 void instance_blackwing_lair::OnCreatureEnterCombat(Creature* pCreature)
@@ -88,10 +91,10 @@ void instance_blackwing_lair::OnCreatureEnterCombat(Creature* pCreature)
             if (!m_bRazorgoreSummon)
                 m_bRazorgoreSummon = true;
             break;
-		case NPC_VAELASTRASZ:
-			HandleGameObject(GO_PORTCULLIS_RAZORGORE, false);
-			HandleGameObject(GO_PORTCULLIS_ENTRANCE, false);
-			break;
+        case NPC_VAELASTRASZ:
+            HandleGameObject(GO_PORTCULLIS_RAZORGORE, false);
+            HandleGameObject(GO_PORTCULLIS_ENTRANCE, false);
+            break;
         default:
             break;
     }
@@ -117,21 +120,21 @@ void instance_blackwing_lair::OnCreatureEvade(Creature* pCreature)
                     pEgg->Respawn();
             }
 
-			for(GUIDList::iterator itr = m_lBlackwingGuardsman.begin(); itr != m_lBlackwingGuardsman.end(); ++itr)
+            for(GUIDList::iterator itr = m_lBlackwingGuardsman.begin(); itr != m_lBlackwingGuardsman.end(); ++itr)
             {
                 Creature* pGuard = instance->GetCreature(*itr);
-				if (pGuard && !pGuard->isAlive())
-					pGuard->Respawn();
+                if (pGuard && !pGuard->isAlive())
+                    pGuard->Respawn();
             }
 
             Creature* pGrethok = GetSingleCreatureFromStorage(NPC_GRETHOK_THE_CONTROLLER);
-			if (pGrethok && !pGrethok->isAlive())
+            if (pGrethok && !pGrethok->isAlive())
                 pGrethok->Respawn();
             break;
         }
-		case NPC_VAELASTRASZ:
-			HandleGameObject(GO_PORTCULLIS_RAZORGORE, true);
-			break;
+        case NPC_VAELASTRASZ:
+            HandleGameObject(GO_PORTCULLIS_RAZORGORE, true);
+            break;
         default:
             break;
     }
@@ -196,11 +199,11 @@ void instance_blackwing_lair::OnObjectCreate(GameObject* pGo)
             if (m_auiEncounter[4] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
-		default:
-			return;
+        default:
+            return;
     }
 
-	m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
+    m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
 }
 
 void instance_blackwing_lair::OnObjectUse(GameObject* pGo)
@@ -250,10 +253,10 @@ void instance_blackwing_lair::SetData(uint32 uiType, uint32 uiData)
         case TYPE_VAELASTRASZ:
             m_auiEncounter[1] = uiData;
             if (uiData == DONE)
-			{
-				HandleGameObject(GO_PORTCULLIS_RAZORGORE, true);
-			    HandleGameObject(GO_PORTCULLIS_VAELASTRASZ, true);
-			}
+            {
+                HandleGameObject(GO_PORTCULLIS_RAZORGORE, true);
+                HandleGameObject(GO_PORTCULLIS_VAELASTRASZ, true);
+            }
             break;
         case TYPE_BROODLORD:
             m_auiEncounter[2] = uiData;
@@ -275,6 +278,17 @@ void instance_blackwing_lair::SetData(uint32 uiType, uint32 uiData)
             if (uiData == DONE)
                 HandleGameObject(GO_PORTCULLIS_NEFARIAN, true);
             break;
+        case VALUE_BREATH1:
+            //genrate chromaggus breath and nefarian dragon
+            for (uint8 i = 0; i < 2; i++)
+            {
+                uint8 uiPos1 = urand(0, 4);
+                uint8 uiPos2 = 0;
+                do { uiPos2 = urand(0, 4); } while (uiPos1 == uiPos2);
+                m_auiEncounter[VALUE_BREATH1 + (i * 2)] = uiPos1;
+                m_auiEncounter[VALUE_BREATH1+1 + (i * 2)] = uiPos2;
+            }
+            break;
     }
 
     if (uiData == DONE)
@@ -283,7 +297,9 @@ void instance_blackwing_lair::SetData(uint32 uiType, uint32 uiData)
 
         std::ostringstream saveStream;
         saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " "
-            << m_auiEncounter[3]<< " " << m_auiEncounter[4];
+            << m_auiEncounter[3] << " " << m_auiEncounter[4] << m_auiEncounter[5] << " " 
+            << m_auiEncounter[6] << " " << m_auiEncounter[7] << " "
+            << m_auiEncounter[8] << " " << m_auiEncounter[9];
 
         strInstData = saveStream.str();
 
@@ -304,9 +320,11 @@ void instance_blackwing_lair::Load(const char* chrIn)
 
     std::istringstream loadStream(chrIn);
     loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3]
-        >> m_auiEncounter[4];
+        >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6] >> m_auiEncounter[7] >> m_auiEncounter[8]
+        >> m_auiEncounter[9];
 
-    for(uint32 i = 0; i < MAX_ENCOUNTER; ++i)
+    // Dont set the spell values to NOT_STARTED (MAX_ENCOUNTER -4)
+    for(uint32 i = 0; i < MAX_ENCOUNTER - 4; ++i)
     {
         if (m_auiEncounter[i] == IN_PROGRESS)
             m_auiEncounter[i] = NOT_STARTED;

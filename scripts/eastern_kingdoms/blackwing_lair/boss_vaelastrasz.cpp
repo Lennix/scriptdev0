@@ -65,13 +65,13 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
     {
         // Set stand state to dead before the intro event
         m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
-		m_creature->setFaction(35);
-		m_creature->SetMaxHealth(3331000);
-		m_creature->SetOrientation(4.90);
-		m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+        m_creature->setFaction(35);
+        m_creature->SetMaxHealth(3331000);
+        m_creature->SetOrientation(4.90);
+        m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
         m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
-		m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-		Reset();
+        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        Reset();
     }
 
     ScriptedInstance* m_pInstance;
@@ -91,28 +91,36 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
     uint32 m_uiBurningAdrenalineTankTimer;
     uint32 m_uiTailSweepTimer;
     bool m_bHasYelled;
+    bool triggerd;
+    bool speech;
+
+    Creature * pNef;
 
     void Reset()
     {
         m_playerGuid.Clear();
-
         m_uiIntroTimer                   = 0;
         m_uiIntroPhase                   = 0;
-        m_uiSpeechTimer                  = 0;
+        m_uiSpeechTimer                  = 12000;
         m_uiSpeechNum                    = 0;
         m_uiCleaveTimer                  = urand(5000,12000);           
         m_uiFlameBreathTimer             = urand(8000,13000);
         m_uiBurningAdrenalineCasterTimer = 15000;
         m_uiBurningAdrenalineTankTimer   = 45000;			
         m_uiFireNovaTimer                = 3000;
-        m_uiTailSweepTimer               = urand(14000,2000);
+        m_uiTailSweepTimer               = 10000;
         m_bHasYelled = false;
+        triggerd = false;
+        speech = false;
+        pNef = 0;
     }
 
     void BeginIntro()
     {
         // Start Intro delayed
-        m_uiIntroTimer = 1000;
+        m_uiIntroTimer = 5000;
+        m_uiIntroPhase = 0;
+        triggerd = true;
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_VAELASTRASZ, SPECIAL);
@@ -120,8 +128,14 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 
     void BeginSpeech(Player* pTarget)
     {
-		//remove gossip
-		m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+        speech = true;
+
+        // remove intro flags
+        SetCombatMovement(true);
+        triggerd = false;
+
+        //remove gossip
+        m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
 
         // Stand up and begin speach
         m_playerGuid = pTarget->GetObjectGuid();
@@ -131,9 +145,6 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 
         // Make boss stand
         m_creature->SetStandState(UNIT_STAND_STATE_STAND);
-
-        m_uiSpeechTimer = 10000;
-        m_uiSpeechNum = 0;
     }
 
     void KilledUnit(Unit* pVictim)
@@ -146,13 +157,15 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 
     void Aggro(Unit* pWho)
     {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_VAELASTRASZ, IN_PROGRESS);
+        if (!triggerd)
+        {
+            if (m_pInstance)
+                m_pInstance->SetData(TYPE_VAELASTRASZ, IN_PROGRESS);
 
-        // Buff players on aggro
-        DoCastSpellIfCan(m_creature, SPELL_ESSENCE_OF_THE_RED);
-
-		m_creature->SetHealthPercent(30);
+            // Buff players on aggro
+            DoCastSpellIfCan(m_creature, SPELL_ESSENCE_OF_THE_RED);
+            m_creature->SetHealthPercent(30);
+        }
     }
 
     void JustDied(Unit* pKiller)
@@ -169,168 +182,195 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff)
     {
-        if (m_uiIntroTimer)
+        if (triggerd)
         {
-            if (m_uiIntroTimer <= uiDiff)
+            if (m_uiIntroTimer)
             {
-				Creature * pNef = 0;
-                switch (m_uiIntroPhase)
+                if (m_uiIntroTimer <= uiDiff)
                 {
-                    case 0:
-						//normally nef can not move, needs implementation
-                        pNef = m_creature->SummonCreature(NPC_VICTOR_NEFARIUS, aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], aNefariusSpawnLoc[2], aNefariusSpawnLoc[3], TEMPSUMMON_TIMED_DESPAWN, 25000);
-						pNef->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-                        m_uiIntroTimer = 1000;
-                        break;
-                    case 1:
-                        if (pNef)
-                        {
-							//channelspell doesnt work out of combat
-                            pNef->CastSpell(m_creature, SPELL_NEFARIUS_CORRUPTION, true);
-                            DoScriptText(SAY_NEFARIUS_CORRUPT_1, pNef);
-                        }
-                        m_uiIntroTimer = 16000;
-                        break;
-                    case 2:
-                        if (pNef)
-                            DoScriptText(SAY_NEFARIUS_CORRUPT_2, pNef);
-
-                        // Set npc flags now
-                        m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-                        m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
-                        m_uiIntroTimer = 0;
-                        break;
+                    switch (m_uiIntroPhase)
+                    {
+                        case 0:
+                            pNef = m_creature->SummonCreature(NPC_VICTOR_NEFARIUS, aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], aNefariusSpawnLoc[2], aNefariusSpawnLoc[3], TEMPSUMMON_MANUAL_DESPAWN, 0);
+                            pNef->SetStandState(UNIT_STAND_STATE_STAND);
+                            m_uiIntroTimer = 1000;		
+                            break;
+                        case 1:
+                            if (pNef)
+                            {
+                                SetCombatMovement(false);
+                                pNef->AI()->AttackStart(m_creature);
+                                pNef->CastSpell(m_creature, SPELL_NEFARIUS_CORRUPTION, false);
+                                DoScriptText(SAY_NEFARIUS_CORRUPT_1, pNef);
+                                m_uiIntroTimer = 16000;
+                            }
+                            break;
+                        case 2:
+                            if (pNef)
+                                DoScriptText(SAY_NEFARIUS_CORRUPT_2, pNef);
+                                m_uiIntroTimer = 8000;	
+                            break;
+                        case 3:
+                            if (pNef)
+                            {
+                                //teleportspell
+                                pNef->CastSpell(pNef, 22664, true);
+                                m_uiIntroTimer = 1000;
+                            }
+                            break;
+                        case 4:
+                            if (pNef)
+                            {
+                                //despawn nef
+                                pNef->ForcedDespawn();
+                                pNef->AddObjectToRemoveList();
+                                // Set npc flags now
+                                m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                                m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+                                m_uiIntroTimer = 0;
+                                return;
+                            }
+                            break;
+                    }
+                    ++m_uiIntroPhase;
                 }
-                ++m_uiIntroPhase;
+                else
+                    m_uiIntroTimer -= uiDiff;
+            }
+        }
+        else
+        {
+            // Speech
+            if (speech)
+            {
+                if (m_uiSpeechTimer)
+                {
+                    if (m_uiSpeechTimer <= uiDiff)
+                    {
+                        switch (m_uiSpeechNum)
+                        {
+                            case 0:
+                                // 16 seconds till next line
+                                DoScriptText(SAY_LINE_2, m_creature);
+                                m_uiSpeechTimer = 16000;
+                                ++m_uiSpeechNum;
+                                break;
+                            case 1:
+                                // This one is actually 16 seconds but we only go to 10 seconds because he starts attacking after he says "I must fight this!"
+                                DoScriptText(SAY_LINE_3, m_creature);
+                                m_uiSpeechTimer = 10000;
+                                ++m_uiSpeechNum;
+                                break;
+                            case 2:
+                                m_creature->setFaction(FACTION_HOSTILE);
+
+                                if (m_playerGuid)
+                                {
+                                    if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid))
+                                        AttackStart(pPlayer);
+                                }
+                                speech = false;
+                                m_uiSpeechTimer = 0;
+                                break;
+                        }
+                    }
+                    else
+                        m_uiSpeechTimer -= uiDiff;
+                }
             }
             else
-                m_uiIntroTimer -= uiDiff;
-        }
-
-        // Speech
-        if (m_uiSpeechTimer)
-        {
-            if (m_uiSpeechTimer <= uiDiff)
             {
-                switch (m_uiSpeechNum)
+                // Return since we have no target
+                if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+                    return;
+
+                // Yell if hp lower than 15%
+                if (m_creature->GetHealthPercent() < 15.0f && !m_bHasYelled)
                 {
-                    case 0:
-                        // 16 seconds till next line
-                        DoScriptText(SAY_LINE_2, m_creature);
-                        m_uiSpeechTimer = 16000;
-                        ++m_uiSpeechNum;
-                        break;
-                    case 1:
-                        // This one is actually 16 seconds but we only go to 10 seconds because he starts attacking after he says "I must fight this!"
-                        DoScriptText(SAY_LINE_3, m_creature);
-                        m_uiSpeechTimer = 10000;
-                        ++m_uiSpeechNum;
-                        break;
-                    case 2:
-                        m_creature->setFaction(FACTION_HOSTILE);
-
-                        if (m_playerGuid)
-                        {
-                            if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid))
-                                AttackStart(pPlayer);
-                        }
-                        m_uiSpeechTimer = 0;
-                        break;
+                    DoScriptText(SAY_HALFLIFE, m_creature);
+                    m_bHasYelled = true;
                 }
+
+                // Cleave Timer
+                if (m_uiCleaveTimer < uiDiff)
+                {
+                    if (DoCastSpellIfCan(m_creature, SPELL_CLEAVE) == CAST_OK)
+                        m_uiCleaveTimer = urand(8000,15000);
+                }
+                else
+                    m_uiCleaveTimer -= uiDiff;
+
+                // Fire Nova Timer
+                if (m_uiFireNovaTimer < uiDiff)
+                {
+                    m_creature->CastSpell(m_creature, SPELL_FIRE_NOVA, true);
+                    m_uiFireNovaTimer = 3000;
+                }
+                else
+                    m_uiFireNovaTimer -= uiDiff;
+
+                // Burning Adrenaline Caster Timer
+                if (m_uiBurningAdrenalineCasterTimer < uiDiff)
+                {
+                    std::vector<Unit*> vManaPlayers;
+
+                    // Scan for mana targets in threat list
+                    ThreatList const& tList = m_creature->getThreatManager().getThreatList();
+                    vManaPlayers.reserve(tList.size());
+                    for (ThreatList::const_iterator iter = tList.begin();iter != tList.end(); ++iter)
+                    {
+                        Unit* pTempTarget = m_creature->GetMap()->GetUnit((*iter)->getUnitGuid());
+
+                        if (pTempTarget && pTempTarget->getPowerType() == POWER_MANA && pTempTarget->GetTypeId() == TYPEID_PLAYER)
+                            vManaPlayers.push_back(pTempTarget);
+                    }
+
+                    if (!vManaPlayers.empty())
+                    {
+                        Unit* pTarget = vManaPlayers[urand(0, vManaPlayers.size() - 1)];
+                        m_creature->CastSpell(pTarget, SPELL_BURNING_ADRENALINE, true);
+                    }
+
+                    m_uiBurningAdrenalineCasterTimer = 15000;
+                }
+                else
+                    m_uiBurningAdrenalineCasterTimer -= uiDiff;
+
+                // Burning Adrenaline Tank Timer
+                if (m_uiBurningAdrenalineTankTimer < uiDiff)
+                {
+                    // have the victim cast the spell on himself otherwise the third effect aura will be applied
+                    // to Vael instead of the player
+                    Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,0);
+                    if (pTarget)
+                        m_creature->CastSpell(pTarget, SPELL_BURNING_ADRENALINE, true); 
+
+                    m_uiBurningAdrenalineTankTimer = 45000;
+                }
+                else
+                    m_uiBurningAdrenalineTankTimer -= uiDiff;
+
+                // Tail Sweep Timer
+                if (m_uiTailSweepTimer < uiDiff)
+                {
+                    m_creature->CastSpell(m_creature, SPELL_TAIL_SWEEP, true);
+                    m_uiTailSweepTimer = 10000;
+                }
+                else
+                    m_uiTailSweepTimer -= uiDiff;
+
+                // Flame Breath Timer
+                if (m_uiFlameBreathTimer < uiDiff)
+                {
+                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAME_BREATH) == CAST_OK)
+                        m_uiFlameBreathTimer = urand(6000, 10000);
+                }
+                else
+                    m_uiFlameBreathTimer -= uiDiff;
+
+                DoMeleeAttackIfReady();
             }
-            else
-                m_uiSpeechTimer -= uiDiff;
         }
-
-        // Return since we have no target
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        // Yell if hp lower than 15%
-        if (m_creature->GetHealthPercent() < 15.0f && !m_bHasYelled)
-        {
-            DoScriptText(SAY_HALFLIFE, m_creature);
-            m_bHasYelled = true;
-        }
-
-        // Cleave Timer
-        if (m_uiCleaveTimer < uiDiff)
-        {
-			m_creature->CastSpell(m_creature, SPELL_CLEAVE, true);
-            m_uiCleaveTimer = urand(8000,15000);
-        }
-        else
-            m_uiCleaveTimer -= uiDiff;
-
-		// Fire Nova Timer
-        if (m_uiFireNovaTimer < uiDiff)
-        {
-			m_creature->CastSpell(m_creature, SPELL_FIRE_NOVA, true);
-            m_uiFireNovaTimer = 3000;
-        }
-        else
-            m_uiFireNovaTimer -= uiDiff;
-
-        // Burning Adrenaline Caster Timer
-        if (m_uiBurningAdrenalineCasterTimer < uiDiff)
-        {
-            std::vector<Unit*> vManaPlayers;
-
-            // Scan for mana targets in threat list
-            ThreatList const& tList = m_creature->getThreatManager().getThreatList();
-            vManaPlayers.reserve(tList.size());
-            for (ThreatList::const_iterator iter = tList.begin();iter != tList.end(); ++iter)
-            {
-                Unit* pTempTarget = m_creature->GetMap()->GetUnit((*iter)->getUnitGuid());
-
-                if (pTempTarget && pTempTarget->getPowerType() == POWER_MANA && pTempTarget->GetTypeId() == TYPEID_PLAYER)
-                    vManaPlayers.push_back(pTempTarget);
-            }
-
-            if (!vManaPlayers.empty())
-			{
-				Unit* pTarget = vManaPlayers[urand(0, vManaPlayers.size() - 1)];
-				m_creature->CastSpell(pTarget, SPELL_BURNING_ADRENALINE, true);
-			}
-
-            m_uiBurningAdrenalineCasterTimer = 15000;
-        }
-        else
-            m_uiBurningAdrenalineCasterTimer -= uiDiff;
-
-        // Burning Adrenaline Tank Timer
-        if (m_uiBurningAdrenalineTankTimer < uiDiff)
-        {
-            // have the victim cast the spell on himself otherwise the third effect aura will be applied
-            // to Vael instead of the player
-			Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,0);
-			if (pTarget)
-				m_creature->CastSpell(pTarget, SPELL_BURNING_ADRENALINE, true); 
-
-            m_uiBurningAdrenalineTankTimer = 45000;
-        }
-        else
-            m_uiBurningAdrenalineTankTimer -= uiDiff;
-
-        // Tail Sweep Timer
-        if (m_uiTailSweepTimer < uiDiff)
-        {
-            if (DoCastSpellIfCan(m_creature, SPELL_TAIL_SWEEP) == CAST_OK)
-                m_uiTailSweepTimer = urand(10000,15000);
-        }
-        else
-            m_uiTailSweepTimer -= uiDiff;
-
-		// Flame Breath Timer
-        if (m_uiFlameBreathTimer < uiDiff)
-        {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAME_BREATH) == CAST_OK)
-                m_uiFlameBreathTimer = urand(6000, 10000);
-        }
-        else
-            m_uiFlameBreathTimer -= uiDiff;
-
-        DoMeleeAttackIfReady();
     }
 };
 

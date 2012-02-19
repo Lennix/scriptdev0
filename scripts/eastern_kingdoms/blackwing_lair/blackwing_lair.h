@@ -12,6 +12,11 @@ enum Data
     TYPE_BROODLORD,
     TYPE_DRAGON_TRIO,
     TYPE_CHROMAGGUS,
+    TYPE_NEFARIAN,
+    VALUE_BREATH1,
+    VALUE_BREATH2,
+    VALUE_DRAGON1,
+    VALUE_DRAGON2,
     MAX_ENCOUNTER
 };
 
@@ -35,7 +40,6 @@ enum Creatures
     NPC_CHROMATIC_DRAKONID      = 14302,
     NPC_GREEN_DRAKONID          = 14262,
     NPC_RED_DRAKONID            = 14264,
-    NPC_BONE_CONSTRUCT          = 14605,
 
     NPC_BLACKWING_GUARDSMAN     = 14456,
     NPC_BLACKWING_LEGIONNAIRE   = 12416,
@@ -131,7 +135,7 @@ class MANGOS_DLL_DECL instance_blackwing_lair : public ScriptedInstance
         uint32 m_uiOrcSummoned;
 
         GUIDList m_lBlackwingGuardsman;
-		GUIDList m_lBlackDragonEgg;
+        GUIDList m_lBlackDragonEgg;
         GUIDList m_lTempList;
         GUIDList m_lDragonTrio;
 
