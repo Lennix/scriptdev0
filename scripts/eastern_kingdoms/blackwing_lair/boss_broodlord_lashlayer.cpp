@@ -83,6 +83,7 @@ struct MANGOS_DLL_DECL boss_broodlordAI : public ScriptedAI
         else
             m_uiCleaveTimer -= uiDiff;
 
+        // Knock away
         if (m_uiKnockAwayTimer < uiDiff)
         {
             Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0);

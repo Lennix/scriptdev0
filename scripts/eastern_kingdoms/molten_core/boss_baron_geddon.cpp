@@ -149,9 +149,8 @@ struct MANGOS_DLL_DECL boss_baron_geddonAI : public ScriptedAI
         if (m_uiIgniteManaTimer <= uiDiff)
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                DoCastSpellIfCan(pTarget, SPELL_IGNITE_MANA);
-
-            m_uiIgniteManaTimer = 20000;
+                if (DoCastSpellIfCan(pTarget, SPELL_IGNITE_MANA) == CAST_OK)
+                    m_uiIgniteManaTimer = 20000;
         }
         else
             m_uiIgniteManaTimer -= uiDiff;
@@ -159,8 +158,8 @@ struct MANGOS_DLL_DECL boss_baron_geddonAI : public ScriptedAI
         // Inferno
         if (m_uiInfernoTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature, SPELL_INFERNO);
-            m_uiInfernoTimer = 30000;
+            if (DoCastSpellIfCan(m_creature, SPELL_INFERNO) == CAST_OK)
+                m_uiInfernoTimer = 30000;
         }
         else
             m_uiInfernoTimer -= uiDiff;
@@ -169,9 +168,8 @@ struct MANGOS_DLL_DECL boss_baron_geddonAI : public ScriptedAI
         if (m_uiLivingBombTimer <= uiDiff)
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                DoCastSpellIfCan(pTarget, SPELL_LIVING_BOMB);
-
-            m_uiLivingBombTimer = 20000;
+                if (DoCastSpellIfCan(pTarget, SPELL_LIVING_BOMB) == CAST_OK)
+                    m_uiLivingBombTimer = 20000;
         }
         else
             m_uiLivingBombTimer -= uiDiff;

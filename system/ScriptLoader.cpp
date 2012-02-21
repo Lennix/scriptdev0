@@ -63,7 +63,7 @@ extern void AddSC_boss_vaelastrasz();
 extern void AddSC_boss_broodlord();
 extern void AddSC_boss_blackwing_dragon();
 extern void AddSC_boss_chromaggus();
-extern void AddSC_boss_victor_nefarius();
+extern void AddSC_boss_nefarian();
 extern void AddSC_blackwing_lair();
 extern void AddSC_instance_blackwing_lair();
 extern void AddSC_deadmines();                              //deadmines
@@ -337,7 +337,7 @@ void AddScripts()
     AddSC_boss_broodlord();
     AddSC_boss_blackwing_dragon();
     AddSC_boss_chromaggus();
-    AddSC_boss_victor_nefarius();
+    AddSC_boss_nefarian();
     AddSC_blackwing_lair();
     AddSC_instance_blackwing_lair();
     AddSC_deadmines();                                      //deadmines

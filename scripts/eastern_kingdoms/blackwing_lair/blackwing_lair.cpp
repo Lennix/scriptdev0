@@ -103,6 +103,7 @@ CreatureAI* GetAI_mob_demon_portal(Creature* pCreature)
 
 /*######
 ## mob_suppression_trigger
+## ToDo: spawn whelps
 ######*/
 
 enum eSuppressionTrigger
@@ -127,7 +128,7 @@ struct MANGOS_DLL_DECL mob_suppression_triggerAI : public Scripted_NoMovementAI
 
 	void Reset()
     {
-        SuppressionTimer = urand(1000,2000);
+        SuppressionTimer = 1000;
         ActivationTimer = urand(15000, 30000/*DEVICE_RESPAWN*/);
 	}
 
@@ -149,9 +150,10 @@ struct MANGOS_DLL_DECL mob_suppression_triggerAI : public Scripted_NoMovementAI
             return;
         }
 
+        // Erstmal deaktivieren
         if (SuppressionTimer < uiDiff)
         {
-            SuppressionTimer = urand(1000,2000);
+            SuppressionTimer = 6000;
             DoCastSpellIfCan(m_creature, SPELL_SUPPRESSION_AURA);
         }
         else
