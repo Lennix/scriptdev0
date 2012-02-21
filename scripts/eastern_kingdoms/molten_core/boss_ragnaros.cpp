@@ -26,50 +26,39 @@ EndScriptData */
 
 enum eRanaros
 {
-    SAY_SUMMON_FIRST            = -1409013,
-    SAY_SUMMON                  = -1409014,
-    SAY_MIGHT                   = -1409015,
-    SAY_WRATH                   = -1409016,
-    SAY_KILL                    = -1409017,
-    SAY_MAGMA_BLAST             = -1409018,
-
-    CREATURE_SON_OF_FLAME   = 12143,
-
-    SPELL_HAND_OF_RAGNAROS      = 19780,    // Fire Damage, knocking back and stun
-    SPELL_ELEMENTAL_FIRE        = 20564,    // DoT 4800 dmg/8sec
-    SPELL_MIGHT_OF_RAGNAROS     = 21154,    // Summons gameobject for trigger cast
-    SPELL_MAGMA_BLAST           = 20565,    // Only casted then noone in melee range
-    SPELL_MELT_WEAPON           = 21387,    // Dura Lost for weapons
-    SPELL_WRATH_OF_RAGNAROS     = 20566,    // Melee Knockback
-    SPELL_RAGNAROS_EMERGE       = 20568,    // Emerge animation
-    SPELL_RAGNAROS_SUBMERGE_FADE = 21107,   // Apply: mod_stealth
-    SPELL_RAGNAROS_SUBMERGE_VISUAL = 20567, // Dummy effect
-    SPELL_RAGNAROS_SUBMERGE_ROOT = 23973,
-    SPELL_RAGNAROS_SUBMERGE_EFFECT = 21859,
-    SPELL_SONS_OF_FLAME_DUMMY   = 21108,    // Summon sons of flame
-    SPELL_LAVA_BURST_DUMMY      = 21908,
-    SPELL_SONS_OF_FLAMES_DUMMY  =  21108 
-};
-
-static float Sons[8][4]=
-{
-    {848.74f, -816.10f, -229.74f, 2.61f},
-    {852.56f, -849.86f, -228.56f, 2.83f},
-    {808.71f, -852.84f, -227.91f, 0.96f},
-    {786.59f, -821.13f, -226.35f, 0.94f},
-    {796.21f, -800.94f, -226.01f, 0.56f},
-    {821.60f, -782.74f, -226.02f, 6.15f},
-    {844.92f, -769.45f, -225.52f, 4.45f},
-    {839.82f, -810.86f, -229.68f, 4.69f}
+    SAY_SUMMON_FIRST                = -1409013,
+    SAY_SUMMON                      = -1409014,
+    SAY_MIGHT                       = -1409015,
+    SAY_WRATH                       = -1409016,
+    SAY_KILL                        = -1409017,
+    SAY_MAGMA_BLAST                 = -1409018,
+    CREATURE_SON_OF_FLAME           = 12143,
+    SPELL_HAND_OF_RAGNAROS          = 19780,    // Fire Damage, knocking back and stun
+    SPELL_ELEMENTAL_FIRE            = 20564,    // DoT 4800 dmg/8sec
+    SPELL_MIGHT_OF_RAGNAROS         = 21154,    // Summons gameobject for trigger cast
+    SPELL_MAGMA_BLAST               = 20565,    // Only casted then noone in melee range
+    SPELL_MELT_WEAPON               = 21387,    // Dura Lost for weapons
+    SPELL_WRATH_OF_RAGNAROS         = 20566,    // Melee Knockback
+    SPELL_RAGNAROS_EMERGE           = 20568,    // Emerge animation
+    SPELL_RAGNAROS_SUBMERGE_FADE    = 21107,   // Apply: mod_stealth
+    SPELL_RAGNAROS_SUBMERGE_VISUAL  = 20567, // Dummy effect
+    SPELL_RAGNAROS_SUBMERGE_ROOT    = 23973,
+    SPELL_RAGNAROS_SUBMERGE_EFFECT  = 21859,
+    SPELL_SONS_OF_FLAME_DUMMY       = 21108,    // Summon sons of flame
+    SPELL_LAVA_BURST_DUMMY          = 21908,
+    SPELL_SONS_OF_FLAMES_DUMMY      = 21108 
 };
 
 struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
 {
+    bool m_bIntroDone;
+
     boss_ragnarosAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (instance_molten_core*)pCreature->GetInstanceData();
         SetCombatMovement(false);
         m_creature->ApplySpellImmune(0, IMMUNITY_DAMAGE, SPELL_SCHOOL_MASK_FIRE, true);
+        m_bIntroDone = false;
         Reset();
     }
 
@@ -77,9 +66,9 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
 
     bool m_bSubmerged;
     bool m_bSubmergedOnce;
-    bool GetpSon;
+    bool m_bSonsDead;
+    
     uint32 m_uiSummonCount;
-
     uint32 m_uiElementalFireTimer;
     uint32 m_uiEmergeTimer;
     uint32 m_uiMightOfRagnarosTimer;
@@ -89,7 +78,6 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
     uint32 m_uiWrathOfRagnarosTimer;
     uint32 m_uiMeltWeaponTimer;
     uint8  m_uiPhase;
-    bool sonsDead;
     Creature* Trigger;
     std::list<Creature*> pSons;
 
@@ -103,10 +91,10 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
             }
             pSons.clear();
         }
+
         m_bSubmerged = false;
         m_bSubmergedOnce = false;
-        GetpSon = false;
-        sonsDead = true;
+        m_bSonsDead = true;
         m_uiSummonCount = 0;
         m_uiElementalFireTimer = 3000;
         m_uiEmergeTimer = 0;
@@ -116,9 +104,13 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         m_uiSubmergeTimer = 180000; //180000;
         m_uiWrathOfRagnarosTimer = 30000;
         m_uiLavaBurstTimer = urand(1000, 10000);
-        m_creature->SetVisibility(VISIBILITY_ON);
         m_uiPhase = 0;
        
+        if (m_bIntroDone)
+        {
+            m_creature->SetVisibility(VISIBILITY_ON);
+        }
+
         m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_FADE);
         m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_EFFECT);
         m_creature->RemoveAurasDueToSpell(SPELL_MELT_WEAPON);
@@ -193,11 +185,13 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         // Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
+
         // Lava Burst
         if (!m_bSubmerged && m_uiSubmergeTimer > m_uiLavaBurstTimer && m_uiPhase >= 4)
         {
             m_uiLavaBurstTimer = m_uiSubmergeTimer + 500;
         }
+
         if (m_uiLavaBurstTimer <= uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_LAVA_BURST_DUMMY) == CAST_OK)
@@ -208,16 +202,16 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
 
         if (m_bSubmerged)
         {
-            sonsDead = true;
+            m_bSonsDead = true;
             for(std::list<Creature*>::iterator i = pSons.begin(); i != pSons.end(); ++i)
             {
                 if ((*i)->isAlive())
-                    sonsDead = false;
+                    m_bSonsDead = false;
                 
             }
 
             // Emerge
-            if (m_uiEmergeTimer <= uiDiff || sonsDead)
+            if (m_uiEmergeTimer <= uiDiff || m_bSonsDead)
             {
                 if (++m_uiPhase == 1)
                 {
@@ -231,8 +225,8 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                 {
                     // Ragnaros is fully emerged
                     m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_EFFECT);
-                    GetpSon = false;
                     m_bSubmerged = false;
+                    m_bIntroDone = true;
                     m_uiPhase = 0;
                     m_uiSubmergeTimer = 180000; // 180000
                 }
@@ -251,6 +245,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                     case 0:
                     {
                         m_creature->AttackStop();
+
                         if (m_creature->IsNonMeleeSpellCasted(false))
                             m_creature->InterruptNonMeleeSpells(false);
                 
