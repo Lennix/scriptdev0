@@ -68,7 +68,6 @@ enum
     SPELL_BONE_CONTRUST				= 23363,
 
     FACTION_BLACK_DRAGON            = 103,
-    FACTION_FRIENDLY                = 35,
     FACTION_HOSTILE					= 14,
 };
 
@@ -485,9 +484,6 @@ enum
     SPELL_WARLOCK               = 23427,                // infernals    -> should trigger 23426
     SPELL_HUNTER                = 23436,                // bow broke
     SPELL_ROGUE                 = 23414,                // Paralise
-
-    TEAM_ALLIANCE				=     1,
-    TEAM_HORDE					=	  2,
 
     NPC_BONE_CONSTRUCT			= 14605,
 };

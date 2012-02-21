@@ -32,7 +32,7 @@ enum Creatures
     NPC_FLAMEGOR                = 11981,
     NPC_CHROMAGGUS              = 14020,
     NPC_NEFARIAN                = 11583,
-    NPC_VICTOR_NEFARIUS         = 10162,
+    NPC_LORD_NEFARIAN           = 10162,
 
     NPC_BLACK_DRAKONID          = 14265,
     NPC_BLUE_DRAKONID           = 14261,
