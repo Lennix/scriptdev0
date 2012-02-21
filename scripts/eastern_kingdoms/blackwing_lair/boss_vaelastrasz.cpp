@@ -20,7 +20,7 @@
 /* ScriptData
 SDName: Boss_Vaelastrasz
 SD%Complete: 100
-SDComment:
+SDComment: gossip text is missing
 SDCategory: Blackwing Lair
 EndScriptData */
 
@@ -93,6 +93,7 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
     bool m_bHasYelled;
     bool triggerd;
     bool speech;
+    bool debuff;
 
     Creature * pNef;
 
@@ -112,6 +113,7 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
         m_bHasYelled = false;
         triggerd = false;
         speech = false;
+        debuff = false;
         pNef = 0;
     }
 
@@ -161,10 +163,6 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
         {
             if (m_pInstance)
                 m_pInstance->SetData(TYPE_VAELASTRASZ, IN_PROGRESS);
-
-            // Buff players on aggro
-            DoCastSpellIfCan(m_creature, SPELL_ESSENCE_OF_THE_RED);
-            m_creature->SetHealthPercent(30);
         }
     }
 
@@ -191,7 +189,7 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
                     switch (m_uiIntroPhase)
                     {
                         case 0:
-                            pNef = m_creature->SummonCreature(NPC_VICTOR_NEFARIUS, aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], aNefariusSpawnLoc[2], aNefariusSpawnLoc[3], TEMPSUMMON_MANUAL_DESPAWN, 0);
+                            pNef = m_creature->SummonCreature(NPC_LORD_NEFARIAN, aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], aNefariusSpawnLoc[2], aNefariusSpawnLoc[3], TEMPSUMMON_MANUAL_DESPAWN, 0);
                             pNef->SetStandState(UNIT_STAND_STATE_STAND);
                             m_uiIntroTimer = 1000;		
                             break;
@@ -283,6 +281,14 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
                 // Return since we have no target
                 if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
                     return;
+
+                if	(!debuff)
+                {
+                    // Buff players on aggro, void aggro wont work because of the event!
+                    m_creature->CastSpell(m_creature, SPELL_ESSENCE_OF_THE_RED,true);
+                    m_creature->SetHealthPercent(30);
+                    debuff = true;
+                }
 
                 // Yell if hp lower than 15%
                 if (m_creature->GetHealthPercent() < 15.0f && !m_bHasYelled)

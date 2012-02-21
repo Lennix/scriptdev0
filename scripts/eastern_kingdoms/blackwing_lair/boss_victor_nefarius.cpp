@@ -20,7 +20,17 @@
 #include "blackwing_lair.h"
 #include "TemporarySummon.h"
 
-std::vector<Creature*> NefarianDragons;
+struct DrakonIdInfo
+{
+    DrakonIdInfo(float _x, float _y, float _z)
+        : x(_x), y(_y), z(_z) {}
+
+    float x, y, z;
+};
+
+typedef std::vector<DrakonIdInfo> DrakonIdInfoVector;
+
+DrakonIdInfoVector NefarianDragons;
 std::vector<Creature*> NefarianBoneConstructs;
 
   ///////////////////////
@@ -37,13 +47,6 @@ enum
 {
     SAY_GAMESBEGIN_1                = -1469004,
     SAY_GAMESBEGIN_2                = -1469005,
-
-    GOSSIP_ITEM_NEFARIUS_1          = -3469000,
-    GOSSIP_ITEM_NEFARIUS_2          = -3469001,
-    GOSSIP_ITEM_NEFARIUS_3          = -3469002,
-    GOSSIP_TEXT_NEFARIUS_1          = 7134,
-    GOSSIP_TEXT_NEFARIUS_2          = 7198,
-    GOSSIP_TEXT_NEFARIUS_3          = 7199,
 
     MAX_DRAKES                      = 5,
     MAX_DRAKE_SUMMONS               = 42,
@@ -62,11 +65,11 @@ enum
     SPELL_SILENCE					= 22666,
     SPELL_SHADOW_COMMAND			= 22667,
     SPELL_SHADOWBLINK				= 22664,				// or 22681 -> teleport around the room, possibly random
+    SPELL_BONE_CONTRUST				= 23363,
 
     FACTION_BLACK_DRAGON            = 103,
+    FACTION_FRIENDLY                = 35,
     FACTION_HOSTILE					= 14,
-
-    GO_THRONE						= 179118,
 };
 
 struct SpawnLocation
@@ -82,6 +85,10 @@ static const SpawnLocation aNefarianLocs[5] =
     {-7592.0f, -1264.0f, 481.0f},                           // hide pos (useless; remove this)
     {-7502.002f, -1256.503f, 476.758f},                     // nefarian fly to this position
 };
+
+#define GOSSIP_ITEM_NEFARIUS_1           "I've made no mistakes."
+#define GOSSIP_ITEM_NEFARIUS_2           "You have lost your mind, Nefarius. You speak in riddles."
+#define GOSSIP_ITEM_NEFARIUS_3           "Please do."
 
 static const uint32 aPossibleDrake[MAX_DRAKES] = {NPC_BRONZE_DRAKANOID, NPC_BLUE_DRAKANOID, NPC_RED_DRAKANOID, NPC_GREEN_DRAKANOID, NPC_BLACK_DRAKANOID};
 
@@ -145,7 +152,6 @@ struct MANGOS_DLL_DECL boss_victor_nefariusAI : public ScriptedAI
         m_uiShadowBlinkTimer		= urand(30000, 45000);
         m_uiResetTimer				= 15 * MINUTE * IN_MILLISECONDS;
         summonedDragonNefarian		= false;
-        DespawnDragons();
 
         // Make visible if needed
         if (m_creature->GetVisibility() != VISIBILITY_ON)
@@ -175,6 +181,7 @@ struct MANGOS_DLL_DECL boss_victor_nefariusAI : public ScriptedAI
     {
         if (pSummoned->GetEntry() == NPC_NEFARIAN)
         {
+            pSummoned->SetRespawnDelay(7*DAY);
             pSummoned->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
 
             // see boss_onyxia (also note the removal of this in boss_nefarian)
@@ -184,8 +191,6 @@ struct MANGOS_DLL_DECL boss_victor_nefariusAI : public ScriptedAI
             // Let Nefarian fly towards combat area
             pSummoned->GetMotionMaster()->MovePoint(1, aNefarianLocs[4].m_fX, aNefarianLocs[4].m_fY, aNefarianLocs[4].m_fZ);
         }
-
-        pSummoned->SetRespawnDelay(7*DAY);
     }
 
     void SummonedMovementInform(Creature* pSummoned, uint32 uiMotionType, uint32 uiPointId)
@@ -200,14 +205,18 @@ struct MANGOS_DLL_DECL boss_victor_nefariusAI : public ScriptedAI
 
     void SummonedCreatureJustDied(Creature* pSummoned)
     {
-        // Despawn self when Nefarian is killed and despawn dragons
+        // Despawn self when Nefarian is killed
         if (pSummoned->GetEntry() == NPC_NEFARIAN)
-        {
             m_creature->ForcedDespawn();
-            DespawnDragons();
-        }
         else
+        {
             m_uiSpawnedAddDeadCounter++;
+            pSummoned->CastSpell(pSummoned, SPELL_BONE_CONTRUST, true);
+
+            float fX, fY, fZ;
+            pSummoned->GetPosition(fX, fY, fZ);
+            NefarianDragons.push_back(DrakonIdInfo(fX, fY, fZ));
+        }
     }
 
     void SpawnDragonWave()
@@ -217,7 +226,7 @@ struct MANGOS_DLL_DECL boss_victor_nefariusAI : public ScriptedAI
         {
             // 1 in 3 chance it will be a chromatic
             uiCreatureId = urand(0, 4) ? m_uiDrakeType[i] : NPC_CHROMATIC_DRAKANOID;
-            Creature* cDragon = m_creature->SummonCreature(uiCreatureId, aNefarianLocs[i].m_fX, aNefarianLocs[i].m_fY, aNefarianLocs[i].m_fZ, 5.000f, TEMPSUMMON_MANUAL_DESPAWN, 0);
+            Creature* cDragon = m_creature->SummonCreature(uiCreatureId, aNefarianLocs[i].m_fX, aNefarianLocs[i].m_fY, aNefarianLocs[i].m_fZ, 5.000f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 1500);
             if (cDragon)
             {
                 //source hordeguides
@@ -249,23 +258,11 @@ struct MANGOS_DLL_DECL boss_victor_nefariusAI : public ScriptedAI
                         cDragon->ApplySpellImmune(0, IMMUNITY_DAMAGE, SPELL_SCHOOL_MASK_SHADOW, true);
                         break;
                 }	
-
+                cDragon->SetInCombatWithZone();
                 if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                     cDragon->AI()->AttackStart(pTarget);
-    
-                NefarianDragons.push_back(cDragon);
             }
         }
-    }
-
-    void DespawnDragons()
-    {
-        for(std::vector<Creature*>::const_iterator it = NefarianDragons.begin(); it != NefarianDragons.end(); ++it)
-        {
-            (*it)->ForcedDespawn();
-            (*it)->AddObjectToRemoveList();
-        }
-        NefarianDragons.clear();
     }
 
     //checks if lord victor nefarius is at EndbossFight because he is often used for events!
@@ -416,8 +413,8 @@ struct MANGOS_DLL_DECL boss_victor_nefariusAI : public ScriptedAI
 
 bool GossipHello_boss_victor_nefarius(Player* pPlayer, Creature* pCreature)
 {
-    pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NEFARIUS_1 , GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-    pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_NEFARIUS_1, pCreature->GetObjectGuid());
+    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NEFARIUS_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+    pPlayer->SEND_GOSSIP_MENU(7134, pCreature->GetObjectGuid());
     return true;
 }
 
@@ -426,12 +423,12 @@ bool GossipSelect_boss_victor_nefarius(Player* pPlayer, Creature* pCreature, uin
     switch(uiAction)
     {
         case GOSSIP_ACTION_INFO_DEF+1:
-            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NEFARIUS_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_NEFARIUS_2, pCreature->GetObjectGuid());
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NEFARIUS_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
+            pPlayer->SEND_GOSSIP_MENU(7198, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NEFARIUS_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+3);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_NEFARIUS_3, pCreature->GetObjectGuid());
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NEFARIUS_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+3);
+            pPlayer->SEND_GOSSIP_MENU(7199, pCreature->GetObjectGuid());
             DoScriptText(SAY_GAMESBEGIN_1, pCreature);
             break;
         case GOSSIP_ACTION_INFO_DEF+3:
@@ -477,8 +474,7 @@ enum
     SPELL_BELLOWING_ROAR        = 22686,
     SPELL_VEIL_OF_SHADOW        = 22687,                // old spell id 7068 -> wrong
     SPELL_CLEAVE                = 20691,
-    SPELL_TAIL_LASH             = 23364,
-    SPELL_BONE_CONTRUST         = 23363,                //23362, 23361   Missing from DBC!
+    SPELL_TAIL_LASH             = 23364,                
 
     SPELL_MAGE                  = 23410,                // wild magic
     SPELL_WARRIOR               = 23397,                // beserk
@@ -490,7 +486,23 @@ enum
     SPELL_HUNTER                = 23436,                // bow broke
     SPELL_ROGUE                 = 23414,                // Paralise
 
+    TEAM_ALLIANCE				=     1,
+    TEAM_HORDE					=	  2,
+
     NPC_BONE_CONSTRUCT			= 14605,
+};
+
+static int32 Class[9][2] =
+{
+    {SPELL_MAGE, SAY_MAGE},
+    {SPELL_WARRIOR, SAY_WARRIOR},
+    {SPELL_DRUID, SAY_DRUID},
+    {SPELL_PRIEST, SAY_PRIEST},
+    {SPELL_WARLOCK, SAY_WARLOCK},
+    {SPELL_HUNTER, SAY_HUNTER},
+    {SPELL_ROGUE, SAY_ROGUE},
+    {SPELL_PALADIN, SAY_PALADIN},
+    {SPELL_SHAMAN, SAY_SHAMAN}
 };
 
 struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
@@ -585,9 +597,9 @@ struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
 
     void SpawnBoneConstructs()
     {
-        for(std::vector<Creature*>::const_iterator it = NefarianDragons.begin(); it != NefarianDragons.end(); ++it)
+        for(DrakonIdInfoVector::const_iterator it = NefarianDragons.begin(); it != NefarianDragons.end(); ++it)
         {
-            Creature* cBoneConstruct = m_creature->SummonCreature(NPC_BONE_CONSTRUCT, (*it)->GetPositionX(), (*it)->GetPositionY(), (*it)->GetPositionZ(), (*it)->GetOrientation(), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5000);
+            Creature* cBoneConstruct = m_creature->SummonCreature(NPC_BONE_CONSTRUCT, it->x, it->y, it->z, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 3000);
             if (cBoneConstruct)
             {
                 //source hordeguides classic
@@ -595,12 +607,11 @@ struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
                 cBoneConstruct->SetMaxHealth(6104);
                 cBoneConstruct->setFaction(FACTION_HOSTILE);
 
+                cBoneConstruct->SetInCombatWithZone();
                 if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                     cBoneConstruct->AI()->AttackStart(pTarget);
 
                 NefarianBoneConstructs.push_back(cBoneConstruct);
-                (*it)->ForcedDespawn();
-                (*it)->AddObjectToRemoveList();
             }
         }
 
@@ -623,7 +634,7 @@ struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
             return;
 
         //get team
-        if (team == 0)
+        if (!team)
         {
             Player* tPlayer = GetPlayerAtMinimumRange(50.0);
             if (tPlayer)
@@ -631,7 +642,11 @@ struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
                 if (tPlayer->GetTeam() == ALLIANCE)
                     team = TEAM_ALLIANCE;
                 else
+                {
                     team = TEAM_HORDE;
+                    Class[7][0] = Class[8][0];
+                    Class[7][1] = Class[8][1];
+                }
             }
         }
 
@@ -695,49 +710,25 @@ struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
             //Cast a random class call
             //On official it is based on what classes are currently on the hostil list
             //but we can't do that yet so just randomly call one
-            switch(urand(0, 7))
-            {
-                case 0:
-                    DoScriptText(SAY_MAGE, m_creature);
-                    DoCastSpellIfCan(m_creature, SPELL_MAGE);
-                    break;
-                case 1:
-                    DoScriptText(SAY_WARRIOR, m_creature);
-                    DoCastSpellIfCan(m_creature, SPELL_WARRIOR);
-                    break;
-                case 2:
-                    DoScriptText(SAY_DRUID, m_creature);
-                    DoCastSpellIfCan(m_creature, SPELL_DRUID);
-                    break;
-                case 3:
-                    DoScriptText(SAY_PRIEST, m_creature);
-                    DoCastSpellIfCan(m_creature, SPELL_PRIEST);
-                    break;
-                case 4:
-                    DoScriptText(SAY_WARLOCK, m_creature);
-                    DoCastSpellIfCan(m_creature, SPELL_WARLOCK);
-                    break;
-                case 5:
-                    DoScriptText(SAY_HUNTER, m_creature);
-                    DoCastSpellIfCan(m_creature, SPELL_HUNTER);
-                    break;
-                case 6:
-                    DoScriptText(SAY_ROGUE, m_creature);
-                    DoCastSpellIfCan(m_creature, SPELL_ROGUE);
-                    break;
-                case 7:
-                    if (team == TEAM_ALLIANCE)
+             uint32 i = urand(0,7);
+             if (DoCastSpellIfCan(m_creature, Class[i][0]) == CAST_OK)
+             {
+                 //telport rogues in front of nefarian
+                 if ( i == 6)
+                 {
+                    Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,0);
+                    Map::PlayerList const &PlayerList = m_creature->GetMap()->GetPlayers();
+                    for (Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
                     {
-                        DoScriptText(SAY_PALADIN, m_creature);
-                        DoCastSpellIfCan(m_creature, SPELL_PALADIN);
-                    } else {
-                        DoScriptText(SAY_SHAMAN, m_creature);
-                        DoCastSpellIfCan(m_creature, SPELL_SHAMAN);
+                        Player* pPlayer = itr->getSource();
+                        if (pTarget && pPlayer && pPlayer->getClass() == CLASS_ROGUE)
+                            DoTeleportPlayer(pPlayer, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), pTarget->GetOrientation());
                     }
-                    break;
-            }
+                 }
 
-            m_uiClassCallTimer = urand(25000, 35000);
+                DoScriptText(Class[i][1], m_creature);
+                m_uiClassCallTimer = urand(20000, 25000);
+             }
         }
         else
             m_uiClassCallTimer -= uiDiff;
