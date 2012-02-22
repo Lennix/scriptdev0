@@ -361,10 +361,22 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public npc_escortAI
         // Teleport (player at burning coals)
         if (m_uiTeleportTimer <= uiDiff)
         {
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            uint32 randomnumber = urand(0,1);
+            if (randomnumber == 0)
             {
-                m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(), -50);
-                DoCastSpellIfCan(pTarget, SPELL_TELEPORT);
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                {
+                    m_creature->getThreatManager().clearReferences(); //modifyThreatPercent(m_creature->getVictim(), -50);
+                    DoCastSpellIfCan(pTarget, SPELL_TELEPORT);
+                }
+            }
+            else
+            {
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0))
+                {
+                    m_creature->getThreatManager().clearReferences(); //modifyThreatPercent(m_creature->getVictim(), -50);
+                    DoCastSpellIfCan(pTarget, SPELL_TELEPORT);
+                }   
             }
             m_uiTeleportTimer = urand(20000, 30000);  //60000
         }
