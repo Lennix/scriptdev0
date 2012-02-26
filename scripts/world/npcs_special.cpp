@@ -1448,38 +1448,38 @@ CreatureAI* GetAI_npc_winter_reveler(Creature* pCreature)
 ## mob_the_cleaner
 ######*/
 
-enum eTheCleaner
+enum
 {
-    SAY_THE_CLEANER_SPAWN   = -1000667,
-    SPELL_IMMUNE_ALL        = 29230,        // 1302 29230
+    SPELL_IMMUNITY = 29230
 };
 
-struct MANGOS_DLL_DECL mob_the_cleanerAI : public ScriptedAI
+struct mob_the_cleanerAI : public ScriptedAI
 {
-    mob_the_cleanerAI(Creature* pCreature) : ScriptedAI(pCreature)
+    mob_the_cleanerAI(Creature* creature) : ScriptedAI(creature)
     {
-        DoScriptText(SAY_THE_CLEANER_SPAWN, pCreature);
-        m_creature->CastSpell(m_creature, SPELL_IMMUNE_ALL, true);
-        Reset();
+        m_creature->CastSpell(m_creature, SPELL_IMMUNITY, true);
+        m_creature->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, 4500);
+        m_creature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, 5000);
+        m_creature->UpdateDamagePhysical(BASE_ATTACK);
     }
 
-    uint32 m_uiImmuneAllTimer;
+    void Reset() {}
 
-    void Reset()
+    void Aggro(Unit* pWho)
     {
-        m_uiImmuneAllTimer = 0;
+        m_creature->MonsterSay("You dare interfere with this beeing's test? The battle must be fought alone! You shall all suffer for this indiscretion.", 0);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 time)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-		{
-			m_creature->ForcedDespawn();
-			m_creature->AddObjectToRemoveList();
+        {
+            m_creature->ForcedDespawn();
+            m_creature->AddObjectToRemoveList();
             return;
-		}
+        }
 
-        ScriptedAI::UpdateAI(uiDiff);
+        DoMeleeAttackIfReady();
     }
 };
 
