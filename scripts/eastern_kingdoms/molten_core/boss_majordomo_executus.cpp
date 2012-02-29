@@ -366,7 +366,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public npc_escortAI
             {
                 if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 {
-                    m_creature->getThreatManager().clearReferences(); //modifyThreatPercent(m_creature->getVictim(), -50);
+                    m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(), -100);
                     DoCastSpellIfCan(pTarget, SPELL_TELEPORT);
                 }
             }
@@ -374,7 +374,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public npc_escortAI
             {
                 if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0))
                 {
-                    m_creature->getThreatManager().clearReferences(); //modifyThreatPercent(m_creature->getVictim(), -50);
+                    m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(), -100);
                     DoCastSpellIfCan(pTarget, SPELL_TELEPORT);
                 }   
             }
