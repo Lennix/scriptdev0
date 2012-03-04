@@ -90,7 +90,8 @@ bool GossipSelect_npc_lothos_riftwaker(Player* pPlayer, Creature* pCreature, uin
     if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
     {
         pPlayer->CLOSE_GOSSIP_MENU();
-        pPlayer->TeleportTo(409, 1096.00f, -467.00f, -104.6f, 3.64f);
+		pPlayer->ResurrectPlayer(0.5f);
+        pPlayer->TeleportTo(409, 1096.00f, -467.00f, -104.6f, 3.64f);	
     }
 
     return true;
