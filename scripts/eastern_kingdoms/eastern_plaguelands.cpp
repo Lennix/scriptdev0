@@ -369,26 +369,26 @@ enum
 struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
 {
     npc_infected_peasantAI(Creature* pCreature) : ScriptedAI(pCreature) 
-	{
-		Reset();
-	}
+    {
+        Reset();
+    }
 
     uint32 m_uiDiseaseTimer;
 
     void Reset() 
-	{
-		//Instant Disease @ first Spawn
-		m_uiDiseaseTimer = 0;
+    {
+        //Instant Disease @ first Spawn
+        m_uiDiseaseTimer = 0;
 
-		//Only Plagued Peasants get the Seething Plague
-		if(m_creature->GetEntry() == NPC_PLAGUED_PEASANT)
-			 m_creature->CastSpell(m_creature, SPELL_SEETHING_PLAGUE, false);
-	}
+        //Only Plagued Peasants get the Seething Plague
+        if(m_creature->GetEntry() == NPC_PLAGUED_PEASANT)
+             m_creature->CastSpell(m_creature, SPELL_SEETHING_PLAGUE, false);
+    }
 
     void AttackStart(Unit* pVictim) 
-	{
-		return;
-	}
+    {
+        return;
+    }
 
     void UpdateAI(const uint32 uiDiff)
     {
@@ -397,16 +397,16 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
             return;
 
 
-		uint32 rnd = urand(0,100);
+        uint32 rnd = urand(0,100);
 
         if (m_uiDiseaseTimer <= uiDiff)
         {
-			//30% Chance to get Diseased
-			if(!m_creature->HasAura(SPELL_SEETHING_PLAGUE) && rnd <= 30)
-			{
-				m_creature->CastSpell(m_creature, SPELL_DEATHS_DOOR, false);
-			}
-			//Disease Timer between 1 und 10 Seconds
+            //30% Chance to get Diseased
+            if(!m_creature->HasAura(SPELL_SEETHING_PLAGUE) && rnd <= 30)
+            {
+                m_creature->CastSpell(m_creature, SPELL_DEATHS_DOOR, false);
+            }
+            //Disease Timer between 1 und 10 Seconds
             m_uiDiseaseTimer = urand(1000,10000);
         }
         else
@@ -426,16 +426,16 @@ CreatureAI* GetAI_npc_infected_peasant(Creature* pCreature)
 // These seem correct
 static const float aArcherSpawn[10][4] =
 {
-	{ 3376.750f, -3041.969f, 172.639f, 2.359f },
-	{ 3383.315f, -3056.466f, 181.094f, 2.371f },
-	{ 3377.810f, -3059.429f, 180.500f, 2.025f },
-	{ 3358.776f, -3074.729f, 174.090f, 1.350f },
-	{ 3371.300f, -3068.288f, 175.841f, 1.279f },
-	{ 3348.956f, -3070.904f, 177.813f, 3.382f },
-	{ 3333.764f, -3051.669f, 174.158f, 1.357f },
-	{ 3313.438f, -3036.754f, 168.531f, 0.265f },
-	{ 3327.897f, -3021.678f, 170.103f, 6.144f },
-	{ 3362.131f, -3010.514f, 183.945f, 3.602f }
+    { 3376.750f, -3041.969f, 172.639f, 2.359f },
+    { 3383.315f, -3056.466f, 181.094f, 2.371f },
+    { 3377.810f, -3059.429f, 180.500f, 2.025f },
+    { 3358.776f, -3074.729f, 174.090f, 1.350f },
+    { 3371.300f, -3068.288f, 175.841f, 1.279f },
+    { 3348.956f, -3070.904f, 177.813f, 3.382f },
+    { 3333.764f, -3051.669f, 174.158f, 1.357f },
+    { 3313.438f, -3036.754f, 168.531f, 0.265f },
+    { 3327.897f, -3021.678f, 170.103f, 6.144f },
+    { 3362.131f, -3010.514f, 183.945f, 3.602f }
 };
 
 // Looks good
@@ -461,14 +461,14 @@ static const float aPeasantSpawn[15][3] =
 // Dont know if these are right
 const float aFootsoldieSpawn[3][4] =
 {
-	{3347.603271f, -3045.536377f, 164.029877f, 1.814429f},
-	{3363.609131f, -3037.187256f, 163.541885f, 2.277649f},
-	{3349.105469f, -3056.500977f, 168.079468f, 1.857460f}
+    {3347.603271f, -3045.536377f, 164.029877f, 1.814429f},
+    {3363.609131f, -3037.187256f, 163.541885f, 2.277649f},
+    {3349.105469f, -3056.500977f, 168.079468f, 1.857460f}
 
-	/* Alternative
-	{ 3349.937f, -3056.875f, 168.141f, 1.622f },
-	{ 3370.527f, -3048.276f, 165.872f, 2.377f },
-	{ 3346.987f, -3052.782f, 165.360f, 1.662f }*/
+    /* Alternative
+    { 3349.937f, -3056.875f, 168.141f, 1.622f },
+    { 3370.527f, -3048.276f, 165.872f, 2.377f },
+    { 3346.987f, -3052.782f, 165.360f, 1.662f }*/
 };
 
 static const uint32 aPeasantSpawnYell[] = {-1000696, -1000697, -1000698};
@@ -505,12 +505,12 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         if (m_bIsQuestInProgress)
             return;
 
-		m_bFootsoldiersSpawned = false;
+        m_bFootsoldiersSpawned = false;
         m_bIsQuestInProgress = false;
         m_uiMainTimer = 5000;
-		m_uiFootsoldierTimer1 = urand(0,1)*5000 + 20000;
-		m_uiFootsoldierTimer2 = 30000;
-		m_uiFootsoldierTimer3 = 60000;
+        m_uiFootsoldierTimer1 = urand(0,1)*5000 + 20000;
+        m_uiFootsoldierTimer2 = 30000;
+        m_uiFootsoldierTimer3 = 60000;
         m_uiPhase = 1;
         m_uiCurrentWave = 0;
         m_uiKillCounter = 0;
@@ -559,16 +559,16 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
 
             m_creature->CastSpell(pPlayer, SPELL_BLESSING_OF_NORDRASSIL, false);
 
-			//Summon Soldiers (Wave 1 -> 9, Wave 2 -> 6, Wave 3 -> 8, ...)
-			DoSummonFootsoldier(6 + ((m_uiCurrentWave%2)*2));
+            //Summon Soldiers (Wave 1 -> 9, Wave 2 -> 6, Wave 3 -> 8, ...)
+            DoSummonFootsoldier(6 + ((m_uiCurrentWave%2)*2));
 
-			//Timer for the Footsoldier Waves
-			m_uiFootsoldierTimer1 = urand(0,1)*5000 + 20000;
-			m_uiFootsoldierTimer2 = 30000;
-			m_uiFootsoldierTimer3 = 60000;
+            //Timer for the Footsoldier Waves
+            m_uiFootsoldierTimer1 = urand(0,1)*5000 + 20000;
+            m_uiFootsoldierTimer2 = 30000;
+            m_uiFootsoldierTimer3 = 60000;
 
-			//Footsoldiers are Spawned continously after the first Wave
-			m_bFootsoldiersSpawned = true;
+            //Footsoldiers are Spawned continously after the first Wave
+            m_bFootsoldiersSpawned = true;
 
             // m_uiSaveCounter and m_uiKillCounter are only temporar values
             m_uiSaveCounter = 0;
@@ -590,22 +590,22 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
     }
 
     void DoNextWave()
-	{
+    {
         ++m_uiCurrentWave;
 
-		//Count for Peasants 10 - 15
+        //Count for Peasants 10 - 15
         uint8 uiShorter = 10 + m_uiCurrentWave;
 
-		//Random Peasant for Say
+        //Random Peasant for Say
         uint8 uiRandomPeasant = urand(0, uiShorter);
 
         for(uint8 i = 0; i < uiShorter; ++i)
         {
-			//Injured or plagued Peasant
-			uint32 m_uiPeasantType = NPC_INJURED_PEASANT;
-			//Plagued Peasants have a 5% + Nr of Wave % Chance (10%, 15%, ...)
-			if(urand(0,100) <= 5 + 5 * m_uiCurrentWave)
-				m_uiPeasantType = NPC_PLAGUED_PEASANT;
+            //Injured or plagued Peasant
+            uint32 m_uiPeasantType = NPC_INJURED_PEASANT;
+            //Plagued Peasants have a 5% + Nr of Wave % Chance (10%, 15%, ...)
+            if(urand(0,100) <= 5 + 5 * m_uiCurrentWave)
+                m_uiPeasantType = NPC_PLAGUED_PEASANT;
 
             if (Creature* pTemp = m_creature->SummonCreature(m_uiPeasantType, aPeasantSpawn[i][0], aPeasantSpawn[i][1], aPeasantSpawn[i][2], 0, TEMPSUMMON_DEAD_DESPAWN, 0))
             {
@@ -648,10 +648,10 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
 
     void SummonedCreatureJustDied(Creature* pSummoned)
     {
-		/* We do not want to count staying peasants.
-		It means that they are saved. Saved peasants are ForcedDespawn(),
-		which triggers SummonedCreatureJustDied.
-		*/
+        /* We do not want to count staying peasants.
+        It means that they are saved. Saved peasants are ForcedDespawn(),
+        which triggers SummonedCreatureJustDied.
+        */
 
         if (pSummoned->GetMotionMaster()->GetCurrentMovementGeneratorType() != IDLE_MOTION_TYPE &&
            (pSummoned->GetEntry() == NPC_INJURED_PEASANT || pSummoned->GetEntry() == NPC_PLAGUED_PEASANT))
@@ -665,7 +665,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
 
     void DoSummonFootsoldier(uint32 count)
     {
-		Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
+        Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
         for(uint8 i = 0; i < count + 1; ++i)
         {
             if (pPlayer)
@@ -676,17 +676,19 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         }
     }
 
-	void DoSpawnArchers ()
-	{
-		for(uint8 i = 0; i < 10; ++i)
-		{
-			if (Creature* pTemp = m_creature->SummonCreature(NPC_SCOURGE_ARCHER, aArcherSpawn[i][0], aArcherSpawn[i][1], aArcherSpawn[i][2], aArcherSpawn[i][3], TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 360000))
-			{
-				m_lSummonedGUIDList.push_back(pTemp->GetGUID());
-				pTemp->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-			}
-		}
-	}
+    void DoSpawnArchers ()
+    {
+        Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
+        for(uint8 i = 0; i < 10; ++i)
+        {
+            if (Creature* pTemp = m_creature->SummonCreature(NPC_SCOURGE_ARCHER, aArcherSpawn[i][0], aArcherSpawn[i][1], aArcherSpawn[i][2], aArcherSpawn[i][3], TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 360000))
+            {
+                m_lSummonedGUIDList.push_back(pTemp->GetGUID());
+                pTemp->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                pTemp->SetInCombatWith(pPlayer);
+            }
+        }
+    }
 
     void UpdateAI(const uint32 uiDiff)
     {
@@ -695,32 +697,32 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
             return;
 
         //Different Footsoldier spawns
-		if(m_bFootsoldiersSpawned)
-		{
-			if (m_uiFootsoldierTimer1 <= uiDiff)
-			{
-				DoSummonFootsoldier(2);
-				m_uiFootsoldierTimer1 = urand(0,1)*5000 + 20000;
-			}
-			else
-				m_uiFootsoldierTimer1 -= uiDiff;
+        if(m_bFootsoldiersSpawned)
+        {
+            if (m_uiFootsoldierTimer1 <= uiDiff)
+            {
+                DoSummonFootsoldier(2);
+                m_uiFootsoldierTimer1 = urand(0,1)*5000 + 20000;
+            }
+            else
+                m_uiFootsoldierTimer1 -= uiDiff;
 
-			if (m_uiFootsoldierTimer2 <= uiDiff)
-			{
-				DoSummonFootsoldier(1);
-				m_uiFootsoldierTimer2 = 30000;
-			}
-			else
-				m_uiFootsoldierTimer2 -= uiDiff;
+            if (m_uiFootsoldierTimer2 <= uiDiff)
+            {
+                DoSummonFootsoldier(1);
+                m_uiFootsoldierTimer2 = 30000;
+            }
+            else
+                m_uiFootsoldierTimer2 -= uiDiff;
 
-			if (m_uiFootsoldierTimer3 <= uiDiff)
-			{
-				DoSummonFootsoldier(3+((m_uiCurrentWave%2)*2));
-				m_uiFootsoldierTimer3 = 60000;
-			}
-			else
-				m_uiFootsoldierTimer3 -= uiDiff;
-		}
+            if (m_uiFootsoldierTimer3 <= uiDiff)
+            {
+                DoSummonFootsoldier(3+((m_uiCurrentWave%2)*2));
+                m_uiFootsoldierTimer3 = 60000;
+            }
+            else
+                m_uiFootsoldierTimer3 -= uiDiff;
+        }
 
         if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid))
         {
@@ -770,23 +772,23 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
                     case 2: // Wave 1
                         DoNextWave();
                         m_uiMainTimer = 38000;
-						break;
-					case 3: // Wave 2
+                        break;
+                    case 3: // Wave 2
                         DoNextWave();
                         m_uiMainTimer = 38000;
-						break;
-					case 4: // Wave 3
+                        break;
+                    case 4: // Wave 3
                         DoNextWave();
                         m_uiMainTimer = 38000;
-						break;
-					case 5: // Wave 4
+                        break;
+                    case 5: // Wave 4
                         DoNextWave();
                         m_uiMainTimer = 38000;
-						break;
-					case 6: // Wave 5
+                        break;
+                    case 6: // Wave 5
                         DoNextWave();
                         m_uiMainTimer = 38000;
-						break;
+                        break;
                 }
 
                 /* Just a note:
@@ -831,7 +833,7 @@ CreatureAI* GetAI_npc_eris_havenfire(Creature* pCreature)
 
 enum
 {
-	SHOOT = 23073,
+    SHOOT = 23073,
 };
 
 struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
@@ -844,7 +846,7 @@ struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
         Reset();
     }
 
-	std::list<Creature*> pPeasants;
+    std::list<Creature*> pPeasants;
     uint32 m_uiShotTimer;
     bool m_bSkippedFirstShot;
 
@@ -852,22 +854,22 @@ struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
     {
 
         //Values need to be set
-		m_creature->SetBaseWeaponDamage(RANGED_ATTACK, MINDAMAGE, 162);
-		m_creature->SetBaseWeaponDamage(RANGED_ATTACK, MAXDAMAGE, 186);
-		m_creature->UpdateDamagePhysical(RANGED_ATTACK);
-		m_creature->SetArmor(3791);
+        m_creature->SetBaseWeaponDamage(RANGED_ATTACK, MINDAMAGE, 162);
+        m_creature->SetBaseWeaponDamage(RANGED_ATTACK, MAXDAMAGE, 186);
+        m_creature->UpdateDamagePhysical(RANGED_ATTACK);
+        m_creature->SetArmor(3791);
 
-		//get a bow
-		SetEquipmentSlots(false, EQUIP_UNEQUIP, EQUIP_UNEQUIP, 6231);
+        //get a bow
+        SetEquipmentSlots(false, EQUIP_UNEQUIP, EQUIP_UNEQUIP, 6231);
 
-		//get immune
-		m_creature->CastSpell(m_creature, 29230, true);
+        //get immune
+        m_creature->CastSpell(m_creature, 29230, true);
 
-		//dont move
-		SetCombatMovement(false);
+        //dont move
+        SetCombatMovement(false);
 
-		//shoot timer
-		m_uiShotTimer = 2000 + urand(0, 400); 
+        //shoot timer
+        m_uiShotTimer = 2000 + urand(0, 400); 
     }
 
     void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
@@ -879,31 +881,31 @@ struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff)
     {
-		//Peasant list
-		pPeasants.clear();
-		GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_INJURED_PEASANT, 60.0f);
-		GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_PLAGUED_PEASANT, 60.0f);
+        //Peasant list
+        pPeasants.clear();
+        GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_INJURED_PEASANT, 60.0f);
+        GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_PLAGUED_PEASANT, 60.0f);
         
-		if (m_uiShotTimer)
+        if (m_uiShotTimer)
         {
-			if(m_uiShotTimer <= uiDiff)
-			{
+            if(m_uiShotTimer <= uiDiff)
+            {
                 //Get random Peasants for every Shot???
-				uint32 pPeasantRandom = urand(0,pPeasants.size()), j = 1;
-				for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
-				{
-					if((*i)->isAlive() && j == pPeasantRandom && m_creature->IsInRange((*i), 0.0f, 40.0f, true))
-					{
-						Creature* target = (*i);
-						DoCastSpellIfCan(target, SHOOT);	
-					}
-					else if (j == pPeasantRandom)
-						 pPeasantRandom = urand(j,pPeasants.size());
+                uint32 pPeasantRandom = urand(0,pPeasants.size()), j = 1;
+                for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
+                {
+                    if((*i)->isAlive() && j == pPeasantRandom && m_creature->IsInRange((*i), 0.0f, 40.0f, true))
+                    {
+                        Creature* target = (*i);
+                        DoCastSpellIfCan(target, SHOOT);	
+                    }
+                    else if (j == pPeasantRandom)
+                         pPeasantRandom = urand(j,pPeasants.size());
 
-					j++;
-				}
-				m_uiShotTimer = 2000 + urand(0, 400);
-			}
+                    j++;
+                }
+                m_uiShotTimer = 2000 + urand(0, 400);
+            }
             else
                 m_uiShotTimer -= uiDiff;
         }
