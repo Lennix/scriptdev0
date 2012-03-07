@@ -482,6 +482,7 @@ enum
 
     NPC_SCOURGE_ARCHER = 14489,
     NPC_SCOURGE_FOOTSOLDIER = 14486,
+    NPC_CLEANER = 14503,
 
     QUEST_INVISIBILITY = 23196,
     SEE_PRIEST_INVIS = 23199,
@@ -568,7 +569,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         {
             DoScriptText(-1000709, m_creature);
 
-            m_creature->CastSpell(pPlayer, SPELL_BLESSING_OF_NORDRASSIL, true);
+            m_creature->CastSpell(pPlayer, SPELL_BLESSING_OF_NORDRASSIL, false);
 
             //Summon Soldiers (Wave 1 -> 9, Wave 2 -> 6, Wave 3 -> 8, ...)
             DoSummonFootsoldier(6 + ((m_uiCurrentWave%2)*2));
@@ -724,8 +725,12 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
                     if(pTarget->GetTypeId() == TYPEID_PLAYER)
                     {
                         if(((Player*)pTarget)->GetGUID() != m_playerGuid)
-                        {
+                        {                                         
                             //Get the frakkin Cleaner to kill this guy
+                            float fX, fY, fZ;
+                            m_creature->GetRandomPoint(((Player*)pTarget)->GetPositionX(), ((Player*)pTarget)->GetPositionY(), ((Player*)pTarget)->GetPositionZ(), 5.0f, fX, fY, fZ);
+                            Creature* pCleaner = m_creature->SummonCreature(NPC_CLEANER, fX, fY, fZ, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);		 
+                            pCleaner->AI()->AttackStart(((Player*)pTarget));
                         }
                     }
                 }
@@ -996,33 +1001,30 @@ struct MANGOS_DLL_DECL mob_scourge_footsoldierAI : public ScriptedAI
         m_creature->UpdateDamagePhysical(BASE_ATTACK);
         m_creature->SetArmor(3435);
 
-        m_creature->CastSpell(m_creature, QUEST_INVISIBILITY, false);
+        m_creature->CastSpell(m_creature, SEE_PRIEST_INVIS, false);
     }
 
     void UpdateAI(const uint32 uiDiff)
     {
         //Peasant list
         pPeasants.clear();
-        GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_INJURED_PEASANT, 200.0f);
-        GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_PLAGUED_PEASANT, 200.0f);
+        GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_INJURED_PEASANT, 300.0f);
+        GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_PLAGUED_PEASANT, 300.0f);
 
-        Player* pTempPlayer = GetPlayerAtMinimumRange(200.0f);
+        Player* pTempPlayer = GetPlayerAtMinimumRange(300.0f);
 
         if(pTempPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
             pPlayer = pTempPlayer;
 
-        if(!m_creature->isInCombat())
+        m_creature->AddThreat(pPlayer);
+        for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
         {
-            m_creature->AddThreat(pPlayer);
-            for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
+            if((*i)->isAlive())
             {
-                if((*i)->isAlive())
-                {
-                    m_creature->AddThreat((*i));
-                }
+                m_creature->AddThreat((*i));
             }
         }
-        m_creature->SelectHostileTarget();
+        DoMeleeAttackIfReady();
     }
 };
 
