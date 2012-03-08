@@ -503,8 +503,8 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
 
     bool m_bIsQuestInProgress, m_bFootsoldiersSpawned;
     uint64 m_uiMainTimer;
-    uint32 m_uiDoomCheck, m_uiFootsoldierTimer1, m_uiFootsoldierTimer2, m_uiFootsoldierTimer3;
-    uint8 m_uiPhase, m_uiCurrentWave, m_uiKillCounter, m_uiSaveCounter, m_uiTotalSaved, m_uiTotalKilled;
+    uint32 m_uiDoomCheck, m_uiFootsoldierTimer1, m_uiFootsoldierTimer2, m_uiFootsoldierTimer3, m_uiKillCounter[5], m_uiSaveCounter[5], m_uiPeasantCount[5];
+    uint8 m_uiPhase, m_uiCurrentWave, m_uiTotalSaved, m_uiTotalKilled;
     ObjectGuid m_playerGuid;
     GUIDList m_lSummonedGUIDList;
 
@@ -523,8 +523,12 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         m_uiDoomCheck = 5000;
         m_uiPhase = 1;
         m_uiCurrentWave = 0;
-        m_uiKillCounter = 0;
-        m_uiSaveCounter = 0;
+        for(uint8 i = 0; i < 5; i++)
+        {
+            m_uiKillCounter[i] = 0;
+            m_uiSaveCounter[i] = 0;
+            m_uiPeasantCount[i] = 10+i;
+        }
         m_uiTotalSaved = 0;
         m_uiTotalKilled = 0;
         m_playerGuid.Clear();
@@ -582,9 +586,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
             //Footsoldiers are Spawned continously after the first Wave
             m_bFootsoldiersSpawned = true;
 
-            // m_uiSaveCounter and m_uiKillCounter are only temporar values
-            m_uiSaveCounter = 0;
-            m_uiKillCounter = 0;
+            m_uiCurrentWave++;
             return;
         }
 
@@ -601,22 +603,17 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         }
     }
 
-    void DoNextWave()
+    void DoNextWave(uint8 m_uiWaveNumber)
     {
-        ++m_uiCurrentWave;
-
-        //Count for Peasants 10 - 15
-        uint8 uiShorter = 10 + m_uiCurrentWave;
-
         //Random Peasant for Say
-        uint8 uiRandomPeasant = urand(0, uiShorter);
+        uint8 uiRandomPeasant = urand(0, m_uiPeasantCount[m_uiWaveNumber]);
 
-        for(uint8 i = 0; i < uiShorter; ++i)
+        for(uint8 i = 0; i < m_uiPeasantCount[m_uiWaveNumber]; ++i)
         {
             //Injured or plagued Peasant
             uint32 m_uiPeasantType = NPC_INJURED_PEASANT;
             //Plagued Peasants have a 5% + Nr of Wave % Chance (10%, 15%, ...)
-            if(urand(0,100) <= 5 + 5 * m_uiCurrentWave)
+            if(urand(0,100) <= 5 + 5 * m_uiWaveNumber)
                 m_uiPeasantType = NPC_PLAGUED_PEASANT;
 
             if (Creature* pTemp = m_creature->SummonCreature(m_uiPeasantType, aPeasantSpawn[i][0], aPeasantSpawn[i][1], aPeasantSpawn[i][2], 0, TEMPSUMMON_DEAD_DESPAWN, 0))
@@ -643,10 +640,10 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         }
         if (uiPointId == 1)
         {
-            if (m_uiSaveCounter >= 10 + m_uiCurrentWave) // When saved peasants exceed maximum peasants, something went wrong ^^
+            if (m_uiSaveCounter[m_uiCurrentWave-1] >= m_uiPeasantCount[m_uiCurrentWave-1]) // When saved peasants exceed maximum peasants, something went wrong ^^
                 debug_log("SD0: npc_eris_havenfire: Current wave %u was not reset properly in void WaveFinished().", m_uiCurrentWave);
 
-            ++m_uiSaveCounter;
+            ++m_uiSaveCounter[m_uiCurrentWave-1];
             ++m_uiTotalSaved;
 
             // When counted, force despawn. I don't know exactly when they should disappear
@@ -677,7 +674,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         if (pSummoned->GetMotionMaster()->GetCurrentMovementGeneratorType() != IDLE_MOTION_TYPE &&
            (pSummoned->GetEntry() == NPC_INJURED_PEASANT || pSummoned->GetEntry() == NPC_PLAGUED_PEASANT))
         {
-            ++m_uiKillCounter;
+            ++m_uiKillCounter[m_uiCurrentWave-1];
             ++m_uiTotalKilled;
         }
 
@@ -716,6 +713,8 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         GUIDVector vGuids;
         creature->FillGuidsListFromThreatList(vGuids);
 
+        Player* pCleanedPlayer = 0;
+
         if (!vGuids.empty())
         {
             for (GUIDVector::const_iterator itr = vGuids.begin(); itr != vGuids.end(); ++itr)
@@ -725,12 +724,25 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
                     if(pTarget->GetTypeId() == TYPEID_PLAYER)
                     {
                         if(((Player*)pTarget)->GetGUID() != m_playerGuid)
-                        {                                         
-                            //Get the frakkin Cleaner to kill this guy
-                            float fX, fY, fZ;
-                            m_creature->GetRandomPoint(((Player*)pTarget)->GetPositionX(), ((Player*)pTarget)->GetPositionY(), ((Player*)pTarget)->GetPositionZ(), 5.0f, fX, fY, fZ);
-                            Creature* pCleaner = m_creature->SummonCreature(NPC_CLEANER, fX, fY, fZ, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);		 
-                            pCleaner->AI()->AttackStart(((Player*)pTarget));
+                        {   
+                            if (pCleanedPlayer != 0)
+                            {
+                                if(pCleanedPlayer->isDead())
+                                    pCleanedPlayer = 0;
+                                
+                            }
+                            else
+                            {
+                                if (!((Player*)pTarget)->isDead())
+                                {
+                                    //Get the frakkin Cleaner to kill this guy
+                                    float fX, fY, fZ;
+                                    m_creature->GetRandomPoint(((Player*)pTarget)->GetPositionX(), ((Player*)pTarget)->GetPositionY(), ((Player*)pTarget)->GetPositionZ(), 5.0f, fX, fY, fZ);
+                                    Creature* pCleaner = m_creature->SummonCreature(NPC_CLEANER, fX, fY, fZ, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);		 
+                                    pCleaner->AI()->AttackStart(((Player*)pTarget));
+                                    pCleanedPlayer = ((Player*)pTarget);
+                                }
+                            }
                         }
                     }
                 }
@@ -802,7 +814,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
             }
 
             // Do next step
-            else if (m_uiKillCounter + m_uiSaveCounter == 10 + m_uiCurrentWave)
+            else if ((m_uiKillCounter[m_uiCurrentWave-1] + m_uiSaveCounter[m_uiCurrentWave-1] >= m_uiPeasantCount[m_uiCurrentWave-1]))
             {
                 // When we saved 50 peasants
                 if (m_uiTotalSaved >= 50)
@@ -827,23 +839,23 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
                         m_uiMainTimer = 2000;
                         break;
                     case 2: // Wave 1
-                        DoNextWave();
+                        DoNextWave(1);
                         m_uiMainTimer = 38000;
                         break;
                     case 3: // Wave 2
-                        DoNextWave();
+                        DoNextWave(2);
                         m_uiMainTimer = 38000;
                         break;
                     case 4: // Wave 3
-                        DoNextWave();
+                        DoNextWave(3);
                         m_uiMainTimer = 38000;
                         break;
                     case 5: // Wave 4
-                        DoNextWave();
+                        DoNextWave(4);
                         m_uiMainTimer = 38000;
                         break;
                     case 6: // Wave 5
-                        DoNextWave();
+                        DoNextWave(5);
                         m_uiMainTimer = 38000;
                         break;
                 }
@@ -1014,16 +1026,20 @@ struct MANGOS_DLL_DECL mob_scourge_footsoldierAI : public ScriptedAI
         Player* pTempPlayer = GetPlayerAtMinimumRange(300.0f);
 
         if(pTempPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
+        { 
             pPlayer = pTempPlayer;
-
-        m_creature->AddThreat(pPlayer);
-        for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
-        {
-            if((*i)->isAlive())
+            m_creature->AddThreat(pPlayer);
+	}
+	if (!pPeasants.empty())
+	{
+            for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
             {
-                m_creature->AddThreat((*i));
-            }
-        }
+                if((*i)->isAlive())
+                {
+                    m_creature->AddThreat((*i));
+                }
+       	    }
+	}
         DoMeleeAttackIfReady();
     }
 };
