@@ -741,6 +741,12 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
                         if(((Player*)pTarget)->GetGUID() != m_playerGuid)
                         {
                             bool bInCleanerList = false, bDoneAlready = false;
+
+                            if(!((Player*)pTarget)->isInCombat())
+                            {
+                                creature->SetInCombatWith(pTarget);
+                            }
+
                             if(((Player*)pTarget)->isDead())
                             {
                                 if(!lToCleanPlayers.empty())
@@ -779,7 +785,15 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
          // Nothing is needed to update when the event is not in progress
         if (!m_bIsQuestInProgress || m_uiCurrentWave == 0)
             return;
-        
+
+        // Continue only when we have starting player
+        Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
+        if (!pPlayer)
+        {
+            PhaseEnded(true, false);
+            return;
+        }
+
         for (GUIDList::const_iterator itr = m_lSummonedGUIDList.begin(); itr != m_lSummonedGUIDList.end(); ++itr)
             if (Creature* pSummoned = m_creature->GetMap()->GetCreature(*itr))
                 functionOfDoom(pSummoned);
