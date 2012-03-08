@@ -653,6 +653,9 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         }
         if (uiPointId == 1)
         {
+            if(m_uiCurrentWave == 0)
+                return;
+
             if (m_uiSaveCounter[m_uiCurrentWave-1] >= m_uiPeasantCount[m_uiCurrentWave-1]) // When saved peasants exceed maximum peasants, something went wrong ^^
                 debug_log("SD0: npc_eris_havenfire: Current wave %u was not reset properly in void WaveFinished().", m_uiCurrentWave);
 
@@ -683,7 +686,8 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         It means that they are saved. Saved peasants are ForcedDespawn(),
         which triggers SummonedCreatureJustDied.
         */
-
+        if(m_uiCurrentWave == 0)
+            return;
         if (pSummoned->GetMotionMaster()->GetCurrentMovementGeneratorType() != IDLE_MOTION_TYPE &&
            (pSummoned->GetEntry() == NPC_INJURED_PEASANT || pSummoned->GetEntry() == NPC_PLAGUED_PEASANT))
         {
@@ -773,7 +777,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
     void UpdateAI(const uint32 uiDiff)
     {
          // Nothing is needed to update when the event is not in progress
-        if (!m_bIsQuestInProgress)
+        if (!m_bIsQuestInProgress || m_uiCurrentWave == 0)
             return;
         
         for (GUIDList::const_iterator itr = m_lSummonedGUIDList.begin(); itr != m_lSummonedGUIDList.end(); ++itr)
@@ -870,7 +874,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
             }
 
             // No more phases or no wave
-            if (m_uiPhase > 6 || !m_uiCurrentWave)
+            if (m_uiPhase > 6 || m_uiCurrentWave == 0)
                 return;
 
             if (m_uiMainTimer < uiDiff)
