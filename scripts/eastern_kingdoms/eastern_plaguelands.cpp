@@ -362,7 +362,8 @@ enum
 
     NPC_INJURED_PEASANT = 14484,
     NPC_PLAGUED_PEASANT = 14485,
-
+    
+    QUEST_INVISIBILITY = 23196,
     SPELL_ENTER_THE_LIGHT_DND = 23107
 };
 
@@ -376,13 +377,13 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
     uint32 m_uiDiseaseTimer;
     void Reset() 
     {
+        
+        
         //Instant Disease @ first Spawn
         m_uiDiseaseTimer = 0;
         //Only Plagued Peasants get the Seething Plague
         if(m_creature->GetEntry() == NPC_PLAGUED_PEASANT)
              m_creature->CastSpell(m_creature, SPELL_SEETHING_PLAGUE, false);
-
-        m_creature->CastSpell(m_creature, 23196, false);
     }
 
     void AttackStart(Unit* pVictim) 
@@ -396,7 +397,8 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
         if (m_creature->HasAura(SPELL_ENTER_THE_LIGHT_DND, EFFECT_INDEX_0))
             return;
         
-       
+        if (!m_creature->HasAura(QUEST_INVISIBILITY))
+            m_creature->CastSpell(m_creature, QUEST_INVISIBILITY, false);
 
         uint32 rnd = urand(0,100);
 
@@ -484,7 +486,6 @@ enum
     NPC_SCOURGE_FOOTSOLDIER = 14486,
     NPC_CLEANER = 14503,
 
-    QUEST_INVISIBILITY = 23196,
     SEE_PRIEST_INVIS = 23199,
     SPELL_BLESSING_OF_NORDRASSIL = 23108
 };
@@ -501,12 +502,14 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         Reset();
     }
 
-    bool m_bIsQuestInProgress, m_bFootsoldiersSpawned;
+    bool m_bIsQuestInProgress, m_bFootsoldiersSpawned, bCleaningInProgress;
     uint64 m_uiMainTimer;
     uint32 m_uiDoomCheck, m_uiFootsoldierTimer1, m_uiFootsoldierTimer2, m_uiFootsoldierTimer3, m_uiKillCounter[5], m_uiSaveCounter[5], m_uiPeasantCount[5];
     uint8 m_uiPhase, m_uiCurrentWave, m_uiTotalSaved, m_uiTotalKilled;
     ObjectGuid m_playerGuid;
     GUIDList m_lSummonedGUIDList;
+    std::list<Player*> lToCleanPlayers;
+    std::list<Creature*> lCleaner;
 
     void Reset()
     {
@@ -516,6 +519,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
 
         m_bFootsoldiersSpawned = false;
         m_bIsQuestInProgress = false;
+        bCleaningInProgress = false;
         m_uiMainTimer = 5000;
         m_uiFootsoldierTimer1 = urand(0,1)*5000 + 20000;
         m_uiFootsoldierTimer2 = 30000;
@@ -523,6 +527,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         m_uiDoomCheck = 5000;
         m_uiPhase = 1;
         m_uiCurrentWave = 0;
+        lToCleanPlayers.clear();
         for(uint8 i = 0; i < 5; i++)
         {
             m_uiKillCounter[i] = 0;
@@ -532,6 +537,8 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         m_uiTotalSaved = 0;
         m_uiTotalKilled = 0;
         m_playerGuid.Clear();
+        lCleaner.clear();
+        lToCleanPlayers.clear();
 
         m_creature->CastSpell(m_creature, QUEST_INVISIBILITY, true);
 
@@ -562,7 +569,9 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
             DoScriptText(urand(0, 1) ? -1000706 : -1000707, m_creature);
             if (pPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
                 pPlayer->FailQuest(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW);
-
+           
+            m_creature->ForcedDespawn(0);
+            m_creature->SetRespawnTime(7200);
             m_bIsQuestInProgress = false;
             Reset();
             return;
@@ -595,7 +604,11 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         {
             DoScriptText(-1000708, m_creature);
             if (pPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
-                pPlayer->AreaExploredOrEventHappens(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW);
+            {
+                //Dunno what that is: AreaExploredOrEventHappens(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW);
+                m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+                pPlayer->CompleteQuest(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW); 
+            }
 
             m_bIsQuestInProgress = false;
             Reset();
@@ -603,12 +616,12 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         }
     }
 
-    void DoNextWave(uint8 m_uiWaveNumber)
+    void DoNextWave(uint32 m_uiWaveNumber)
     {
         //Random Peasant for Say
-        uint8 uiRandomPeasant = urand(0, m_uiPeasantCount[m_uiWaveNumber]);
+        uint8 uiRandomPeasant = urand(0, m_uiPeasantCount[m_uiWaveNumber-1]);
 
-        for(uint8 i = 0; i < m_uiPeasantCount[m_uiWaveNumber]; ++i)
+        for(uint8 i = 0; i < m_uiPeasantCount[m_uiWaveNumber-1]; ++i)
         {
             //Injured or plagued Peasant
             uint32 m_uiPeasantType = NPC_INJURED_PEASANT;
@@ -709,42 +722,49 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
     {
         if (!creature->CanHaveThreatList())
             return;
-
+       
         GUIDVector vGuids;
         creature->FillGuidsListFromThreatList(vGuids);
-
-        Player* pCleanedPlayer = 0;
 
         if (!vGuids.empty())
         {
             for (GUIDVector::const_iterator itr = vGuids.begin(); itr != vGuids.end(); ++itr)
             {
                 if (Unit* pTarget = creature->GetMap()->GetUnit(*itr))
-                {
+                { 
                     if(pTarget->GetTypeId() == TYPEID_PLAYER)
                     {
                         if(((Player*)pTarget)->GetGUID() != m_playerGuid)
-                        {   
-                            if (pCleanedPlayer != 0)
+                        {
+                            bool bInCleanerList = false, bDoneAlready = false;
+                            if(((Player*)pTarget)->isDead())
                             {
-                                if(pCleanedPlayer->isDead())
-                                    pCleanedPlayer = 0;
-                                
+                                if(!lToCleanPlayers.empty())
+                                {
+                                    for(std::list<Player*>::iterator i = lToCleanPlayers.begin(); i != lToCleanPlayers.end(); ++i)
+                                    {
+                                        if((*i)->GetGUID() == ((Player*)pTarget)->GetGUID())
+                                            bDoneAlready = true;
+                                    }
+                                } 
+                                if(!bDoneAlready)
+                                    lToCleanPlayers.remove((Player*)pTarget);
                             }
                             else
                             {
-                                if (!((Player*)pTarget)->isDead())
+                                if(!lToCleanPlayers.empty())
                                 {
-                                    //Get the frakkin Cleaner to kill this guy
-                                    float fX, fY, fZ;
-                                    m_creature->GetRandomPoint(((Player*)pTarget)->GetPositionX(), ((Player*)pTarget)->GetPositionY(), ((Player*)pTarget)->GetPositionZ(), 5.0f, fX, fY, fZ);
-                                    Creature* pCleaner = m_creature->SummonCreature(NPC_CLEANER, fX, fY, fZ, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);		 
-                                    pCleaner->AI()->AttackStart(((Player*)pTarget));
-                                    pCleanedPlayer = ((Player*)pTarget);
+                                    for(std::list<Player*>::iterator i = lToCleanPlayers.begin(); i != lToCleanPlayers.end(); ++i)
+                                    {
+                                        if((*i)->GetGUID() == ((Player*)pTarget)->GetGUID())
+                                            bInCleanerList = true;
+                                    }
                                 }
+                                if(!bInCleanerList)
+                                    lToCleanPlayers.push_back((Player*)pTarget);
                             }
                         }
-                    }
+                    }  
                 }
             }
         }
@@ -756,14 +776,37 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         if (!m_bIsQuestInProgress)
             return;
         
-        if (m_uiDoomCheck <= uiDiff)
+        for (GUIDList::const_iterator itr = m_lSummonedGUIDList.begin(); itr != m_lSummonedGUIDList.end(); ++itr)
+            if (Creature* pSummoned = m_creature->GetMap()->GetCreature(*itr))
+                functionOfDoom(pSummoned);
+
+        if(bCleaningInProgress)
         {
-            for (GUIDList::const_iterator itr = m_lSummonedGUIDList.begin(); itr != m_lSummonedGUIDList.end(); ++itr)
-                if (Creature* pSummoned = m_creature->GetMap()->GetCreature(*itr))
-                    functionOfDoom(pSummoned);
+            lCleaner.clear();
+            GetCreatureListWithEntryInGrid(lCleaner, m_creature, NPC_CLEANER, 300.f);
+            if(lCleaner.empty())
+                bCleaningInProgress = false;
         }
-        else
-            m_uiDoomCheck -= uiDiff;
+
+        if(!bCleaningInProgress)
+        {
+            //Get the frakkin Cleaner to kill this guy
+            if(!lToCleanPlayers.empty())
+            {
+                for(std::list<Player*>::iterator i = lToCleanPlayers.begin(); i != lToCleanPlayers.end(); ++i)
+                {
+                    if((*i)->isAlive())
+                    {
+                        float fX, fY, fZ;
+                        m_creature->GetRandomPoint( (*i)->GetPositionX(), (*i)->GetPositionY(), (*i)->GetPositionZ(), 5.0f, fX, fY, fZ );
+                        Creature* pCleaner = m_creature->SummonCreature(NPC_CLEANER, fX, fY, fZ, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);		 
+                        pCleaner->AI()->AttackStart((*i));
+                        bCleaningInProgress = true;
+                    }
+                }
+            }
+           
+        }
 
         //Different Footsoldier spawns
         if(m_bFootsoldiersSpawned)
@@ -934,8 +977,6 @@ struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
         //get immune
         m_creature->CastSpell(m_creature, 29230, true);
 
-        m_creature->CastSpell(m_creature, QUEST_INVISIBILITY, false);
-
         //dont move
         SetCombatMovement(false);
 
@@ -952,6 +993,10 @@ struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff)
     {
+        //Invisibility
+        //if (!m_creature->HasAura(QUEST_INVISIBILITY))
+        //    m_creature->CastSpell(m_creature, QUEST_INVISIBILITY, false);
+
         //Peasant list
         pPeasants.clear();
         GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_INJURED_PEASANT, 60.0f);
@@ -1018,28 +1063,30 @@ struct MANGOS_DLL_DECL mob_scourge_footsoldierAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff)
     {
+        //Invisibility
+        //if (!m_creature->HasAura(QUEST_INVISIBILITY))
+        //    m_creature->CastSpell(m_creature, QUEST_INVISIBILITY, false);
+
         //Peasant list
         pPeasants.clear();
         GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_INJURED_PEASANT, 300.0f);
         GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_PLAGUED_PEASANT, 300.0f);
+        
+        pPlayer = GetPlayerAtMinimumRange(300.0f);
 
-        Player* pTempPlayer = GetPlayerAtMinimumRange(300.0f);
-
-        if(pTempPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
-        { 
-            pPlayer = pTempPlayer;
+        if(pPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
             m_creature->AddThreat(pPlayer);
-	}
-	if (!pPeasants.empty())
-	{
-            for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
-            {
-                if((*i)->isAlive())
+
+	    if (!pPeasants.empty())
+	    {
+                for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
                 {
-                    m_creature->AddThreat((*i));
-                }
-       	    }
-	}
+                    if((*i)->isAlive())
+                    {
+                        m_creature->AddThreat((*i));
+                    }
+       	        }
+	    }
         DoMeleeAttackIfReady();
     }
 };
