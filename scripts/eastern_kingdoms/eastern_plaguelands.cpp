@@ -799,7 +799,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
             {
                 for(std::list<Player*>::iterator i = lToCleanPlayers.begin(); i != lToCleanPlayers.end(); ++i)
                 {
-                    if((*i)->isAlive())
+                    if((*i)->isAlive() && (*i)->isTargetableForAttack())
                     {
                         float fX, fY, fZ;
                         m_creature->GetRandomPoint( (*i)->GetPositionX(), (*i)->GetPositionY(), (*i)->GetPositionZ(), 5.0f, fX, fY, fZ );
