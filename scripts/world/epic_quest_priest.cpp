@@ -1,593 +1,841 @@
 #include "precompiled.h"
 #include "escort_ai.h"
 /*author: zero
- *script complete: 100% 
+ *script complete: 80% 
  *need test
+ *we need a closer look at the deathdoors at wave2
+ *we need a trigger to keep eventplayer in combat
+ *maybe we have to implement a full working random spawn calculation for peasants
  *soldier spawn is probably wrong
  */
 
+/*######
+## npc_infected_peasant
+######*/
+
 enum
 {
-	/* Spawn IDs */
-	PEASANT = 14485,
-	SOLDIER = 14486,
-	ARCHER = 14489,
-	CLEANER = 14503,
+    SPELL_DEATHS_DOOR = 23127, // Green (weak)
+    SPELL_SEETHING_PLAGUE = 23072, // Purple (strong)
 
-	/* Spells */
-	SEETHINGPLAGUE = 23072,
-	SHOOT = 23073,
-	ENTERTHELIGHT = 23107,
-	NORDRASSIL = 23108,
-	DEATHSDOOR = 23127,
-	INVISIBILITY = 23196,
-	IMMUNITY = 29230,
-
-	/* Generic */
-	QUESTID = 7622,
-
-	NUM_PEASANTS = 12,
-	NUM_ARCHERS = 10,
+    NPC_INJURED_PEASANT = 14484,
+    NPC_PLAGUED_PEASANT = 14485,
+    
+    QUEST_INVISIBILITY = 23196,
+    SPELL_ENTER_THE_LIGHT_DND = 23107
 };
 
-const float archerPosis[NUM_ARCHERS][4] =
+struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
 {
-	{ 3376.750f, -3041.969f, 172.639f, 2.359f },
-	{ 3383.315f, -3056.466f, 181.094f, 2.371f },
-	{ 3377.810f, -3059.429f, 180.500f, 2.025f },
-	{ 3358.776f, -3074.729f, 174.090f, 1.350f },
-	{ 3371.300f, -3068.288f, 175.841f, 1.279f },
-	{ 3348.956f, -3070.904f, 177.813f, 3.382f },
-	{ 3333.764f, -3051.669f, 174.158f, 1.357f },
-	{ 3313.438f, -3036.754f, 168.531f, 0.265f },
-	{ 3327.897f, -3021.678f, 170.103f, 6.144f },
-	{ 3362.131f, -3010.514f, 183.945f, 3.602f }
+    npc_infected_peasantAI(Creature* pCreature) : ScriptedAI(pCreature) 
+    {
+        Reset();
+    }
+
+    uint32 m_uiDiseaseTimer, rnd;
+
+    void Reset() 
+    {
+        
+        m_uiDiseaseTimer = urand(1000,10000);
+        rnd = urand(0,100);
+
+        //Only Plagued Peasants get the Seething Plague
+        if(m_creature->GetEntry() == NPC_PLAGUED_PEASANT)
+             m_creature->CastSpell(m_creature, SPELL_SEETHING_PLAGUE, false);
+        if(!m_creature->HasAura(SPELL_SEETHING_PLAGUE) && rnd <= 30)
+                m_creature->CastSpell(m_creature, SPELL_DEATHS_DOOR, false);
+    }
+
+    void AttackStart(Unit* pVictim) 
+    {
+        return;
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        // Holding this aura means that this NPC is saved
+        if (m_creature->HasAura(SPELL_ENTER_THE_LIGHT_DND, EFFECT_INDEX_0))
+            return;
+        
+        if (!m_creature->HasAura(QUEST_INVISIBILITY))
+            m_creature->CastSpell(m_creature, QUEST_INVISIBILITY, false);
+
+        rnd = urand(0,100);
+
+        if (m_uiDiseaseTimer <= uiDiff)
+        {
+            //30% Chance to get Diseased
+            if(!m_creature->HasAura(SPELL_SEETHING_PLAGUE) && rnd <= 30)
+                m_creature->CastSpell(m_creature, SPELL_DEATHS_DOOR, false);
+            //Disease Timer between 1 und 10 Seconds
+            m_uiDiseaseTimer = urand(1000,10000);
+        }
+        else
+            m_uiDiseaseTimer -= uiDiff;
+    }
 };
 
-const float peasantPosis[NUM_PEASANTS][3] =
+CreatureAI* GetAI_npc_infected_peasant(Creature* pCreature)
 {
-	{ 3364.0f, -3054.0f, 165.5f },
-	{ 3363.0f, -3051.4f, 165.5f },
-	{ 3362.0f, -3052.5f, 165.5f },
-	{ 3361.0f, -3054.3f, 165.5f },
-	{ 3366.0f, -3052.0f, 165.5f },
-	{ 3365.0f, -3051.0f, 165.5f },
-	{ 3367.0f, -3054.0f, 165.5f },
-	{ 3368.0f, -3053.0f, 165.5f },
-	{ 3369.0f, -3051.6f, 165.5f },
-	{ 3370.4f, -3052.0f, 165.5f },
-	{ 3371.0f, -3054.0f, 165.5f },
-	{ 3360.0f, -3053.9f, 165.5f }
-};
+    return new npc_infected_peasantAI(pCreature);
+}
 
-const float soldierPosis[3][4] =
+/*######
+## npc_eris_havenfire
+######*/
+
+// These seem correct
+static const float aArcherSpawn[10][4] =
 {
-	{ 3349.937f, -3056.875f, 168.141f, 1.622f },
-	{ 3370.527f, -3048.276f, 165.872f, 2.377f },
-	{ 3346.987f, -3052.782f, 165.360f, 1.662f }
+    { 3376.750f, -3041.969f, 172.639f, 2.359f },
+    { 3383.315f, -3056.466f, 181.094f, 2.371f },
+    { 3377.810f, -3059.429f, 180.500f, 2.025f },
+    { 3358.776f, -3074.729f, 174.090f, 1.350f },
+    { 3371.300f, -3068.288f, 175.841f, 1.279f },
+    { 3348.956f, -3070.904f, 177.813f, 3.382f },
+    { 3333.764f, -3051.669f, 174.158f, 1.357f },
+    { 3313.438f, -3036.754f, 168.531f, 0.265f },
+    { 3327.897f, -3021.678f, 170.103f, 6.144f },
+    { 3362.131f, -3010.514f, 183.945f, 3.602f }
 };
 
-std::vector<Creature*> archers;
-std::vector<Creature*> peasants;
-std::vector<Creature*> soldiers;
-std::vector<Unit*> gotCleaner;
-
-struct Eris;
-Eris* g_pEris;
-
-struct Eris : public ScriptedAI
+// Looks good
+static const float aPeasantSpawn[15][3] =
 {
-	bool running;
-	uint32 wave;
-	uint32 maxPlagued;
-	uint32 saved;
-	uint32 died;
-	uint32 waveTimer;
-	uint32 soldierTimer;
-	Player* plr;
-
-	Eris(Creature* creature) : ScriptedAI(creature), running(false), wave(1), maxPlagued(1), saved(0), died(0), waveTimer(40000), soldierTimer(0), plr(0)
-	{
-		m_creature->CastSpell(m_creature, INVISIBILITY, true);
-		m_creature->setFaction(35);
-	}
-
-	void JustRespawned() { m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER); }
-
-	void Reset() { DespawnArchers(); }
-
-
-	void UpdateAI(const uint32 time)
-	{
-		if (!running)
-			return;
-
-		//timer
-		waveTimer += time;
-		soldierTimer += time;
-
-		//quest fails
-		if(died >= 15 || (plr && plr->isDead()))
-		{
-			DespawnArchers();
-			if (plr)
-				plr->FailQuest(QUESTID);
-			DespawnEris();
-		}
-		//quest complete
-		if(saved >= 50)
-		{
-			DespawnArchers();
-			m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
-			if (plr && plr->HasItemCount(18665,1))
-				plr->CompleteQuest(QUESTID);
-		}
-		//next wave
-		if(running && waveTimer >= 38000)
-		{
-			waveTimer = 0;
-			SpawnWave();
-
-			if (wave > 2)
-			{
-				BuffPlr();
-				//footsoldiers spawn after each Blessing of Nordrassil and again after different times after death
-				SpawnSoldiers();
-			}
-		}
-		/*
-		The spawn of footsoldiers increases with each blessing.
-		X: +25 secounds 2 footsoldiers (will respawn after 20 or 25 secounds alternately)
-		X: +45 (25+20) secounds 2 footsoldiers 
-		X: +70 (45+25) secounds 2 footsoldiers
-		X: +90 (70+20) secounds 2 footsoldiers
-		X: ... until quest is finished. (previous amount plus 20 or 25 secounds)
-
-		X: +30 secounds 1 footsoldier spawns (will always spawn each 30 secounds, same like above and until the quest is done)
-
-		X: +60 secounds 3 footsoldiers spawn (will always spawn each 60 secounds, same like above and until the quest is done)
-		So basically after each wave the numbers increase by 1.
-		*/
-		if(wave > 2 && soldierTimer >= 15000)
-		{
-			soldierTimer = 0;
-			SpawnSoldiers();
-		}
-	}
-
-	void SpawnSoldiers()
-	{
-		uint32 count = 3 + urand(0, 4);
-
-		for(uint32 i = 0, n = 0; i < count; ++i)
-		{
-			Creature* cr = m_creature->SummonCreature(SOLDIER, soldierPosis[n][0], soldierPosis[n][1], soldierPosis[n][2], soldierPosis[n][3], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5000);
-			if(cr)
-			{
-				soldiers.push_back(cr);
-				if(++n > 2)
-					n = 0;
-			}
-		}
-	}
-
-	void DespawnSoldiers()
-	{
-		for(std::vector<Creature*>::const_iterator it = soldiers.begin(); it != soldiers.end(); ++it)
-		{
-			(*it)->ForcedDespawn();
-			(*it)->AddObjectToRemoveList();
-		}
-		soldiers.clear();
-	}
-
-	void SpawnWave()
-	{
-		uint32 plagued = 0;
-		for(int i = 0; i < NUM_PEASANTS; ++i)
-		{
-			Creature* peas = m_creature->SummonCreature(PEASANT, peasantPosis[i][0], peasantPosis[i][1], peasantPosis[i][2], 1.505f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5000);
-			if(peas)
-			{
-				peasants.push_back(peas);
-				uint32 rnd = urand(0, 3);
-				if(rnd == 1)
-					peas->CastSpell(peas, DEATHSDOOR, false);
-				else
-				{
-					if(plagued++ < maxPlagued)
-						peas->CastSpell(peas, SEETHINGPLAGUE, false);
-				}
-			}
-		}
-
-		if(++wave % 2 == 1)
-			maxPlagued++;
-	}
-
-	void SpawnArchers()
-	{
-		//event starts here after quest was accepted, therefore u will be unable to start the quest again while the event is in progress
-		m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
-
-		if(running)
-			return;
-
-		running = true;
-		for(int i = 0; i < NUM_ARCHERS; ++i)
-		{
-			Creature* creature = m_creature->SummonCreature(ARCHER, archerPosis[i][0], archerPosis[i][1], archerPosis[i][2], archerPosis[i][3], TEMPSUMMON_MANUAL_DESPAWN, DAY*IN_MILLISECONDS);
-			if(creature)
-				archers.push_back(creature);			
-		}
-	}
-
-	void DespawnArchers()
-	{
-		//event is over, therfore reset values
-		running = false;
-		wave = maxPlagued = 1;
-		soldierTimer = saved = died = 0;
-		waveTimer = 40000;
-
-		for(std::vector<Creature*>::const_iterator it = archers.begin(); it != archers.end(); ++it)
-		{
-			(*it)->ForcedDespawn();
-			(*it)->AddObjectToRemoveList();
-		}
-		archers.clear();
-
-		for(std::vector<Creature*>::const_iterator it = peasants.begin(); it != peasants.end(); ++it)
-		{
-			(*it)->ForcedDespawn();
-			(*it)->AddObjectToRemoveList();
-		}
-		peasants.clear();
-
-		DespawnSoldiers();
-
-		gotCleaner.clear();
-	}
-
-	void DespawnEris()
-	{
-		m_creature->ForcedDespawn(0);
-		//2hours until respawn (20minutes after nerf)
-		m_creature->SetRespawnTime(7200);
-	}
-		
-	void Say(std::stringstream& msg)
-	{
-		m_creature->MonsterSay(msg.str().c_str(), 0);
-	}
-
-	void Say(std::string& msg)
-	{
-		m_creature->MonsterSay(msg.c_str(), 0);
-	}
-
-	void BuffPlr()
-	{
-		if(running && plr)
-			plr->CastSpell(plr, NORDRASSIL, true);
-	}
-
-	void Saved()
-	{
-		std::stringstream ss;
-		ss << ++saved;
-		ss << " peasants saved!";
-		Say(ss);
-	}
-
-	void Died()
-	{
-		std::stringstream ss;
-		ss << ++died;
-		ss << " peasants died!";
-		Say(ss);
-	}
-
-	static bool QuestAccepted(Player* plr, Creature* cr, const Quest* quest)
-	{
-		if(quest->GetQuestId() == QUESTID)
-		{
-			if(g_pEris && !g_pEris->running)
-			{
-				//get event player
-				g_pEris->plr = plr;
-				//start event
-				g_pEris->SpawnArchers();
-			}
-
-		}
-		return true;
-	}
-
-	static CreatureAI* GetAI(Creature* creature)
-	{
-		if(g_pEris == NULL)
-		{
-			g_pEris = new Eris(creature);
-			return g_pEris;
-		}
-		else
-			return g_pEris;
-	}
+    {3352.44f, -3048.32f, 164.833f},
+    {3355.26f, -3052.93f, 165.72f},
+    {3358.12f, -3050.71f, 165.307f},
+    {3360.07f, -3052.31f, 165.3f},
+    {3361.64f, -3055.29f, 165.295f},
+    {3361.4f, -3052.17f, 165.261f},
+    {3363.13f, -3056.21f, 165.285f},
+    {3363.99f, -3054.49f, 165.342f},
+    {3366.84f, -3053.95f, 165.541f},
+    {3367.61f, -3056.84f, 165.88f},
+    {3364.9f, -3052.68f, 165.321f},
+    {3363.3f, -3051.2f, 165.266f},
+    {3367.61f, -3051.14f, 165.517f},
+    {3363.54f, -3049.64f, 165.238f},
+    {3360.66f, -3049.14f, 165.261f}
 };
 
-struct Peasant : public npc_escortAI
+// Dont know if these are right
+static const float aFootsoldieSpawn[3][4] =
 {
-	uint32 endPos;
-	bool firstTick;
-	bool despawned;
-	Player* eventPlayer;
+    {3347.603271f, -3045.536377f, 164.029877f, 1.814429f},
+    {3363.609131f, -3037.187256f, 163.541885f, 2.277649f},
+    {3349.105469f, -3056.500977f, 168.079468f, 1.857460f}
 
-	Peasant(Creature* creature) : npc_escortAI(creature), firstTick(true), despawned(false), eventPlayer(0)
-	{
-		endPos = urand(0, 2);
-
-		//player are able to heal them
-		m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP);
-
-		//slow
-		m_creature->SetSpeedRate(MOVE_WALK,0.5);
-
-		//create random peasant stats
-		uint8 randomLevel = urand(0,1);
-		if (randomLevel == 0)
-		{
-			m_creature->SetLevel(51);
-			m_creature->SetMaxHealth(1700);
-		}
-		else {
-			m_creature->SetLevel(52);
-			m_creature->SetMaxHealth(1800);
-		}
-
-		//fight will remove invisibilty
-		//m_creature->CastSpell(creature, INVISIBILITY, true);
-
-		//get event player
-		eventPlayer = g_pEris->plr;
-
-		Start();
-	}
-
-	//check if other player have healed the taregt
-	void HealBy(Unit* pHealer, uint32 uiAmountHealed)
-	{
-		if (eventPlayer)
-		 {
-			 if (pHealer != eventPlayer)
-			 {
-				 uiAmountHealed = 0;
-				 bool gotCleaned = false;
-				 for(std::vector<Unit*>::const_iterator it = gotCleaner.begin(); it != gotCleaner.end(); ++it)
-				 {
-					 if ((*it) == pHealer)
-						 gotCleaned = true;
-				 }
-				 if (!gotCleaned && pHealer->GetTypeId() == TYPEID_PLAYER)
-				 {
-					 gotCleaner.push_back(pHealer);
-					 Creature* pCleaner = m_creature->SummonCreature(CLEANER, pHealer->GetPositionX(), pHealer->GetPositionY(), pHealer->GetPositionZ(), 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);
-					 pCleaner->AI()->AttackStart(pHealer);
-				 }
-			 }
-		 }
-	}
-
-	//override, so the mob wont run to the attacker
-	void AttackStart(Unit* ) {}
-
-	void WaypointReached(uint32 uiPointId)
-	{
-		despawned = true;
-		if(g_pEris)
-			g_pEris->Saved();
-
-		Despawn();
-	}
-
-	void Despawn()
-	{	
-		Erase();
-		m_creature->ForcedDespawn();
-		m_creature->AddObjectToRemoveList();
-	}
-
-	void Erase()
-	{
-		std::vector<Creature*>::iterator it = std::find(peasants.begin(), peasants.end(), m_creature);
-		peasants.erase(it);
-	}
-
-	void JustDied(Unit*)
-	{
-		if(!despawned && g_pEris)
-			g_pEris->Died();
-		Erase();
-	}
-
-	void Reset() {}
-
-	static CreatureAI* GetAI(Creature* creature)
-	{
-		return new Peasant(creature);
-	}
+    /* Alternative
+    { 3349.937f, -3056.875f, 168.141f, 1.622f },
+    { 3370.527f, -3048.276f, 165.872f, 2.377f },
+    { 3346.987f, -3052.782f, 165.360f, 1.662f }*/
 };
 
-struct Archer : public ScriptedAI
+static const uint32 aPeasantSpawnYell[] = {-1000696, -1000697, -1000698};
+static const uint32 aPeasantRandomSay[] = {-1000699, -1000700, -1000701}; // TODO
+static const uint32 aPeasantSaveSay[] = {-1000702, -1000703, -1000704, -1000705};
+
+enum
 {
-	uint32 bowShotTime;
-	uint32 bowShotTimer;
-	Player* eventPlayer;
+    QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW = 7622,
 
-	Archer(Creature* creature) : ScriptedAI(creature), bowShotTimer(0), eventPlayer(0)
-	{
-		//fight will remove invisibilty
-		//m_creature->CastSpell(creature, INVISIBILITY, true);
+    NPC_SCOURGE_ARCHER = 14489,
+    NPC_SCOURGE_FOOTSOLDIER = 14486,
+    NPC_CLEANER = 14503,
 
-		//right stats for archers
-		m_creature->SetBaseWeaponDamage(RANGED_ATTACK, MINDAMAGE, 162);
-		m_creature->SetBaseWeaponDamage(RANGED_ATTACK, MAXDAMAGE, 186);
-		m_creature->UpdateDamagePhysical(RANGED_ATTACK);
-		m_creature->SetArmor(3791);
-
-		//get a bow
-		SetEquipmentSlots(false, EQUIP_UNEQUIP, EQUIP_UNEQUIP, 6231);
-
-		//get immune
-		m_creature->CastSpell(creature, IMMUNITY, true);
-
-		//dont move
-		SetCombatMovement(false);
-
-		//shoot timer
-		bowShotTime = 2000 + urand(0, 400); 
-
-		//get eventPlayer
-		eventPlayer = g_pEris->plr;
-	}
-
-	void Reset() {}
-
-	void UpdateAI(const uint32 time)
-	{
-		bowShotTimer += time;
-		if(bowShotTimer >= bowShotTime)
-		{
-			bowShotTimer = 0;
-			size_t rndTarget = urand(0, peasants.size()-1);
-			if(rndTarget >= peasants.size())
-			{
-				if (eventPlayer && eventPlayer->isAlive())
-					DoCastSpellIfCan(eventPlayer, SHOOT);
-				else 
-					return;
-			}
-			else {
-				Creature* target = peasants[rndTarget];
-				DoCastSpellIfCan(target, SHOOT);
-			}
-		}
-	}
-
-	static CreatureAI* GetAI(Creature* creature)
-	{
-		return new Archer(creature);
-	}
+    SEE_PRIEST_INVIS = 23199,
+    SPELL_BLESSING_OF_NORDRASSIL = 23108
 };
 
-struct Soldier : public ScriptedAI
+
+struct npc_eris_havenfireAI;
+npc_eris_havenfireAI* npc_global_eris;
+
+struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
 {
-	Creature* target;
-	Player* eventPlayer;
+    npc_eris_havenfireAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_bIsQuestInProgress = false;
+        Reset();
+    }
 
-	Soldier(Creature* creature) : ScriptedAI(creature), target(0), eventPlayer(0) 
-	{
-		//fight will remove invisibilty
-		//m_creature->CastSpell(creature, INVISIBILITY, true);
+    bool    m_bIsQuestInProgress, 
+            m_bFootsoldiersSpawned, 
+            m_bCleaningInProgress;
 
-		//right stats for soldiers
-		m_creature->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, 108);
-		m_creature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, 126);
-		m_creature->UpdateDamagePhysical(BASE_ATTACK);
-		m_creature->SetArmor(3435);
+    uint64  m_uiMainTimer;
 
-		//get event player
-		eventPlayer = g_pEris->plr;
-	}
+    uint32  m_uiDoomCheck,
+            m_uiFootsoldierSpawnTimer,
+            m_uiFootsoldierTimer1,
+            m_uiFootsoldierTimer2,
+            m_uiFootsoldierTimer3,
+            m_uiKillCounter[5],
+            m_uiSaveCounter[5],
+            m_uiPeasantCount[5];
 
-	 //check if other player have joined the fight
-	 void DamageTaken(Unit* pDoneBy, uint32& uiDamage) 
-	 {
-		 if (eventPlayer)
-		 {
-			 if (pDoneBy != eventPlayer)
-			 {
-				 uiDamage = 0;
-				 bool gotCleaned = false;
-				 for(std::vector<Unit*>::const_iterator it = gotCleaner.begin(); it != gotCleaner.end(); ++it)
-				 {
-					 if ((*it) == pDoneBy)
-						 gotCleaned = true;
-				 }
-				 if (!gotCleaned && pDoneBy->GetTypeId() == TYPEID_PLAYER)
-				 {
-					 gotCleaner.push_back(pDoneBy);
-					 Creature* pCleaner = m_creature->SummonCreature(CLEANER, pDoneBy->GetPositionX(), pDoneBy->GetPositionY(), pDoneBy->GetPositionZ(), 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);		 
-					 pCleaner->AI()->AttackStart(pDoneBy);
-				 }
-			 }
-		 }
-	 }
+    uint8   m_uiPhase, 
+            m_uiCurrentWave, 
+            m_uiTotalSaved, 
+            m_uiTotalKilled, 
+            m_uiFootsoldiersSpawnCount;
 
-	void UpdateAI(const uint32 time)
-	{
-		if(!m_creature->isInCombat() || target == 0)
-		{
-			//get in combat with all peasants
-			for(std::vector<Creature*>::const_iterator it = peasants.begin(); it != peasants.end(); ++it)
-				AttackStart((*it));
-			//find a random peasant to attack
-			uint32 rnd = urand(0, peasants.size()-1);
-			if(rnd >= peasants.size())
-				return;
-			target = peasants[rnd];
-			AttackStart(target);
-		}
+    ObjectGuid  m_playerGuid;
+    GUIDList    m_lSummonedGUIDList;
 
-		ScriptedAI::UpdateAI(time);
-	}
+    std::list<Player*> m_lToCleanPlayers;
+    std::list<Creature*> m_lCleaner;
 
-	void JustDied(Unit*)
-	{
-		std::vector<Creature*>::iterator i = std::find(soldiers.begin(), soldiers.end(), m_creature);
-		soldiers.erase(i);
-		m_creature->SetDeathState(JUST_DIED);
-		m_creature->SetHealthPercent(0);
-	}
+    void Reset()
+    {
+        // No need to continue while 'WE ARE IN'!!
+        if (m_bIsQuestInProgress)
+            return;
 
-	void Reset() 
-	{ 
-		if (eventPlayer && eventPlayer->isAlive())
-			AttackStart(eventPlayer);
-		else
-			JustDied(0); 
-	}
+        //Declarations
+        m_bFootsoldiersSpawned = false;
+        m_bIsQuestInProgress = false;
+        m_bCleaningInProgress = false;
+       
+        m_uiMainTimer = 5000;
+        m_uiFootsoldierSpawnTimer = 1000;
+        m_uiFootsoldierTimer1 = urand(0,1)*5000 + 20000;
+        m_uiFootsoldierTimer2 = 30000;
+        m_uiFootsoldierTimer3 = 60000;
+        m_uiDoomCheck = 5000;
+        m_uiPhase = 1;
+        m_uiCurrentWave = 0;
+        m_uiTotalSaved = 0;
+        m_uiTotalKilled = 0;
+        m_uiFootsoldiersSpawnCount = 0;
+       
+        for(uint8 i = 0; i < 5; i++)
+        {
+            m_uiKillCounter[i] = 0;
+            m_uiSaveCounter[i] = 0;
+            m_uiPeasantCount[i] = 10+i;
+        }
 
-	static CreatureAI* GetAI(Creature* creature)
-	{
-		return new Soldier(creature);
-	}
+        m_playerGuid.Clear();
+        m_lCleaner.clear();
+        m_lToCleanPlayers.clear();
+        
+        //Invisiblility
+        m_creature->CastSpell(m_creature, QUEST_INVISIBILITY, true);
+
+        //Questgiver Flags
+        if (!m_creature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER))
+            m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+
+        //Despawn if something is/was spawned
+        if (!m_lSummonedGUIDList.empty())
+            for (GUIDList::const_iterator itr = m_lSummonedGUIDList.begin(); itr != m_lSummonedGUIDList.end(); ++itr)
+                if (Creature* pSummoned = m_creature->GetMap()->GetCreature(*itr))
+                    pSummoned->ForcedDespawn();
+       
+        //Cler Summons from list
+        m_lSummonedGUIDList.clear();
+    }
+
+    //One Phase finished
+    void PhaseEnded(bool bFailed, bool bWave)
+    {
+        //Get Player
+        Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
+
+        //Continue only when we have starting player could cause problems with ALT-F4
+        if (!pPlayer)
+        {
+            DoScriptText(urand(0, 1) ? -1000706 : -1000707, m_creature);
+            if (pPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
+                pPlayer->FailQuest(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW);
+            //Despawn Eris
+            m_creature->ForcedDespawn(0);
+            //2 Hours respawn timer
+            m_creature->SetRespawnTime(7200);
+      
+            m_bIsQuestInProgress = false;
+
+            Reset();
+
+            return;
+        }
+
+        // Failed
+        if (bFailed && !bWave)
+        {
+            DoScriptText(urand(0, 1) ? -1000706 : -1000707, m_creature);
+            if (pPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
+                pPlayer->FailQuest(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW);
+            //Despawn Eris
+            m_creature->ForcedDespawn(0);
+            //2 Hours respawn timer
+            m_creature->SetRespawnTime(7200);
+      
+            m_bIsQuestInProgress = false;
+
+            Reset();
+
+            return;
+        }
+        // Wave completed
+        if (!bFailed && bWave)
+        {
+            DoScriptText(-1000709, m_creature);
+
+            //Blessing
+            m_creature->CastSpell(pPlayer, SPELL_BLESSING_OF_NORDRASSIL, false);
+
+            //Summon Soldiers (Wave 1 -> 8, Wave 2 -> 6, Wave 3 -> 8, ...)
+            m_uiFootsoldiersSpawnCount += (6 + ((m_uiCurrentWave%2)*2));
+
+            //Footsoldiers are Spawned continously after the first Wave
+            m_bFootsoldiersSpawned = true;
+
+            //Wave Done next inc.
+            m_uiCurrentWave++;
+
+            return;
+        }
+
+        // Whole event completed
+        if (!bFailed && !bWave)
+        {
+            DoScriptText(-1000708, m_creature);
+            if (pPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
+            {
+                /*Dont use that: 
+                    AreaExploredOrEventHappens(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW);
+                it spwans millions of Peasants*/
+
+                //Set Flags
+                m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+
+                //Quest done
+                pPlayer->CompleteQuest(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW); 
+            }
+
+            m_bIsQuestInProgress = false;
+
+            Reset();
+
+            return;
+        }
+    }
+
+    //Spawn next peasant wave
+    void DoNextWave(uint32 uiWaveNumber)
+    {
+        //Random Peasant for Sayscript
+        uint8 uiRandomPeasant = urand(0, m_uiPeasantCount[uiWaveNumber-1]);
+
+        for(uint8 i = 0; i < m_uiPeasantCount[uiWaveNumber-1]; ++i)
+        {
+            //Injured or plagued Peasant
+            uint32 m_uiPeasantType = NPC_INJURED_PEASANT;
+
+            //Plagued Peasants have a 5% + Nr of Wave % Chance (10%, 15%, ...)
+            if(urand(0,100) <= 5 + 5 * uiWaveNumber)
+                m_uiPeasantType = NPC_PLAGUED_PEASANT;
+
+            //Spawn peasant
+            if (Creature* pTemp = m_creature->SummonCreature(m_uiPeasantType, aPeasantSpawn[i][0], aPeasantSpawn[i][1], aPeasantSpawn[i][2], 0, TEMPSUMMON_DEAD_DESPAWN, 0))
+            {    
+                //Push peasant into summoned creatures list
+                m_lSummonedGUIDList.push_back(pTemp->GetGUID());
+
+                //Waypoint, to avoid peasants going up the hills
+                float fX, fY, fZ;
+                pTemp->GetRandomPoint(3343.270f, -3018.100f, 161.72f, 5.0f, fX, fY, fZ);
+                pTemp->GetMotionMaster()->MovePoint(0, fX, fY, fZ);
+
+                //Sayscript
+                if (i == uiRandomPeasant)
+                    DoScriptText(aPeasantSpawnYell[urand(0,2)], pTemp);
+            }
+        }
+    }
+
+    void SummonedMovementInform(Creature* pSummoned, uint32 /*uiMotionType*/, uint32 uiPointId)
+    {
+        //First Waypoint reached
+        if(uiPointId == 0)
+        {
+            //Set Waypoint 2
+            float fX, fY,fZ;
+            pSummoned->GetRandomPoint(3332.767f, -2979.002f, 160.97f, 5.0f, fX, fY, fZ);
+            pSummoned->GetMotionMaster()->MovePoint(1, fX, fY, fZ);
+        }
+        //Second Waypoint reached
+        if (uiPointId == 1)
+        {
+            //Not started yet
+            if(m_uiCurrentWave == 0)
+                return;
+
+            // When saved peasants exceed maximum peasants, something went wrong 
+            if (m_uiSaveCounter[m_uiCurrentWave-1] >= m_uiPeasantCount[m_uiCurrentWave-1])
+                debug_log("SD0: npc_eris_havenfire: Current wave %u was not reset properly in void WaveFinished().", m_uiCurrentWave);
+
+            ++m_uiSaveCounter[m_uiCurrentWave-1];
+            ++m_uiTotalSaved;
+
+            // When counted, force despawn. I don't know exactly when they should disappear
+            pSummoned->GetMotionMaster()->Clear(false);
+
+            //Remove Auras
+            if (pSummoned->HasAura(SPELL_DEATHS_DOOR, EFFECT_INDEX_0))
+                pSummoned->RemoveAurasDueToSpell(SPELL_DEATHS_DOOR);
+            if (pSummoned->HasAura(SPELL_SEETHING_PLAGUE, EFFECT_INDEX_0))
+                pSummoned->RemoveAurasDueToSpell(SPELL_SEETHING_PLAGUE);
+
+            //Random Sayscript
+            uint8 uiRandomPeasant = urand(1,10);
+            if (uiRandomPeasant == 5)
+                DoScriptText(aPeasantSaveSay[urand(0,3)], pSummoned);
+
+            //Cast spell
+            pSummoned->CastSpell(pSummoned, SPELL_ENTER_THE_LIGHT_DND, false);
+
+            //Despawn
+            pSummoned->ForcedDespawn(4000);
+        }
+    }
+
+    void SummonedCreatureJustDied(Creature* pSummoned)
+    {
+        /* We do not want to count staying peasants.
+        It means that they are saved. Saved peasants are ForcedDespawn(),
+        which triggers SummonedCreatureJustDied.
+        */
+
+        //Not started yet
+        if(m_uiCurrentWave == 0)
+            return;
+
+        //Moving peasant
+        if (pSummoned->GetMotionMaster()->GetCurrentMovementGeneratorType() != IDLE_MOTION_TYPE && (pSummoned->GetEntry() == NPC_INJURED_PEASANT || pSummoned->GetEntry() == NPC_PLAGUED_PEASANT))
+        {
+            ++m_uiKillCounter[m_uiCurrentWave-1];
+            ++m_uiTotalKilled;
+        }
+        pSummoned->RemoveCorpse();
+    }
+
+    //Summon footsoldier
+    void DoSummonFootsoldier()
+    {
+        //Random spawnpoint
+        uint8 uiRandomForArray = urand(0,2);
+        float fX, fY, fZ;
+        m_creature->GetRandomPoint(aFootsoldieSpawn[uiRandomForArray][0], aFootsoldieSpawn[uiRandomForArray][1], aFootsoldieSpawn[uiRandomForArray][2], 5.0f, fX, fY, fZ);
+
+        //Spawn soldier
+        if (Creature* pTemp = m_creature->SummonCreature(NPC_SCOURGE_FOOTSOLDIER, fX, fY, fZ, aFootsoldieSpawn[uiRandomForArray][3], TEMPSUMMON_DEAD_DESPAWN, 5000))
+            //Push soldiers into summoned creatures list
+            m_lSummonedGUIDList.push_back(pTemp->GetGUID());
+    }
+
+    //Spawn Archers
+    void DoSpawnArchers ()
+    {
+        //10 Archers
+        for(uint8 i = 0; i < 10; ++i)
+            //Spawn
+            if (Creature* pTemp = m_creature->SummonCreature(NPC_SCOURGE_ARCHER, aArcherSpawn[i][0], aArcherSpawn[i][1], aArcherSpawn[i][2], aArcherSpawn[i][3], TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 360000))
+                //Push archers into summoned creatures list
+                m_lSummonedGUIDList.push_back(pTemp->GetGUID());
+    }
+
+    //Function of Doom is watching YOU
+    void functionOfDoom(Creature* creature)
+    {
+        //If the creature cant have a threadlist this wont work
+        if (!creature->CanHaveThreatList())
+            return;
+       
+        //Declaration
+        GUIDVector vGuids;
+
+        //Fill the list with GUIDs
+        creature->FillGuidsListFromThreatList(vGuids);
+
+        if (!vGuids.empty())
+            for (GUIDVector::const_iterator itr = vGuids.begin(); itr != vGuids.end(); ++itr)
+                if (Unit* pTarget = creature->GetMap()->GetUnit(*itr))
+                    //Entry is a player
+                    if(pTarget->GetTypeId() == TYPEID_PLAYER)
+                        //If its not the right one sharpen your Damocles Sword
+                        if(((Player*)pTarget)->GetGUID() != m_playerGuid)
+                        {
+                            //Declarations
+                            bool bInCleanerList = false, bDoneAlready = false;
+
+                            //Player is dead, a shame. Get the player out of the list
+                            if(((Player*)pTarget)->isDead())
+                            {
+                                if(!m_lToCleanPlayers.empty())
+                                    for(std::list<Player*>::iterator i = m_lToCleanPlayers.begin(); i != m_lToCleanPlayers.end(); ++i)
+                                        if((*i)->GetGUID() == ((Player*)pTarget)->GetGUID())
+                                            bDoneAlready = true;
+                                if(!bDoneAlready)
+                                    m_lToCleanPlayers.remove((Player*)pTarget);
+                            }
+                            //Player is alive, put him on the cleaner list.
+                            else
+                            {
+                                if(!m_lToCleanPlayers.empty())
+                                    for(std::list<Player*>::iterator i = m_lToCleanPlayers.begin(); i != m_lToCleanPlayers.end(); ++i)
+                                        if((*i)->GetGUID() == ((Player*)pTarget)->GetGUID())
+                                            bInCleanerList = true;
+                                if(!bInCleanerList)
+                                    m_lToCleanPlayers.push_back((Player*)pTarget);
+                            }
+                        }
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        // Nothing is needed to update when the event is not in progress
+        if (!m_bIsQuestInProgress || m_uiCurrentWave == 0)
+            return;
+
+        //Get Player
+        Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
+
+        //Get some cleaner-food
+        for (GUIDList::const_iterator itr = m_lSummonedGUIDList.begin(); itr != m_lSummonedGUIDList.end(); ++itr)
+            if (Creature* pSummoned = m_creature->GetMap()->GetCreature(*itr))
+                functionOfDoom(pSummoned);
+
+        //Is our bad boy out already?
+        if(m_bCleaningInProgress)
+        {
+            //Where is our boy
+            m_lCleaner.clear();
+            GetCreatureListWithEntryInGrid(m_lCleaner, m_creature, NPC_CLEANER, 300.f);
+            //Hes not there
+            if(m_lCleaner.empty())
+                m_bCleaningInProgress = false;
+        }
+
+        //Get the frakkin Cleaner started
+        if(!m_bCleaningInProgress)
+            if(!m_lToCleanPlayers.empty())
+                for(std::list<Player*>::iterator i = m_lToCleanPlayers.begin(); i != m_lToCleanPlayers.end(); ++i)
+                    if((*i)->isAlive() && (*i)->isTargetableForAttack())
+                    {
+                        float fX, fY, fZ;
+                        m_creature->GetRandomPoint( (*i)->GetPositionX(), (*i)->GetPositionY(), (*i)->GetPositionZ(), 5.0f, fX, fY, fZ );
+                        Creature* pCleaner = m_creature->SummonCreature(NPC_CLEANER, fX, fY, fZ, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);		 
+                        pCleaner->AI()->AttackStart((*i));
+                        m_bCleaningInProgress = true;
+                    }
+
+        //Different Footsoldier spawns
+        if(m_bFootsoldiersSpawned)
+        {
+            //Spawntimers
+            if (m_uiFootsoldierTimer1 <= uiDiff)
+            {
+                m_uiFootsoldiersSpawnCount += 1;
+                m_uiFootsoldierTimer1 = urand(0,1)*5000 + 20000;
+            }
+            else
+                m_uiFootsoldierTimer1 -= uiDiff;
+
+            if (m_uiFootsoldierTimer2 <= uiDiff)
+            {
+                m_uiFootsoldiersSpawnCount += 2;
+                m_uiFootsoldierTimer2 = 30000;
+            }
+            else
+                m_uiFootsoldierTimer2 -= uiDiff;
+
+            if (m_uiFootsoldierTimer3 <= uiDiff)
+            {
+                m_uiFootsoldiersSpawnCount += 3+((m_uiCurrentWave%2)*2);
+                m_uiFootsoldierTimer3 = 60000;
+            }
+            else
+                m_uiFootsoldierTimer3 -= uiDiff;
+
+            //Function call depending on count
+            if(m_uiFootsoldiersSpawnCount > 0)
+            {
+                if(m_uiFootsoldierSpawnTimer <= uiDiff)
+                {
+                    DoSummonFootsoldier();
+                    m_uiFootsoldiersSpawnCount--;
+                    m_uiFootsoldierSpawnTimer = 500;
+                }
+                else
+                    m_uiFootsoldierSpawnTimer -= uiDiff;
+            }
+        }
+
+        //Our player is dead
+        if (pPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) != QUEST_STATUS_INCOMPLETE || pPlayer->isDead())
+        {
+            PhaseEnded(true, false);
+            return;
+        }
+
+        //Phases
+        if (m_uiPhase)
+        {
+            // Reaching 15 dead peasants means fail for us
+            if (m_uiTotalKilled >= 15)
+            {
+                PhaseEnded(true, false);
+                return;
+            }
+
+            // Do next step
+            else if ((m_uiKillCounter[m_uiCurrentWave-1] + m_uiSaveCounter[m_uiCurrentWave-1] >= m_uiPeasantCount[m_uiCurrentWave-1]))
+            {
+                // When we saved 50 peasants
+                if (m_uiTotalSaved >= 50)
+                    PhaseEnded(false, false);
+               
+                // When the wave completed, but still we are not done
+                else
+                    PhaseEnded(false, true);
+
+                return;
+            }
+
+            // No more phases or no wave
+            if (m_uiPhase > 6 || m_uiCurrentWave == 0)
+                return;
+
+            if (m_uiMainTimer < uiDiff)
+            {
+                switch(m_uiPhase)
+                {
+                    case 1: // Spawn Archers
+                        DoSpawnArchers();
+                        m_uiMainTimer = 2000;
+                        break;
+                    case 2: // Wave 1
+                        DoNextWave(1);
+                        m_uiMainTimer = 38000;
+                        break;
+                    case 3: // Wave 2
+                        DoNextWave(2);
+                        m_uiMainTimer = 38000;
+                        break;
+                    case 4: // Wave 3
+                        DoNextWave(3);
+                        m_uiMainTimer = 38000;
+                        break;
+                    case 5: // Wave 4
+                        DoNextWave(4);
+                        m_uiMainTimer = 38000;
+                        break;
+                    case 6: // Wave 5
+                        DoNextWave(5);
+                        break;
+                }
+                ++m_uiPhase;
+            }
+            else
+                m_uiMainTimer -= uiDiff;
+        }
+        else // Impossible to have m_bIsQuestInProgress and !m_uiPhase
+            debug_log("SD0: npc_eris_havenfire: No phase detected!");
+    }
 };
 
+bool QuestAccept_npc_eris_havenfire(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+{
+    if (pQuest->GetQuestId() == QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW)
+    {
+        // Everybody loves dynamic casts <3
+        if (npc_eris_havenfireAI* pEris = dynamic_cast<npc_eris_havenfireAI*>(pCreature->AI()))
+        {
+            pCreature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+            pEris->m_bIsQuestInProgress = true;
+            pEris->m_uiCurrentWave = 1;
+            pEris->m_playerGuid = pPlayer->GetObjectGuid();
+        }
+    }
+
+    return true;
+}
+
+CreatureAI* GetAI_npc_eris_havenfire(Creature* pCreature)
+{
+    return new npc_eris_havenfireAI(pCreature);
+}
+
+/*######
+## mob_scourge_archer
+######*/
+
+enum
+{
+    SHOOT = 23073,
+};
+
+struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
+{
+    mob_scourge_archerAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        SetCombatMovement(false);
+        pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+        Reset();
+    }
+
+    std::list<Creature*> pPeasants;
+    uint32 m_uiShotTimer;
+
+    void Reset()
+    {
+
+        //Values need to be set
+        m_creature->SetBaseWeaponDamage(RANGED_ATTACK, MINDAMAGE, 162);
+        m_creature->SetBaseWeaponDamage(RANGED_ATTACK, MAXDAMAGE, 186);
+        m_creature->UpdateDamagePhysical(RANGED_ATTACK);
+        m_creature->SetArmor(3791);
+
+        //get a bow
+        SetEquipmentSlots(false, EQUIP_UNEQUIP, EQUIP_UNEQUIP, 6231);
+
+        //get immune
+        m_creature->CastSpell(m_creature, 29230, true);
+
+        //dont move
+        SetCombatMovement(false);
+
+        //shoot timer
+        m_uiShotTimer = 2000 + urand(0, 400); 
+    }
+
+    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
+    {
+        if (pDoneBy->IsCharmerOrOwnerPlayerOrPlayerItself())
+            if (!((Player*)pDoneBy)->isGameMaster())
+                uiDamage = 0;
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        //Invisibility
+        //if (!m_creature->HasAura(QUEST_INVISIBILITY))
+        //    m_creature->CastSpell(m_creature, QUEST_INVISIBILITY, false);
+
+        if (Player* pPlayer = GetPlayerAtMinimumRange(300.0f))
+        {
+            if(pPlayer->isAlive() && !pPlayer->isInCombat() && pPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
+                pPlayer->SetInCombatWith(m_creature);
+        }
+
+        //Peasant list
+        pPeasants.clear();
+        GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_INJURED_PEASANT, 60.0f);
+        GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_PLAGUED_PEASANT, 60.0f);
+
+        if (m_uiShotTimer)
+        {
+            if(m_uiShotTimer <= uiDiff)
+            {
+                //Get random Peasants for every shot
+                uint32 pPeasantRandom = urand(0,pPeasants.size()), j = 1;
+                for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
+                {
+                    if((*i)->isAlive() && j == pPeasantRandom && m_creature->IsInRange((*i), 0.0f, 59.0f, true))
+                    {
+                        DoCastSpellIfCan((*i), SHOOT);
+                        m_creature->AddThreat((*i));
+                    }
+                    else if (j == pPeasantRandom)
+                         pPeasantRandom = urand(j,pPeasants.size());
+
+                    j++;
+                }
+                m_uiShotTimer = 2000 + urand(0, 400);
+            }
+            else
+                m_uiShotTimer -= uiDiff;
+        }
+    }
+};
+
+CreatureAI* GetAI_mob_scourge_archer(Creature* pCreature)
+{
+    return new mob_scourge_archerAI(pCreature);
+}
+
+/*######
+## mob_scourge_footsoldier
+######*/
+
+struct MANGOS_DLL_DECL mob_scourge_footsoldierAI : public ScriptedAI
+{
+    mob_scourge_footsoldierAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        Reset();
+    }
+
+    void Reset()
+    {
+        //Values need to be set
+        m_creature->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, 108);
+        m_creature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, 126);
+        m_creature->UpdateDamagePhysical(BASE_ATTACK);
+        m_creature->SetArmor(3435);
+        m_creature->CastSpell(m_creature, SEE_PRIEST_INVIS, false);
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {   
+        //Peasant list
+        std::list<Creature*> pPeasants;
+        pPeasants.clear();
+        GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_INJURED_PEASANT, 300.0f);
+        GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_PLAGUED_PEASANT, 300.0f);
+        
+        if(Player* pPlayer = GetPlayerAtMinimumRange(300.0f))
+            m_creature->AddThreat(pPlayer);
+
+	    if (!pPeasants.empty())
+	        for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
+                if((*i)->isAlive())
+                    m_creature->AddThreat((*i));
+	    
+        DoMeleeAttackIfReady();       
+    }
+};
+
+CreatureAI* GetAI_mob_scourge_footsoldier(Creature* pCreature)
+{
+    return new mob_scourge_footsoldierAI(pCreature);
+}
 void AddSC_Priest_Epic_Quest()
 {
-	/* Eris */
-	Script* pScript = new Script;
-	pScript->Name = "PriestQuestEpic";
-	pScript->pQuestAcceptNPC = &Eris::QuestAccepted;
-	pScript->GetAI = &Eris::GetAI;
-	pScript->RegisterSelf();
+    Script* pNewscript;
 
-	/* Peasant */
-	pScript = new Script;
-	pScript->Name = "PriestQuestPeas";
-	pScript->GetAI = &Peasant::GetAI;
-	pScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_eris_havenfire";
+    pNewscript->GetAI = &GetAI_npc_eris_havenfire;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_eris_havenfire;
+    pNewscript->RegisterSelf();
 
-	/* Archer */
-	pScript = new Script;
-	pScript->Name = "PriestQuestArch";
-	pScript->GetAI = &Archer::GetAI;
-	pScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_infected_peasant";
+    pNewscript->GetAI = &GetAI_npc_infected_peasant;
+    pNewscript->RegisterSelf();
 
-	/* Soldier */
-	pScript = new Script;
-	pScript->Name = "PriestQuestSold";
-	pScript->GetAI = &Soldier::GetAI;
-	pScript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "mob_scourge_archer";
+    pNewscript->GetAI = &GetAI_mob_scourge_archer;
+    pNewscript->RegisterSelf();
+
+    pNewscript = new Script;
+    pNewscript->Name = "mob_scourge_footsoldier";
+    pNewscript->GetAI = &GetAI_mob_scourge_footsoldier;
+    pNewscript->RegisterSelf();
 }
