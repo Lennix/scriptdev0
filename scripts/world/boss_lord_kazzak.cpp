@@ -37,15 +37,26 @@ EndScriptData */
 #define SAY_RAND1                       -1000157
 #define SAY_RAND2                       -1000158
 
-#define SPELL_SHADOWVOLLEY              28599
-#define SPELL_CLEAVE                    27794
-#define SPELL_THUNDERCLAP               26554
+// New IDs according to wowd.org
+#define SPELL_SHADOWVOLLEY              21341
+#define SPELL_CLEAVE                    8255
+#define SPELL_THUNDERCLAP               23931
 #define SPELL_VOIDBOLT                  22709
 #define SPELL_MARKOFKAZZAK              21056
+
+// What are these for??
 #define SPELL_ENRAGE                    28747
 #define SPELL_CAPTURESOUL               21054
 #define SPELL_TWISTEDREFLECTION         21063
 #define SPELL_EXPLODE                   20476
+
+/* Replaced
+#define SPELL_SHADOWVOLLEY              21341
+#define SPELL_CLEAVE                    8255
+#define SPELL_THUNDERCLAP               26554
+#define SPELL_VOIDBOLT                  22709
+#define SPELL_MARKOFKAZZAK              21056
+*/
 
 #define MAX_MARK_TARGETS                5
 /* 
