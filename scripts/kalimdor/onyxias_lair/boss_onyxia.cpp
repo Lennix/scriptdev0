@@ -68,6 +68,8 @@ enum
 
     SPELL_SUMMONWHELP           = 17646,                    // TODO this spell is only a summon spell, but would need a spell to activate the eggs
 
+    SPELL_HOVER                 = 17131,
+
     MAX_WHELPS_PER_PACK         = 40,
 
     PHASE_START                 = 1,
@@ -347,6 +349,30 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 // no break, phase 3 will use same abilities as in 1
             case PHASE_START:
             {
+                if (m_uiPhase == PHASE_START && m_creature->GetHealthPercent() < 65.0f)
+                {
+                    m_uiPhase = PHASE_BREATH;
+
+                    SetCombatMovement(false);
+                    m_creature->GetMotionMaster()->MoveIdle();
+
+                    DoScriptText(SAY_PHASE_2_TRANS, m_creature);
+
+                    // sort of a hack, it is unclear how this really work but the values appear to be valid
+                    //m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND/* | UNIT_BYTE1_FLAG_UNK_2)*/);
+                    //m_creature->SetSplineFlags(SplineFlags(SPLINEFLAG_FLYING | SPLINEFLAG_UNKNOWN7));
+
+                    m_creature->CastSpell(m_creature, SPELL_HOVER, false);
+
+                    if (m_pPointData)
+                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ);
+
+                    // TODO - this might not be the correct place to set this setting
+                    if (m_pInstance)
+                        m_pInstance->SetData(TYPE_ONYXIA, DATA_LIFTOFF);
+                    return;
+                }
+
                 if (m_uiFlameBreathTimer < uiDiff)
                 {
                     uint32 uiSpell = SPELL_BREATH;
@@ -394,28 +420,6 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 else
                     m_uiWingBuffetTimer -= uiDiff;
 
-                if (m_uiPhase == PHASE_START && m_creature->GetHealthPercent() < 65.0f)
-                {
-                    m_uiPhase = PHASE_BREATH;
-
-                    SetCombatMovement(false);
-                    m_creature->GetMotionMaster()->MoveIdle();
-
-                    DoScriptText(SAY_PHASE_2_TRANS, m_creature);
-
-                    // sort of a hack, it is unclear how this really work but the values appear to be valid
-                    m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND/* | UNIT_BYTE1_FLAG_UNK_2)*/);
-                    m_creature->SetSplineFlags(SplineFlags(SPLINEFLAG_FLYING | SPLINEFLAG_UNKNOWN7));
-
-                    if (m_pPointData)
-                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ);
-
-                    // TODO - this might not be the correct place to set this setting
-                    if (m_pInstance)
-                        m_pInstance->SetData(TYPE_ONYXIA, DATA_LIFTOFF);
-                    return;
-                }
-
                 DoMeleeAttackIfReady();
                 break;
             }
@@ -427,8 +431,10 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     DoScriptText(SAY_PHASE_3_TRANS, m_creature);
 
                     // undo flying
-                    m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, 0);
-                    m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
+                    //m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, 0);
+                    //m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
+
+                    m_creature->RemoveAurasDueToSpell(SPELL_HOVER);
 
                     SetCombatMovement(true);
                     m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
