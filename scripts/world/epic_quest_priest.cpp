@@ -695,12 +695,12 @@ struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
     uint32 m_uiShotTimer;
 
     void Reset()
-    {
+    {        
+	//Use it
+        m_creature->UpdateDamagePhysical(RANGED_ATTACK);
+
         //get a bow
         SetEquipmentSlots(false, EQUIP_UNEQUIP, EQUIP_UNEQUIP, 6231);
-
-        //Use it
-        m_creature->UpdateDamagePhysical(RANGED_ATTACK);
 
         //get immune
         m_creature->CastSpell(m_creature, 29230, true);
