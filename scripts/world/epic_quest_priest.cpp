@@ -1,12 +1,7 @@
 #include "precompiled.h"
 #include "escort_ai.h"
-/*author: zero
- *script complete: 80% 
- *need test
- *we need a closer look at the deathdoors at wave2
- *we need a trigger to keep eventplayer in combat
- *maybe we have to implement a full working random spawn calculation for peasants
- *soldier spawn is probably wrong
+/*author: DLow
+ *script complete: >90% 
  */
 
 /*######
@@ -133,9 +128,9 @@ static const float aFootsoldieSpawn[3][4] =
     { 3346.987f, -3052.782f, 165.360f, 1.662f }*/
 };
 
-static const uint32 aPeasantSpawnYell[] = {-1000696, -1000697, -1000698};
-static const uint32 aPeasantRandomSay[] = {-1000699, -1000700, -1000701}; // TODO
-static const uint32 aPeasantSaveSay[] = {-1000702, -1000703, -1000704, -1000705};
+static const uint32 aPeasantSpawnYell[] = {-1000682, -1000683, -1000684};
+static const uint32 aPeasantRandomSay[] = {-1000685, -1000686, -1000687};
+static const uint32 aPeasantSaveSay[] = {-1000688, -1000689, -1000690, -1000691};
 
 enum
 {
@@ -266,7 +261,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         // Failed
         if (bFailed && !bWave)
         {
-            DoScriptText(urand(0, 1) ? -1000706 : -1000707, m_creature);
+            DoScriptText(urand(0, 1) ? -1000692 : -1000693, m_creature);
             if (pPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
                 pPlayer->FailQuest(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW);
             //Despawn Eris
@@ -283,7 +278,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         // Wave completed
         if (!bFailed && bWave)
         {
-            DoScriptText(-1000709, m_creature);
+            DoScriptText(-1000695, m_creature);
 
             //Blessing
             m_creature->CastSpell(pPlayer, SPELL_BLESSING_OF_NORDRASSIL, false);
@@ -295,7 +290,8 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
             m_bFootsoldiersSpawned = true;
 
             //Wave Done next inc.
-            m_uiCurrentWave++;
+            if(m_uiCurrentWave <= 5)
+                m_uiCurrentWave++;
 
             return;
         }
@@ -303,11 +299,11 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         // Whole event completed
         if (!bFailed && !bWave)
         {
-            DoScriptText(-1000708, m_creature);
+            DoScriptText(-1000694, m_creature);
             if (pPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
             {
                 /*Dont use that: 
-                    AreaExploredOrEventHappens(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW);
+                    
                 it spwans millions of Peasants*/
 
                 //Set Flags
@@ -418,6 +414,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         //Moving peasant
         if (pSummoned->GetMotionMaster()->GetCurrentMovementGeneratorType() != IDLE_MOTION_TYPE && (pSummoned->GetEntry() == NPC_INJURED_PEASANT || pSummoned->GetEntry() == NPC_PLAGUED_PEASANT))
         {
+            DoScriptText(aPeasantRandomSay[urand(0,2)], pSummoned);
             ++m_uiKillCounter[m_uiCurrentWave-1];
             ++m_uiTotalKilled;
         }
@@ -693,13 +690,9 @@ struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
     uint32 m_uiShotTimer;
 
     void Reset()
-    {
-
-        //Values need to be set
-        m_creature->SetBaseWeaponDamage(RANGED_ATTACK, MINDAMAGE, 162);
-        m_creature->SetBaseWeaponDamage(RANGED_ATTACK, MAXDAMAGE, 186);
+    {        
+	//Use it
         m_creature->UpdateDamagePhysical(RANGED_ATTACK);
-        m_creature->SetArmor(3791);
 
         //get a bow
         SetEquipmentSlots(false, EQUIP_UNEQUIP, EQUIP_UNEQUIP, 6231);
@@ -746,7 +739,7 @@ struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
                 uint32 pPeasantRandom = urand(0,pPeasants.size()), j = 1;
                 for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
                 {
-                    if((*i)->isAlive() && j == pPeasantRandom && m_creature->IsInRange((*i), 0.0f, 59.0f, true))
+                    if((*i)->isAlive() && j == pPeasantRandom && m_creature->IsInRange((*i), 0.0f, 59.0f, true) && m_creature->IsWithinLOS((*i)->GetPositionX(), (*i)->GetPositionY(), (*i)->GetPositionZ()))
                     {
                         DoCastSpellIfCan((*i), SHOOT);
                         m_creature->AddThreat((*i));
@@ -782,11 +775,6 @@ struct MANGOS_DLL_DECL mob_scourge_footsoldierAI : public ScriptedAI
 
     void Reset()
     {
-        //Values need to be set
-        m_creature->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, 108);
-        m_creature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, 126);
-        m_creature->UpdateDamagePhysical(BASE_ATTACK);
-        m_creature->SetArmor(3435);
         m_creature->CastSpell(m_creature, SEE_PRIEST_INVIS, false);
     }
 
