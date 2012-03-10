@@ -360,7 +360,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
                     // sort of a hack, it is unclear how this really work but the values appear to be valid
                     //m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND/* | UNIT_BYTE1_FLAG_UNK_2)*/);
-                    //m_creature->SetSplineFlags(SplineFlags(SPLINEFLAG_FLYING | SPLINEFLAG_UNKNOWN7));
+                    m_creature->AddSplineFlag(SPLINEFLAG_FLYING);
 
                     m_creature->CastSpell(m_creature, SPELL_HOVER, false);
 
@@ -432,7 +432,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
                     // undo flying
                     //m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, 0);
-                    //m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
+                    m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
 
                     m_creature->RemoveAurasDueToSpell(SPELL_HOVER);
 
