@@ -1,12 +1,7 @@
 #include "precompiled.h"
 #include "escort_ai.h"
-/*author: zero
- *script complete: 80% 
- *need test
- *we need a closer look at the deathdoors at wave2
- *we need a trigger to keep eventplayer in combat
- *maybe we have to implement a full working random spawn calculation for peasants
- *soldier spawn is probably wrong
+/*author: DLow
+ *script complete: >90% 
  */
 
 /*######
@@ -134,7 +129,7 @@ static const float aFootsoldieSpawn[3][4] =
 };
 
 static const uint32 aPeasantSpawnYell[] = {-1000682, -1000683, -1000684};
-static const uint32 aPeasantRandomSay[] = {-1000685, -1000686, -1000687}; // TODO
+static const uint32 aPeasantRandomSay[] = {-1000685, -1000686, -1000687};
 static const uint32 aPeasantSaveSay[] = {-1000688, -1000689, -1000690, -1000691};
 
 enum
