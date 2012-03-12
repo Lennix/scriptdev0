@@ -59,7 +59,7 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
     }
 
     void UpdateAI(const uint32 uiDiff)
-    {        
+    {         
         // Holding this aura means that this NPC is saved
         if (m_creature->HasAura(SPELL_ENTER_THE_LIGHT_DND, EFFECT_INDEX_0))
             return;
