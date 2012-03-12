@@ -206,26 +206,10 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (Creature* pTrigger = m_pInstance->GetSingleCreatureFromStorage(NPC_ONYXIA_TRIGGER))
-        {
-            // Get some random point near the center
-            float fX, fY, fZ;
-            pSummoned->GetRandomPoint(pTrigger->GetPositionX(), pTrigger->GetPositionY(), pTrigger->GetPositionZ(), 20.0f, fX, fY, fZ);
-            pSummoned->GetMotionMaster()->MovePoint(1, fX, fY, fZ);
-        }
-        else
-            pSummoned->SetInCombatWithZone();
+        pSummoned->SetInCombatWithZone();
 
         if (pSummoned->GetEntry() == NPC_ONYXIA_WHELP)
             ++m_uiSummonCount;
-    }
-
-    void SummonedMovementInform(Creature* pSummoned, uint32 uiMoveType, uint32 uiPointId)
-    {
-        if (uiMoveType != POINT_MOTION_TYPE || uiPointId != 1 || !m_creature->getVictim())
-            return;
-
-        pSummoned->SetInCombatWithZone();
     }
 
     void KilledUnit(Unit* pVictim)
@@ -530,8 +514,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     {
                         if (m_uiWhelpTimer < uiDiff)
                         {
-                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[0][0], afSpawnLocations[0][1], afSpawnLocations[0][2], 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, MINUTE*IN_MILLISECONDS);
-                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[1][0], afSpawnLocations[1][1], afSpawnLocations[1][2], 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, MINUTE*IN_MILLISECONDS);
+                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[0][0], afSpawnLocations[0][1], afSpawnLocations[0][2], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10000);
+                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[1][0], afSpawnLocations[1][1], afSpawnLocations[1][2], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10000);
                             m_uiWhelpTimer = 500;
                         }
                         else
