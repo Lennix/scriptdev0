@@ -18,6 +18,9 @@ enum
     SPELL_DEATHS_DOOR = 23127, // Green (weak)
     SPELL_SEETHING_PLAGUE = 23072, // Purple (strong)
 
+    NPC_SCOURGE_ARCHER = 14489,
+    NPC_SCOURGE_FOOTSOLDIER = 14486,
+
     NPC_INJURED_PEASANT = 14484,
     NPC_PLAGUED_PEASANT = 14485,
     
@@ -33,27 +36,30 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
     }
 
     uint32 m_uiDiseaseTimer, rnd;
+    bool m_bAttack;
 
     void Reset() 
     {
-        
         m_uiDiseaseTimer = urand(1000,10000);
         rnd = urand(0,100);
-
+        m_bAttack = false;
         //Only Plagued Peasants get the Seething Plague
         if(m_creature->GetEntry() == NPC_PLAGUED_PEASANT)
              m_creature->CastSpell(m_creature, SPELL_SEETHING_PLAGUE, false);
-        if(!m_creature->HasAura(SPELL_SEETHING_PLAGUE) && rnd <= 30)
+        if(!m_creature->HasAura(SPELL_SEETHING_PLAGUE) && rnd <= 20)
                 m_creature->CastSpell(m_creature, SPELL_DEATHS_DOOR, false);
     }
 
-    void AttackStart(Unit* pVictim) 
+    void AttackStart(Unit* pTarget)
     {
-        return;
+        if(pTarget->GetEntry() != NPC_SCOURGE_FOOTSOLDIER)
+            return;
+        else
+            ScriptedAI::AttackStart(pTarget);
     }
 
     void UpdateAI(const uint32 uiDiff)
-    {
+    {        
         // Holding this aura means that this NPC is saved
         if (m_creature->HasAura(SPELL_ENTER_THE_LIGHT_DND, EFFECT_INDEX_0))
             return;
@@ -66,13 +72,24 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
         if (m_uiDiseaseTimer <= uiDiff)
         {
             //30% Chance to get Diseased
-            if(!m_creature->HasAura(SPELL_SEETHING_PLAGUE) && rnd <= 30)
+            if(!m_creature->HasAura(SPELL_SEETHING_PLAGUE) && rnd <= 20)
                 m_creature->CastSpell(m_creature, SPELL_DEATHS_DOOR, false);
             //Disease Timer between 1 und 10 Seconds
             m_uiDiseaseTimer = urand(1000,10000);
         }
         else
             m_uiDiseaseTimer -= uiDiff;
+
+        // Return since we have no target
+        if(m_creature->getVictim())
+        {
+            if (m_creature->getVictim()->GetEntry() != NPC_SCOURGE_FOOTSOLDIER)
+                return;
+        }
+        else
+            return;
+
+        DoMeleeAttackIfReady();
     }
 };
 
@@ -141,8 +158,6 @@ enum
 {
     QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW = 7622,
 
-    NPC_SCOURGE_ARCHER = 14489,
-    NPC_SCOURGE_FOOTSOLDIER = 14486,
     NPC_CLEANER = 14503,
 
     SEE_PRIEST_INVIS = 23199,
@@ -195,7 +210,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
             return;
 
         //Declarations
-        m_bFootsoldiersSpawned = false;
+        m_bFootsoldiersSpawned = true;
         m_bIsQuestInProgress = false;
         m_bCleaningInProgress = false;
        
@@ -215,8 +230,13 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         {
             m_uiKillCounter[i] = 0;
             m_uiSaveCounter[i] = 0;
-            m_uiPeasantCount[i] = 10+i;
         }
+
+        m_uiPeasantCount[0] = 12;
+        m_uiPeasantCount[1] = 12;
+        m_uiPeasantCount[2] = 13;
+        m_uiPeasantCount[3] = 13;
+        m_uiPeasantCount[4] = 15;
 
         m_playerGuid.Clear();
         m_lCleaner.clear();
@@ -431,11 +451,9 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
     {
         //Random spawnpoint
         uint8 uiRandomForArray = urand(0,2);
-        float fX, fY, fZ;
-        m_creature->GetRandomPoint(aFootsoldieSpawn[uiRandomForArray][0], aFootsoldieSpawn[uiRandomForArray][1], aFootsoldieSpawn[uiRandomForArray][2], 5.0f, fX, fY, fZ);
 
         //Spawn soldier
-        if (Creature* pTemp = m_creature->SummonCreature(NPC_SCOURGE_FOOTSOLDIER, fX, fY, fZ, aFootsoldieSpawn[uiRandomForArray][3], TEMPSUMMON_DEAD_DESPAWN, 5000))
+        if (Creature* pTemp = m_creature->SummonCreature(NPC_SCOURGE_FOOTSOLDIER, aFootsoldieSpawn[uiRandomForArray][0], aFootsoldieSpawn[uiRandomForArray][1], aFootsoldieSpawn[uiRandomForArray][2], aFootsoldieSpawn[uiRandomForArray][3], TEMPSUMMON_DEAD_DESPAWN, 5000))
             //Push soldiers into summoned creatures list
             m_lSummonedGUIDList.push_back(pTemp->GetGUID());
     }
@@ -619,23 +637,23 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
                 {
                     case 1: // Spawn Archers
                         DoSpawnArchers();
-                        m_uiMainTimer = 2000;
+                        m_uiMainTimer = 5000;
                         break;
                     case 2: // Wave 1
                         DoNextWave(1);
-                        m_uiMainTimer = 38000;
+                        m_uiMainTimer = 60000;
                         break;
                     case 3: // Wave 2
                         DoNextWave(2);
-                        m_uiMainTimer = 38000;
+                        m_uiMainTimer = 75000;
                         break;
                     case 4: // Wave 3
                         DoNextWave(3);
-                        m_uiMainTimer = 38000;
+                        m_uiMainTimer = 100000;
                         break;
                     case 5: // Wave 4
                         DoNextWave(4);
-                        m_uiMainTimer = 38000;
+                        m_uiMainTimer = 105000;
                         break;
                     case 6: // Wave 5
                         DoNextWave(5);
@@ -696,11 +714,11 @@ struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
 
     void Reset()
     {
+         //Use a bow
+        m_creature->UpdateDamagePhysical(RANGED_ATTACK);
+
         //get a bow
         SetEquipmentSlots(false, EQUIP_UNEQUIP, EQUIP_UNEQUIP, 6231);
-
-        //Use it
-        m_creature->UpdateDamagePhysical(RANGED_ATTACK);
 
         //get immune
         m_creature->CastSpell(m_creature, 29230, true);
@@ -773,6 +791,7 @@ CreatureAI* GetAI_mob_scourge_archer(Creature* pCreature)
 
 struct MANGOS_DLL_DECL mob_scourge_footsoldierAI : public ScriptedAI
 {
+    Creature* pTemp;
     mob_scourge_footsoldierAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         Reset();
@@ -780,17 +799,19 @@ struct MANGOS_DLL_DECL mob_scourge_footsoldierAI : public ScriptedAI
 
     void Reset()
     {
+        pTemp = 0;
         m_creature->CastSpell(m_creature, SEE_PRIEST_INVIS, false);
     }
 
     void UpdateAI(const uint32 uiDiff)
     {   
+        //hier nur hinlaufen und fertig
         //Peasant list
         std::list<Creature*> pPeasants;
         pPeasants.clear();
         GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_INJURED_PEASANT, 300.0f);
         GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_PLAGUED_PEASANT, 300.0f);
-        
+
         if(Player* pPlayer = GetPlayerAtMinimumRange(300.0f))
             m_creature->AddThreat(pPlayer);
 
@@ -798,8 +819,12 @@ struct MANGOS_DLL_DECL mob_scourge_footsoldierAI : public ScriptedAI
 	        for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
                 if((*i)->isAlive())
                     m_creature->AddThreat((*i));
-	    
-        DoMeleeAttackIfReady();       
+
+	  
+        // Return since we have no target
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+        DoMeleeAttackIfReady();
     }
 };
 
