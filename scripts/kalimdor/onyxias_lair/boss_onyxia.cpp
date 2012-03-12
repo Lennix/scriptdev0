@@ -443,6 +443,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 							case 0:
 							{
 								//lift off animation is missing , anyone know this???
+								//m_creature->HandleEmote(EMOTE_ONESHOT_LIFTOFF);
 								m_creature->AddSplineFlag(SPLINEFLAG_FLYING);
 								m_creature->CastSpell(m_creature, SPELL_HOVER, true);
 								m_uiLiftOffTimer = 2000;

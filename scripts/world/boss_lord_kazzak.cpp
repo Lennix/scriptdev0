@@ -41,7 +41,7 @@ EndScriptData */
 #define SPELL_SHADOWVOLLEY              21341
 #define SPELL_CLEAVE                    8255
 #define SPELL_THUNDERCLAP               23931
-#define SPELL_VOIDBOLT                  22709
+#define SPELL_VOIDBOLT                  29317  //or 26006, standard 22709 is too weak
 #define SPELL_MARKOFKAZZAK              21056
 
 // What are these for??
@@ -82,6 +82,7 @@ struct MANGOS_DLL_DECL boss_lordkazzakAI : public ScriptedAI
     uint32 Twisted_Reflection_Timer;
 	uint8 MarkedPlayerCounter;
 	Player* MarkedPlayer[MAX_MARK_TARGETS];
+	bool enrage;
 
     void Reset()
     {
@@ -92,23 +93,36 @@ struct MANGOS_DLL_DECL boss_lordkazzakAI : public ScriptedAI
         ThunderClap_Timer = urand(14000,17000);
         VoidBolt_Timer = 20000;
         MarkOfKazzak_Timer = 25000;
-        Enrage_Timer = 60000;
+        Enrage_Timer = 180000;
         Twisted_Reflection_Timer = 15000;  
+		enrage = false;
     }
 
-    void MarkPlayer(Player* pl)
-	{ 
-        int r = 0;
-	    for (r; r < MAX_MARK_TARGETS; r++)
-	    {
-            if (!MarkedPlayer[r])
-	        {
-                MarkedPlayer[r] = pl;
-	            if ((r+1) > MarkedPlayerCounter)
-	                MarkedPlayerCounter = r+1;
-	            break;
-	        }
-	    }
+	Player* DoSelectRandomNonMeleePlayer()
+    {
+        if (!m_creature->CanHaveThreatList())
+            return 0;
+
+        GUIDVector vGuids;
+        m_creature->FillGuidsListFromThreatList(vGuids);
+        std::vector<Player*> vManaPlayers;
+
+        if (!vGuids.empty())
+        {
+            for (GUIDVector::const_iterator itr = vGuids.begin(); itr != vGuids.end(); ++itr)
+            {
+                if (Unit* pTarget = m_creature->GetMap()->GetUnit(*itr))
+                {
+                    // We need only a player
+                    if (!pTarget->IsCharmerOrOwnerPlayerOrPlayerItself())
+                        continue;
+
+                    // An enemy is not in the meele range and it is a player with mana power
+                    if (!m_creature->CanReachWithMeleeAttack(pTarget))
+                        vManaPlayers.push_back((Player*)pTarget);
+                }
+            }
+        }
 	}
 
     void JustRespawned()
@@ -153,102 +167,92 @@ struct MANGOS_DLL_DECL boss_lordkazzakAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim() )
             return;
 
-        //ShadowVolley_Timer
-        if (ShadowVolley_Timer < diff)
-        {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOWVOLLEY);
-            ShadowVolley_Timer = urand(8000,11000);
-        }
-        else 
-            ShadowVolley_Timer -= diff;
-
-        //Cleave_Timer
-        if (Cleave_Timer < diff)
-        {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_CLEAVE);
-            Cleave_Timer = urand(6000,8000);
-        }
-        else
-            Cleave_Timer -= diff;
-
-        //ThunderClap_Timer
-        if (ThunderClap_Timer < diff)
-        {
-            DoCastSpellIfCan(m_creature,SPELL_THUNDERCLAP);
-            ThunderClap_Timer = urand(11000,14000);
-        }
-        else 
-            ThunderClap_Timer -= diff;
-
-        //VoidBolt_Timer
-        if (VoidBolt_Timer < diff)
-        {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_VOIDBOLT);
-            VoidBolt_Timer = urand(16000,20000);
-        }
-        else 
-            VoidBolt_Timer -= diff;
-
-		//Mark of Kazzak Explode
-		if (MarkedPlayerCounter > 0)
+		if (!enrage)
 		{
-		    int i = 0;
-		    for (i; i < MarkedPlayerCounter; i++)
-		    {
-                if (MarkedPlayer[i])
-		        {
-		            if (MarkedPlayer[i]->isAlive() && MarkedPlayer[i]->HasAura(SPELL_MARKOFKAZZAK))
-		            {
-                        if (MarkedPlayer[i]->GetPower(POWER_MANA) < 150)
-		                {
-		                    MarkedPlayer[i]->RemoveAura(SPELL_MARKOFKAZZAK,EFFECT_INDEX_0);
-			                MarkedPlayer[i]->CastSpell(MarkedPlayer[i],SPELL_EXPLODE,true);
-			                MarkedPlayer[i] = 0;
-		                }
-		            }
-		            else
-		                MarkedPlayer[i] = 0;
-		        }
-		    }
-		}
-
-        //MarkOfKazzak_Timer
-        if (MarkOfKazzak_Timer < diff)
-        {
-            Unit* victim = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1);
-            if(victim && victim->GetTypeId() == TYPEID_PLAYER && victim->GetPower(POWER_MANA))
-            {
-                DoCastSpellIfCan(victim, SPELL_MARKOFKAZZAK);
-				MarkPlayer((Player*)victim);
-                MarkOfKazzak_Timer = 18000;
-            }
-        }
-        else 
-            MarkOfKazzak_Timer -= diff;
-
-        //Enrage_Timer
-        if (Enrage_Timer < diff)
-        {
-            DoScriptText(EMOTE_FRENZY, m_creature);
-            DoCastSpellIfCan(m_creature,SPELL_ENRAGE);
-            Enrage_Timer = 30000;
-        }
-        else 
-            Enrage_Timer -= diff;
-
-		//Twisted_Reflection_Timer
-        if (Twisted_Reflection_Timer < diff)
-        {
-			if (Unit* u = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
+			//ShadowVolley_Timer
+			if (ShadowVolley_Timer < diff)
 			{
-                DoCastSpellIfCan(u, SPELL_TWISTEDREFLECTION);
-                Twisted_Reflection_Timer = 18000;
+				if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOWVOLLEY) == CAST_OK)
+					ShadowVolley_Timer = urand(8000,11000);
 			}
-        }
-        else 
-            Twisted_Reflection_Timer -= diff;
+			else 
+				ShadowVolley_Timer -= diff;
 
-        DoMeleeAttackIfReady();
+			//Cleave_Timer
+			if (Cleave_Timer < diff)
+			{
+				if (DoCastSpellIfCan(m_creature->getVictim(),SPELL_CLEAVE) == CAST_OK)
+					Cleave_Timer = urand(6000,8000);
+			}
+			else
+				Cleave_Timer -= diff;
+
+			//ThunderClap_Timer
+			if (ThunderClap_Timer < diff)
+			{
+				if (DoCastSpellIfCan(m_creature,SPELL_THUNDERCLAP) == CAST_OK)
+					ThunderClap_Timer = urand(11000,14000);
+			}
+			else 
+				ThunderClap_Timer -= diff;
+
+			//VoidBolt_Timer
+			if (VoidBolt_Timer < diff)
+			{
+				if (DoCastSpellIfCan(m_creature->getVictim(),SPELL_VOIDBOLT) == CAST_OK)
+					VoidBolt_Timer = urand(16000,20000);
+			}
+			else 
+				VoidBolt_Timer -= diff;
+
+			//MarkOfKazzak_Timer
+			if (MarkOfKazzak_Timer < diff)
+			{
+				if (Player* pManaPlayer = DoSelectRandomNonMeleePlayer())
+                {
+					if (DoCastSpellIfCan(pManaPlayer, SPELL_MARKOFKAZZAK) == CAST_OK)
+						MarkOfKazzak_Timer = 18000;
+				}
+			}
+			else 
+				MarkOfKazzak_Timer -= diff;
+
+			//Twisted_Reflection_Timer
+			if (Twisted_Reflection_Timer < diff)
+			{
+				if (Unit* u = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
+				{
+					if (DoCastSpellIfCan(u, SPELL_TWISTEDREFLECTION) == CAST_OK)
+						Twisted_Reflection_Timer = 18000;
+				}
+			}
+			else 
+				Twisted_Reflection_Timer -= diff;
+
+			//Enrage_Timer
+			if (Enrage_Timer < diff)
+			{
+				DoScriptText(EMOTE_FRENZY, m_creature);
+				m_creature->CastSpell(m_creature,SPELL_ENRAGE,true);
+				enrage = true;
+				VoidBolt_Timer = 0;
+			}
+			else 
+				Enrage_Timer -= diff;
+
+			DoMeleeAttackIfReady();
+		}
+		else
+		{
+			//ENRAGE VoidBolt every second
+			if (VoidBolt_Timer < diff)
+			{
+				m_creature->CastSpell(m_creature->getVictim(),SPELL_VOIDBOLT,true);
+				VoidBolt_Timer = 1000;
+			}
+			else 
+				VoidBolt_Timer -= diff;
+		}
     }
 
 };
