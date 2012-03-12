@@ -50,6 +50,8 @@ class MANGOS_DLL_DECL instance_onyxias_lair : public ScriptedInstance
 
         void SetData(uint32 uiType, uint32 uiData);
 
+		uint32 GetData(uint32 uiType);
+
     protected:
         uint32 m_uiEncounter;
 

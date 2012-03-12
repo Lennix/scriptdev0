@@ -136,6 +136,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     uint32 m_uiBellowingRoarTimer;
     uint32 m_uiWhelpTimer;
 
+	uint32 m_uiLiftOffTimer;
+	uint32 liftOffData;
+
     uint8 m_uiSummonCount;
 
     bool m_bIsSummoningWhelps;
@@ -163,6 +166,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         m_uiSummonWhelpsTimer   = 15000;
         m_uiBellowingRoarTimer  = 2000;                      // Immediately after landing
         m_uiWhelpTimer          = 1000;
+
+		m_uiLiftOffTimer		= 0;
+		liftOffData				= 0;
 
         m_uiSummonCount         = 0;
 
@@ -286,10 +292,14 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         if (uiMoveType != POINT_MOTION_TYPE || !m_pInstance)
             return;
 
-        if (m_uiPhase == PHASE_BREATH)
+
+        if (m_uiPhase == PHASE_BREATH_PRE || m_uiPhase == PHASE_BREATH)
         {
             if (Creature* pTrigger = m_pInstance->GetSingleCreatureFromStorage(NPC_ONYXIA_TRIGGER))
                 m_creature->SetFacingToObject(pTrigger);
+
+			if (m_uiPhase == PHASE_BREATH_PRE)
+				m_uiLiftOffTimer = 1000;
         }
     }
 
@@ -351,25 +361,14 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
             {
                 if (m_uiPhase == PHASE_START && m_creature->GetHealthPercent() < 65.0f)
                 {
-                    m_uiPhase = PHASE_BREATH;
+                    m_uiPhase = PHASE_BREATH_PRE;
 
-                    SetCombatMovement(false);
+					DoScriptText(SAY_PHASE_2_TRANS, m_creature);
+
+					SetCombatMovement(false);
                     m_creature->GetMotionMaster()->MoveIdle();
+					m_creature->GetMotionMaster()->MovePoint(8, -78.336, -215.50, -83,1679);
 
-                    DoScriptText(SAY_PHASE_2_TRANS, m_creature);
-
-                    // sort of a hack, it is unclear how this really work but the values appear to be valid
-                    //m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND/* | UNIT_BYTE1_FLAG_UNK_2)*/);
-                    m_creature->AddSplineFlag(SPLINEFLAG_FLYING);
-
-                    m_creature->CastSpell(m_creature, SPELL_HOVER, false);
-
-                    if (m_pPointData)
-                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ);
-
-                    // TODO - this might not be the correct place to set this setting
-                    if (m_pInstance)
-                        m_pInstance->SetData(TYPE_ONYXIA, DATA_LIFTOFF);
                     return;
                 }
 
@@ -423,6 +422,46 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 DoMeleeAttackIfReady();
                 break;
             }
+			case PHASE_BREATH_PRE:
+			{
+				if (m_uiPhase == PHASE_BREATH_PRE && m_pInstance->GetData(TYPE_ONYXIA) == DATA_LIFTOFF)
+                {
+                    m_uiPhase = PHASE_BREATH;
+
+                    if (m_pPointData)
+                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ);
+
+                    return;
+                }
+
+				if (m_uiLiftOffTimer)
+				{
+					 if (m_uiLiftOffTimer <= uiDiff)
+					 {
+						switch(liftOffData)
+						{
+							case 0:
+							{
+								//lift off animation is missing , anyone know this???
+								m_creature->AddSplineFlag(SPLINEFLAG_FLYING);
+								m_creature->CastSpell(m_creature, SPELL_HOVER, true);
+								m_uiLiftOffTimer = 2000;
+								break;
+							}
+							case 1:
+							{
+								if (m_pInstance)
+									m_pInstance->SetData(TYPE_ONYXIA, DATA_LIFTOFF);
+								break;
+							}
+						}
+						liftOffData++;
+					 }
+					 else
+						m_uiLiftOffTimer -= uiDiff;
+				}
+				break;
+			}
             case PHASE_BREATH:
             {
                 if (m_creature->GetHealthPercent() < 40.0f)
