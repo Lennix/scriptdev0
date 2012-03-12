@@ -93,7 +93,7 @@ struct MANGOS_DLL_DECL boss_lordkazzakAI : public ScriptedAI
         ThunderClap_Timer = urand(14000,17000);
         VoidBolt_Timer = 20000;
         MarkOfKazzak_Timer = 25000;
-        Enrage_Timer = 10000;//180000;
+        Enrage_Timer = 180000;
         Twisted_Reflection_Timer = 15000;  
 		enrage = false;
     }
