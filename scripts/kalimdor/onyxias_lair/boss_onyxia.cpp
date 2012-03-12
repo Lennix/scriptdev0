@@ -142,6 +142,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     uint8 m_uiSummonCount;
 
     bool m_bIsSummoningWhelps;
+    bool touchGround;
 
     void Reset()
     {
@@ -173,6 +174,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         m_uiSummonCount         = 0;
 
         m_bIsSummoningWhelps    = false;
+        touchGround             = false;
 
         m_creature->ApplySpellImmune(0, IMMUNITY_SCHOOL, SPELL_SCHOOL_MASK_FIRE, true);
     }
@@ -285,6 +287,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 			if (m_uiPhase == PHASE_BREATH_PRE)
 				m_uiLiftOffTimer = 1000;
         }
+
+        if (m_uiPhase == PHASE_BREATH_POST)
+            touchGround = true;
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -351,7 +356,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
 					SetCombatMovement(false);
                     m_creature->GetMotionMaster()->MoveIdle();
-					m_creature->GetMotionMaster()->MovePoint(8, -78.336, -215.50, -83,1679);
+					m_creature->GetMotionMaster()->MovePoint(0, -78.336, -215.50, -83,1679);
 
                     return;
                 }
@@ -451,17 +456,13 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
             {
                 if (m_creature->GetHealthPercent() < 40.0f)
                 {
-                    m_uiPhase = PHASE_END;
+                    m_uiPhase = PHASE_BREATH_POST;
                     DoScriptText(SAY_PHASE_3_TRANS, m_creature);
 
-                    // undo flying
-                    //m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, 0);
-                    m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
-
-                    m_creature->RemoveAurasDueToSpell(SPELL_HOVER);
-
-                    SetCombatMovement(true);
-                    m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
+                    Unit* flyDown = m_creature->getVictim();
+                    if (flyDown)
+                        m_creature->GetMotionMaster()->MovePoint(0, flyDown->GetPositionX(), flyDown->GetPositionY(), flyDown->GetPositionZ());
+                 
                     return;
                 }
 
@@ -537,6 +538,20 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 }
 
                 break;
+            }
+            case PHASE_BREATH_POST:
+            {
+                if (touchGround)
+                {
+                    m_uiPhase = PHASE_END;
+               
+                    //landing animation is missing, anyone know this???
+                    m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
+                    m_creature->RemoveAurasDueToSpell(SPELL_HOVER);
+
+                    SetCombatMovement(true);
+                    m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
+                }
             }
         }
     }
