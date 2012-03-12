@@ -210,7 +210,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
             return;
 
         //Declarations
-        m_bFootsoldiersSpawned = true;
+        m_bFootsoldiersSpawned = false;
         m_bIsQuestInProgress = false;
         m_bCleaningInProgress = false;
        
