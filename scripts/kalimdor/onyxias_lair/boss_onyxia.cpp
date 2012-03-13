@@ -136,8 +136,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     uint32 m_uiBellowingRoarTimer;
     uint32 m_uiWhelpTimer;
 
-	uint32 m_uiLiftOffTimer;
-	uint32 liftOffData;
+    uint32 m_uiLiftOffTimer;
+    uint32 liftOffData;
 
     uint8 m_uiSummonCount;
 
@@ -168,8 +168,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         m_uiBellowingRoarTimer  = 2000;                      // Immediately after landing
         m_uiWhelpTimer          = 1000;
 
-		m_uiLiftOffTimer		= 0;
-		liftOffData				= 0;
+        m_uiLiftOffTimer		= 0;
+        liftOffData				= 0;
 
         m_uiSummonCount         = 0;
 
@@ -284,8 +284,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
             if (Creature* pTrigger = m_pInstance->GetSingleCreatureFromStorage(NPC_ONYXIA_TRIGGER))
                 m_creature->SetFacingToObject(pTrigger);
 
-			if (m_uiPhase == PHASE_BREATH_PRE)
-				m_uiLiftOffTimer = 1000;
+            if (m_uiPhase == PHASE_BREATH_PRE)
+                m_uiLiftOffTimer = 1000;
         }
 
         if (m_uiPhase == PHASE_BREATH_POST)
@@ -352,11 +352,11 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 {
                     m_uiPhase = PHASE_BREATH_PRE;
 
-					DoScriptText(SAY_PHASE_2_TRANS, m_creature);
+                    DoScriptText(SAY_PHASE_2_TRANS, m_creature);
 
-					SetCombatMovement(false);
+                    SetCombatMovement(false);
                     m_creature->GetMotionMaster()->MoveIdle();
-					m_creature->GetMotionMaster()->MovePoint(0, -78.336, -215.50, -83,1679);
+                    m_creature->GetMotionMaster()->MovePoint(0, -78.336, -215.50, -83,1679);
 
                     return;
                 }
@@ -411,9 +411,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 DoMeleeAttackIfReady();
                 break;
             }
-			case PHASE_BREATH_PRE:
-			{
-				if (m_uiPhase == PHASE_BREATH_PRE && m_pInstance->GetData(TYPE_ONYXIA) == DATA_LIFTOFF)
+            case PHASE_BREATH_PRE:
+            {
+                if (m_uiPhase == PHASE_BREATH_PRE && m_pInstance->GetData(TYPE_ONYXIA) == DATA_LIFTOFF)
                 {
                     m_uiPhase = PHASE_BREATH;
 
@@ -423,35 +423,35 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     return;
                 }
 
-				if (m_uiLiftOffTimer)
-				{
-					 if (m_uiLiftOffTimer <= uiDiff)
-					 {
-						switch(liftOffData)
-						{
-							case 0:
-							{
-								//lift off animation is missing , anyone know this???
+                if (m_uiLiftOffTimer)
+                {
+                     if (m_uiLiftOffTimer <= uiDiff)
+                     {
+                        switch(liftOffData)
+                        {
+                            case 0:
+                            {
+                                //lift off animation is missing , anyone know this???
                                 //m_creature->HandleEmoteCommand(EMOTE_ONESHOT_LIFTOFF);
                                 m_creature->CastSpell(m_creature, SPELL_HOVER, true);
-								m_uiLiftOffTimer = 1000;
-								break;
-							}
-							case 1:
-							{
+                                m_uiLiftOffTimer = 1000;
+                                break;
+                            }
+                            case 1:
+                            {
                                 m_creature->AddSplineFlag(SPLINEFLAG_FLYING);
-								if (m_pInstance)
-									m_pInstance->SetData(TYPE_ONYXIA, DATA_LIFTOFF);
-								break;
-							}
-						}
-						liftOffData++;
-					 }
-					 else
-						m_uiLiftOffTimer -= uiDiff;
-				}
-				break;
-			}
+                                if (m_pInstance)
+                                    m_pInstance->SetData(TYPE_ONYXIA, DATA_LIFTOFF);
+                                break;
+                            }
+                        }
+                        liftOffData++;
+                     }
+                     else
+                        m_uiLiftOffTimer -= uiDiff;
+                }
+                break;
+            }
             case PHASE_BREATH:
             {
                 if (m_creature->GetHealthPercent() < 40.0f)

@@ -815,12 +815,12 @@ struct MANGOS_DLL_DECL mob_scourge_footsoldierAI : public ScriptedAI
         if(Player* pPlayer = GetPlayerAtMinimumRange(300.0f))
             m_creature->AddThreat(pPlayer);
 
-	    if (!pPeasants.empty())
-	        for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
+        if (!pPeasants.empty())
+            for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
                 if((*i)->isAlive())
                     m_creature->AddThreat((*i));
 
-	  
+      
         // Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;

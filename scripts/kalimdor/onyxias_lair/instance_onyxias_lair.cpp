@@ -106,7 +106,7 @@ void instance_onyxias_lair::SetData(uint32 uiType, uint32 uiData)
 
 uint32 instance_onyxias_lair::GetData(uint32 uiType)
 {
-	return m_uiEncounter;
+    return m_uiEncounter;
 }
 
 InstanceData* GetInstanceData_instance_onyxias_lair(Map* pMap)
