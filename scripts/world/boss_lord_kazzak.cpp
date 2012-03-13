@@ -153,8 +153,8 @@ struct MANGOS_DLL_DECL boss_lordkazzakAI : public ScriptedAI
         if (victim->GetTypeId() != TYPEID_PLAYER)
             return;
 
-        //DoCastSpellIfCan(m_creature,SPELL_CAPTURESOUL);
-        m_creature->SetHealth(m_creature->GetHealth()+70000);
+        m_creature->CastSpell(m_creature,SPELL_CAPTURESOUL, false);
+        //m_creature->SetHealth(m_creature->GetHealth()+70000);
 
         switch(urand(0,2))
         {
