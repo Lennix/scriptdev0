@@ -191,6 +191,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         fearMode                = false;
         hasTank                 = false;
 
+        mTank                   = 0;
+
         m_creature->ApplySpellImmune(0, IMMUNITY_SCHOOL, SPELL_SCHOOL_MASK_FIRE, true);
     }
 
@@ -349,8 +351,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     if (!fearMode)
 					{
                         //get MainTank
-						mTank = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0);
-						hasTank = true;
+						if (mTank = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0))
+						    hasTank = true;
 					}
 
                     if (DoCastSpellIfCan(m_creature, SPELL_BELLOWINGROAR) == CAST_OK)
