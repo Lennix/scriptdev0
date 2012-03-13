@@ -117,8 +117,9 @@ struct MANGOS_DLL_DECL boss_lordkazzakAI : public ScriptedAI
                     if (!pTarget->IsCharmerOrOwnerPlayerOrPlayerItself())
                         continue;
 
-                    // a player with mana power
-                    vManaPlayers.push_back((Player*)pTarget);
+                    if(pTarget->getPowerType() == POWER_MANA)
+                        // a player with mana power
+                        vManaPlayers.push_back((Player*)pTarget);
                 }
             }
         }
