@@ -76,7 +76,14 @@ enum
     PHASE_BREATH                = 2,
     PHASE_END                   = 3,
     PHASE_BREATH_PRE            = 4,
-    PHASE_BREATH_POST           = 5
+    PHASE_BREATH_POST           = 5,
+
+    liftOff                     = 0,
+    landing                     = 1,
+
+    x                           = 0,
+    y                           = 1,
+    z                           = 2
 };
 
 struct OnyxiaMove
@@ -105,6 +112,12 @@ static const float afSpawnLocations[2][3]=
     {-30.817f, -177.106f, -89.258f}                        // whelps
 };
 
+static const float trans[2][3]=
+{
+   {-71.36, -214.745, -83.782},                            // liftOff
+   {-37.491, -214.39, -86.712}                             // landing
+};
+
 struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 {
     boss_onyxiaAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -123,8 +136,6 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     uint32 m_uiCleaveTimer;
     uint32 m_uiTailSweepTimer;
     uint32 m_uiWingBuffetTimer;
-    uint32 m_uiSummonPlayerTimer;
-    uint32 m_uiSummonRareTimer;
     uint32 m_uiKnockAwayTimer;
 
     uint32 m_uiMovePoint;
@@ -155,8 +166,6 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         m_uiTailSweepTimer      = urand(15000, 20000);
         m_uiCleaveTimer         = urand(2000, 5000);
         m_uiWingBuffetTimer     = urand(10000, 20000);
-        m_uiSummonPlayerTimer   = urand(20000, 30000);
-        m_uiSummonRareTimer     = urand(60000, 90000);
         m_uiKnockAwayTimer      = urand(20000, 30000);
 
         m_uiMovePoint           = urand(0, m_uiMaxBreathPositions - 1);
@@ -182,6 +191,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     void Aggro(Unit* pWho)
     {
         DoScriptText(SAY_AGGRO, m_creature);
+        m_creature->SetInCombatWithZone();
+        teleportPlayerToOnyxia();
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_ONYXIA, IN_PROGRESS);
@@ -259,18 +270,22 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         return NULL;
     }
 
-    bool IsUnitInLair(Unit* pWho)
+    void teleportPlayerToOnyxia()
     {
-        if (!m_pInstance)
-            return false;
-
-        if (Creature* pCenter = m_pInstance->GetSingleCreatureFromStorage(NPC_ONYXIA_TRIGGER))
+        if (m_pInstance)
         {
-            if (pWho->IsWithinDistInMap(pCenter, 100.0f))
-                return true;
+            Map* pMap = m_creature->GetMap();
+            if (pMap)
+            {
+                Map::PlayerList const &PlayerList = pMap->GetPlayers();
+                for(Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
+                {
+                    Player* pPlayer = itr->getSource();
+                    if (pPlayer && pPlayer->isAlive() && !m_creature->IsWithinDistInMap(pPlayer, 100))
+                        DoTeleportPlayer(pPlayer, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 0);              
+                }
+            }
         }
-
-        return false;
     }
 
     void MovementInform(uint32 uiMoveType, uint32 uiPointId)
@@ -297,44 +312,6 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        // Summon Player
-        if (m_uiSummonPlayerTimer < uiDiff)
-        {
-            for (uint8 i = 0; i < 40; ++i)
-            {
-                Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1);
-
-                if (pTarget && pTarget->isAlive() && pTarget->GetTypeId() == TYPEID_PLAYER)
-                {
-                    if (IsUnitInLair(pTarget))
-                        continue;
-                    else
-                        DoTeleportPlayer(pTarget, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ() + 15, pTarget->GetOrientation());
-                }
-            }
-            m_uiSummonPlayerTimer = urand(25000, 50000);
-        }
-        else
-            m_uiSummonPlayerTimer -= uiDiff;
-
-        // Summon Rare
-        if (m_uiSummonRareTimer < uiDiff)
-        {
-            for (uint8 i = 0; i < 40; ++i)
-            {
-                Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1);
-
-                if (pTarget && pTarget->isAlive() && pTarget->GetTypeId() == TYPEID_PLAYER && IsUnitInLair(pTarget))
-                {
-                    DoTeleportPlayer(pTarget, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ() + 15, pTarget->GetOrientation());
-                    break;
-                }
-            }
-            m_uiSummonRareTimer = urand(120000, 240000);
-        }
-        else
-            m_uiSummonRareTimer -= uiDiff;
-
         switch (m_uiPhase)
         {
             case PHASE_END:                                // Here is room for additional summoned whelps
@@ -356,7 +333,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
                     SetCombatMovement(false);
                     m_creature->GetMotionMaster()->MoveIdle();
-                    m_creature->GetMotionMaster()->MovePoint(0, -78.336, -215.50, -83,1679);
+                    m_creature->GetMotionMaster()->MovePoint(0, trans[liftOff][x], trans[liftOff][y], trans[liftOff][z]);
 
                     return;
                 }
@@ -364,7 +341,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 if (m_uiFlameBreathTimer < uiDiff)
                 {
                     uint32 uiSpell = SPELL_BREATH;
-                    if (IsUnitInLair(m_creature->getVictim()))
+                    if (m_creature->IsWithinDistInMap(m_creature->getVictim(), 100.0f))
                         uiSpell = SPELL_FLAMEBREATH;
 
                     if (DoCastSpellIfCan(m_creature->getVictim(), uiSpell) == CAST_OK)
@@ -459,9 +436,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     m_uiPhase = PHASE_BREATH_POST;
                     DoScriptText(SAY_PHASE_3_TRANS, m_creature);
 
-                    Unit* flyDown = m_creature->getVictim();
-                    if (flyDown)
-                        m_creature->GetMotionMaster()->MovePoint(0, flyDown->GetPositionX(), flyDown->GetPositionY(), flyDown->GetPositionZ());
+                    m_creature->GetMotionMaster()->MovePoint(0, trans[landing][x], trans[landing][y], trans[landing][z]);
                  
                     return;
                 }
@@ -515,8 +490,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     {
                         if (m_uiWhelpTimer < uiDiff)
                         {
-                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[0][0], afSpawnLocations[0][1], afSpawnLocations[0][2], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10000);
-                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[1][0], afSpawnLocations[1][1], afSpawnLocations[1][2], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10000);
+                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[0][x], afSpawnLocations[0][y], afSpawnLocations[0][z], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10000);
+                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[1][x], afSpawnLocations[1][y], afSpawnLocations[1][z], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10000);
                             m_uiWhelpTimer = 500;
                         }
                         else
