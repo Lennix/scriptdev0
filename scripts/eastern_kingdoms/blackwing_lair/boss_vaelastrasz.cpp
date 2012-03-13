@@ -99,6 +99,9 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 
     void Reset()
     {
+        //no regen health
+        //m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
+
         m_playerGuid.Clear();
         m_uiIntroTimer                   = 0;
         m_uiIntroPhase                   = 0;
@@ -260,6 +263,10 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
                                 ++m_uiSpeechNum;
                                 break;
                             case 2:
+                                m_creature->HandleEmote(EMOTE_ONESHOT_ROAR);
+                                m_uiSpeechTimer = 1500;
+                                ++m_uiSpeechNum;
+                            case 3:
                                 m_creature->setFaction(FACTION_HOSTILE);
 
                                 if (m_playerGuid)

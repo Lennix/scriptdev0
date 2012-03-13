@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Boss_Razorgore
 SD%Complete: 75
-SDComment: Needs additional review
+SDComment: NOTE THAT THESE SCRIPT ISNT USED WHILE WE CONTROLLING HIM !!!    
 SDCategory: Blackwing Lair
 EndScriptData */
 
@@ -153,31 +153,6 @@ struct MANGOS_DLL_DECL boss_razorgoreAI : public ScriptedAI
         // we don't want any damage from players until eggs are destroyed
         if (pDoneBy->GetTypeId() == TYPEID_PLAYER)
             uiDamage = 0;
-    }
-
-    void JustSummoned(Creature* pSummoned)
-    {
-        if (pSummoned->GetEntry() == NPC_BLACKWING_MAGE)
-        {
-            pSummoned->MonsterMoveWithSpeed(-7604.1f, -1042.1f, 408.16f, 30);
-            if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_uiControllerGUID))
-            {
-                pSummoned->SetInCombatWith(pPlayer);
-                pSummoned->AddThreat(pPlayer, 100.0f);
-            }
-        }
-        else
-            pSummoned->SetInCombatWithZone();
-    }
-
-    void SummonedCreatureJustDied(Creature* pSummoned)
-    {
-        if (m_bFinalPhase)
-            return;
-
-        uint32 i = urand(0,7);
-        m_creature->SummonCreature((pSummoned->GetEntry() == NPC_BLACKWING_MAGE && urand(0,1)) ? NPC_BLACKWING_LEGIONNAIRE : pSummoned->GetEntry(),
-            Corner[i].x, Corner[i].y, Corner[i].z, Corner[i].o, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 15000);
     }
 
     void CheckControllerAggro(Unit* pVictim)

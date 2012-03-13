@@ -166,6 +166,217 @@ CreatureAI* GetAI_mob_suppression_trigger(Creature* pCreature)
     return new mob_suppression_triggerAI(pCreature);
 }
 
+/// !!! RAZORGORE ADDS !!! \\\
+//UPDATE `creature_template` SET `ScriptName` = 'blackwing_mage' WHERE `creature_template`.`entry` =12420 LIMIT 1 ;
+//UPDATE `creature_template` SET `ScriptName` = 'blackwing_melee' WHERE `creature_template`.`entry` =12416 LIMIT 1 ;
+//UPDATE `creature_template` SET `ScriptName` = 'death_talon_dragonspawn' WHERE `creature_template`.`entry` =12422 LIMIT 1;
+
+//NPC_BLACKWING_MAGE
+#define SPELL_ARKANE_EXPLOSION	22271
+#define SPELL_FIREBALL			17290
+
+struct MANGOS_DLL_DECL blackwing_mageAI : public ScriptedAI
+{
+    blackwing_mageAI(Creature* pCreature) : ScriptedAI(pCreature)  
+    {
+        m_creature->SetMaxHealth(7330);
+        m_creature->SetMaxPower(POWER_MANA, 12200);
+        Reset();
+    }
+
+	uint32 arkane_explosion_timer;
+	uint32 fireball_timer;
+
+
+    void Reset()
+    {
+		arkane_explosion_timer = 2000;
+		fireball_timer = 3000;
+    }
+
+    void UpdateAI(const uint32 diff)
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+		if (arkane_explosion_timer < diff)
+		{
+			uint8 player_count = 0;
+			Map* pInstance = m_creature->GetMap();
+			Map::PlayerList const& players = pInstance->GetPlayers();
+			if (!players.isEmpty())
+			{
+				for(Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+				{
+					if (Player* pPlayer = itr->getSource())
+					{
+						if (m_creature->GetDistance(pPlayer) < 10)
+							player_count++;
+					}
+				}
+			}
+			if (player_count > 1)
+			{
+                //Castet nurnoch arkane explosion, wenn zu viele spieler knubbeln
+				if (DoCastSpellIfCan(m_creature,SPELL_ARKANE_EXPLOSION) == CAST_OK)
+				    fireball_timer = 3000;
+			}
+			arkane_explosion_timer = 2000;		
+		}
+		else
+			arkane_explosion_timer -= diff;
+
+		if (fireball_timer < diff)
+		{
+			if (DoCastSpellIfCan(m_creature->getVictim(),SPELL_FIREBALL)  == CAST_OK)
+			    fireball_timer = 3000;
+		}
+		else
+			fireball_timer -= diff;
+
+		DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_blackwing_mage(Creature* pCreature)
+{
+    return new blackwing_mageAI(pCreature);
+}
+
+
+//NPC_BLACKWING_LEGIONNAIRE / GUARD
+#define SPELL_DRACHENFLUCH			23967
+#define SPELL_SPALTEN				15284
+#define SPELL_STOSS					15580
+
+struct MANGOS_DLL_DECL blackwing_meleeAI : public ScriptedAI
+{
+    blackwing_meleeAI(Creature* pCreature) : ScriptedAI(pCreature) 
+    {
+        m_creature->SetMaxHealth(9160);
+        /*
+        UPDATE `creature_template` SET `mindmg` = '800',
+        `maxdmg` = '1500',
+        `attackpower` = '3000',
+        `baseattacktime` = '2000' WHERE `creature_template`.`entry` =12416 LIMIT 1 ;
+        */
+        Reset();
+    }
+
+	uint32 drachenfluch_timer;
+	uint32 spalten_timer;
+	uint32 stoss_timer;
+
+    void Reset()
+    {
+		drachenfluch_timer = 20000;
+		spalten_timer = 12000;
+		stoss_timer = 8000;
+    }
+
+    void UpdateAI(const uint32 diff)
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+		if (drachenfluch_timer < diff)
+		{
+			if (DoCastSpellIfCan(m_creature,SPELL_DRACHENFLUCH) == CAST_OK)
+			    drachenfluch_timer = 20000;
+		}
+		else
+			drachenfluch_timer -= diff;
+
+		if (spalten_timer < diff)
+		{
+			if (DoCastSpellIfCan(m_creature->getVictim(),SPELL_SPALTEN) == CAST_OK)
+			    spalten_timer = 12000;
+		}
+		else
+			spalten_timer -= diff;
+
+		if (stoss_timer < diff)
+		{
+			if (DoCastSpellIfCan(m_creature->getVictim(),SPELL_STOSS) == CAST_OK)
+			    stoss_timer = 8000;
+		}
+		else
+			stoss_timer -= diff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_blackwing_melee(Creature* pCreature)
+{
+    return new blackwing_meleeAI(pCreature);
+}
+
+//NPC_DEATH_TALON_DRAGONSPAWN
+struct MANGOS_DLL_DECL death_talon_dragonspawnAI : public ScriptedAI
+{
+    death_talon_dragonspawnAI(Creature* pCreature) : ScriptedAI(pCreature) 
+	{
+		m_creature->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_POLYMORPH, true);
+        m_creature->SetMaxHealth(45800);
+        /*
+        UPDATE `creature_template` SET `mindmg` = '1500',
+        `maxdmg` = '2500',
+        `attackpower` = '5000',
+        `baseattacktime` = '2500' WHERE `creature_template`.`entry` =12422 LIMIT 1 ;
+        */
+		Reset();
+	}
+
+	uint32 drachenfluch_timer;
+	uint32 spalten_timer;
+	uint32 stoss_timer;
+
+    void Reset()
+    {
+		drachenfluch_timer = 20000;
+		spalten_timer = 12000;
+		stoss_timer = 8000;
+    }
+
+    void UpdateAI(const uint32 diff)
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+		if (drachenfluch_timer < diff)
+		{
+			if (DoCastSpellIfCan(m_creature,SPELL_DRACHENFLUCH) == CAST_OK)
+			    drachenfluch_timer = 20000;
+		}
+		else
+			drachenfluch_timer -= diff;
+
+		if (spalten_timer < diff)
+		{
+			if (DoCastSpellIfCan(m_creature->getVictim(),SPELL_SPALTEN) == CAST_OK)
+			    spalten_timer = 12000;
+		}
+		else
+			spalten_timer -= diff;
+
+		if (stoss_timer < diff)
+		{
+			if (DoCastSpellIfCan(m_creature->getVictim(),SPELL_STOSS) == CAST_OK)
+			    stoss_timer = 8000;
+		}
+		else
+			stoss_timer -= diff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_death_talon_dragonspawn(Creature* pCreature)
+{
+    return new death_talon_dragonspawnAI(pCreature);
+}
+
 /* AddSC */
 
 void AddSC_blackwing_lair()
@@ -180,5 +391,20 @@ void AddSC_blackwing_lair()
     pNewScript = new Script;
     pNewScript->Name = "mob_suppression_trigger";
     pNewScript->GetAI = &GetAI_mob_suppression_trigger;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "blackwing_mage";
+    pNewScript->GetAI = &GetAI_blackwing_mage;
+    pNewScript->RegisterSelf();
+
+	pNewScript = new Script;
+    pNewScript->Name = "blackwing_melee";
+    pNewScript->GetAI = &GetAI_blackwing_melee;
+    pNewScript->RegisterSelf();
+
+	pNewScript = new Script;
+    pNewScript->Name = "death_talon_dragonspawn";
+    pNewScript->GetAI = &GetAI_death_talon_dragonspawn;
     pNewScript->RegisterSelf();
 }
