@@ -802,6 +802,16 @@ struct MANGOS_DLL_DECL mob_scourge_footsoldierAI : public ScriptedAI
         pTemp = 0;
         m_creature->CastSpell(m_creature, SEE_PRIEST_INVIS, false);
     }
+    
+    
+    //Temp Fix for Attacking Eris
+    void AttackStart(Unit* pTarget)
+    {
+        if(pTarget->GetEntry() != 14494)
+            ScriptedAI::AttackStart(pTarget);
+        else
+           return; 
+    }
 
     void UpdateAI(const uint32 uiDiff)
     {   
