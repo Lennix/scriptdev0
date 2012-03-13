@@ -154,6 +154,10 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
     bool m_bIsSummoningWhelps;
     bool touchGround;
+    bool fearMode;
+    bool hasTank;
+
+    Unit* mTank;
 
     void Reset()
     {
@@ -184,6 +188,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
         m_bIsSummoningWhelps    = false;
         touchGround             = false;
+        fearMode                = false;
+        hasTank                 = false;
 
         m_creature->ApplySpellImmune(0, IMMUNITY_SCHOOL, SPELL_SCHOOL_MASK_FIRE, true);
     }
@@ -315,14 +321,45 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         switch (m_uiPhase)
         {
             case PHASE_END:                                // Here is room for additional summoned whelps
+            {
+                // Fear Tank Calculation
+				if (fearMode == true)
+				{
+					if (mTank)
+					{
+						if (!(mTank->HasAura(SPELL_BELLOWINGROAR)))
+						{
+							m_creature->getThreatManager().modifyThreatPercent(mTank,11000);
+							fearMode = false;					
+						}
+					}
+				}
+				else if (hasTank)
+				{
+					if (mTank && mTank->HasAura(SPELL_BELLOWINGROAR))
+					{
+						fearMode = true;
+						m_creature->getThreatManager().modifyThreatPercent(mTank,-99);
+					}
+					hasTank = false;
+				}
+
                 if (m_uiBellowingRoarTimer < uiDiff)
                 {
+                    if (!fearMode)
+					{
+                        //get MainTank
+						mTank = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO, 0);
+						hasTank = true;
+					}
+
                     if (DoCastSpellIfCan(m_creature, SPELL_BELLOWINGROAR) == CAST_OK)
                         m_uiBellowingRoarTimer = 30000;
                 }
                 else
                     m_uiBellowingRoarTimer -= uiDiff;
                 // no break, phase 3 will use same abilities as in 1
+            }
             case PHASE_START:
             {
                 if (m_uiPhase == PHASE_START && m_creature->GetHealthPercent() < 65.0f)
