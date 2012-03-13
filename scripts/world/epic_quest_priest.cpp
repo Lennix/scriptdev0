@@ -46,7 +46,7 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
         //Only Plagued Peasants get the Seething Plague
         if(m_creature->GetEntry() == NPC_PLAGUED_PEASANT)
              m_creature->CastSpell(m_creature, SPELL_SEETHING_PLAGUE, false);
-        if(!m_creature->HasAura(SPELL_SEETHING_PLAGUE) && rnd <= 20)
+        if(!m_creature->HasAura(SPELL_SEETHING_PLAGUE) && rnd <= 10)
                 m_creature->CastSpell(m_creature, SPELL_DEATHS_DOOR, false);
     }
 
@@ -72,7 +72,7 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
         if (m_uiDiseaseTimer <= uiDiff)
         {
             //30% Chance to get Diseased
-            if(!m_creature->HasAura(SPELL_SEETHING_PLAGUE) && rnd <= 20)
+            if(!m_creature->HasAura(SPELL_SEETHING_PLAGUE) && rnd <= 10)
                 m_creature->CastSpell(m_creature, SPELL_DEATHS_DOOR, false);
             //Disease Timer between 1 und 10 Seconds
             m_uiDiseaseTimer = urand(1000,10000);
