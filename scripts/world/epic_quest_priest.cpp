@@ -257,6 +257,8 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
        
         //Cler Summons from list
         m_lSummonedGUIDList.clear();
+        
+        GetClosestGameObjectWithEntry(m_creature, 179693, 100.0f)->RemoveFromWorld();
     }
 
     //One Phase finished
@@ -678,6 +680,7 @@ bool QuestAccept_npc_eris_havenfire(Player* pPlayer, Creature* pCreature, const 
         {
             pCreature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
             pEris->m_bIsQuestInProgress = true;
+            GetClosestGameObjectWithEntry(pEris, 179693, 100.0f)->AddToWorld();
             pEris->m_uiCurrentWave = 1;
             pEris->m_playerGuid = pPlayer->GetObjectGuid();
         }
