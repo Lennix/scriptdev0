@@ -68,8 +68,6 @@ enum
 
     SPELL_SUMMONWHELP           = 17646,                    // TODO this spell is only a summon spell, but would need a spell to activate the eggs
 
-    SPELL_HOVER                 = 17131,
-
     MAX_WHELPS_PER_PACK         = 40,
 
     PHASE_START                 = 1,
@@ -204,15 +202,19 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     {
         DoScriptText(SAY_AGGRO, m_creature);
 
+        m_creature->SetStandState(UNIT_STAND_STATE_STAND);
+
         if (m_pInstance)
             m_pInstance->SetData(TYPE_ONYXIA, IN_PROGRESS);
     }
 
     void JustReachedHome()
     {
-        // in case evade in phase 2, see comments for hack where phase 2 is set
+        m_creature->SetStandState(UNIT_STAND_STATE_SLEEP);
+
+        m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
         m_creature->SetSplineFlags(SPLINEFLAG_WALKMODE);
-        m_creature->SetByteFlag(UNIT_FIELD_BYTES_1, 3, 0);
+        m_creature->SetHover(false);
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_ONYXIA, FAIL);
@@ -320,6 +322,27 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
         if (m_uiPhase == PHASE_BREATH_POST)
             touchGround = true;
+    }
+
+    void AttackStart(Unit* pWho)
+    {
+        if (m_uiPhase == PHASE_START || m_uiPhase == PHASE_END)
+        {
+            if (pWho && m_creature->Attack(pWho, true))
+            {
+                m_creature->AddThreat(pWho);
+                m_creature->SetInCombatWith(pWho);
+                pWho->SetInCombatWith(m_creature);
+
+            if (IsCombatMovement())
+                m_creature->GetMotionMaster()->MoveChase(pWho);
+            }
+
+            m_creature->SetInCombatWith(pWho);
+            pWho->SetInCombatWith(m_creature);
+        }
+        else
+            m_creature->SendMeleeAttackStop(pWho);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -460,9 +483,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                         {
                             case 0:
                             {
-                                //lift off animation is missing , anyone know this???
-                                //m_creature->HandleEmoteCommand(EMOTE_ONESHOT_LIFTOFF);
-                                m_creature->CastSpell(m_creature, SPELL_HOVER, true);
+                                m_creature->SetHover(true);
                                 m_uiLiftOffTimer = 1000;
                                 break;
                             }
@@ -575,7 +596,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     //landing animation is missing, anyone know this???
                     //m_creature->HandleEmoteCommand(EMOTE_ONESHOT_LAND);
                     m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
-                    m_creature->RemoveAurasDueToSpell(SPELL_HOVER);
+                    m_creature->SetSplineFlags(SPLINEFLAG_WALKMODE);
+                    m_creature->SetHover(false);
 
                     SetCombatMovement(true);
                     m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
