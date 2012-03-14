@@ -147,6 +147,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     uint32 m_uiBellowingRoarTimer;
     uint32 m_uiWhelpTimer;
 
+    uint32 m_uiCheckLairTimer;
+
     uint32 m_uiLiftOffTimer;
     uint32 liftOffData;
 
@@ -181,6 +183,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         m_uiBellowingRoarTimer  = 2000;                      // Immediately after landing
         m_uiWhelpTimer          = 1000;
 
+        m_uiCheckLairTimer      = 0;
+
         m_uiLiftOffTimer		= 0;
         liftOffData				= 0;
 
@@ -199,8 +203,6 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     void Aggro(Unit* pWho)
     {
         DoScriptText(SAY_AGGRO, m_creature);
-        m_creature->SetInCombatWithZone();
-        teleportPlayerToOnyxia();
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_ONYXIA, IN_PROGRESS);
@@ -278,19 +280,24 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         return NULL;
     }
 
-    void teleportPlayerToOnyxia()
+    //function will teleport all players if they are to far away to the center of the fight
+    void checkOnyxiasLair()
     {
         if (m_pInstance)
         {
+            m_creature->SetInCombatWithZone();
             Map* pMap = m_creature->GetMap();
             if (pMap)
             {
                 Map::PlayerList const &PlayerList = pMap->GetPlayers();
                 for(Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
                 {
-                    Player* pPlayer = itr->getSource();
-                    if (pPlayer && pPlayer->isAlive() && !m_creature->IsWithinDistInMap(pPlayer, 100))
-                        DoTeleportPlayer(pPlayer, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 0);              
+                    if (Creature* pCenter = m_pInstance->GetSingleCreatureFromStorage(NPC_ONYXIA_TRIGGER))
+                    {
+                        Player* pPlayer = itr->getSource();
+                        if (pPlayer && pPlayer->isAlive() && !pCenter->IsWithinDistInMap(pPlayer, 100))
+                            DoTeleportPlayer(pPlayer, pCenter->GetPositionX(), pCenter->GetPositionY(), pCenter->GetPositionZ(), 0); 
+                    }
                 }
             }
         }
@@ -320,20 +327,26 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
+        //check onyias lair every 10 seconds
+        if (m_uiCheckLairTimer < uiDiff)
+        {
+            checkOnyxiasLair();
+            m_uiCheckLairTimer = 10000;
+        }
+        else
+            m_uiCheckLairTimer -= uiDiff;
+
         switch (m_uiPhase)
         {
-            case PHASE_END:                                // Here is room for additional summoned whelps
+            case PHASE_END:
             {
-                // Fear Tank Calculation
-				if (fearMode == true)
+                // Fear Calculation
+				if (fearMode && mTank)
 				{
-					if (mTank)
+				    if (!(mTank->HasAura(SPELL_BELLOWINGROAR)))
 					{
-						if (!(mTank->HasAura(SPELL_BELLOWINGROAR)))
-						{
-							m_creature->getThreatManager().modifyThreatPercent(mTank,11000);
-							fearMode = false;					
-						}
+					    m_creature->getThreatManager().modifyThreatPercent(mTank,11000);
+						fearMode = false;					
 					}
 				}
 				else if (hasTank)
