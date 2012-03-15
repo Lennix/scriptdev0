@@ -42,9 +42,7 @@ enum
     SPELL_ERUPTION              = 17731,
     SPELL_KNOCK_AWAY            = 19633,
     SPELL_FIREBALL              = 18392,
-    SPELL_DEEPBREATH            = 23461,
-    SPELL_SUMMON_PLAYER         = 22951,
-    SPELL_ENGULFING_FLAMES      = 20019,
+    SPELL_DEEPBREATH            = 23461,                    // only a flamebreath too :(
 
     // Not much choise about these. We have to make own defintion on the direction/start-end point
     SPELL_BREATH_NORTH_TO_SOUTH = 17086,                    // 20x in "array"
@@ -61,7 +59,7 @@ enum
     SPELL_VISUAL_BREATH_A       = 4880,                     // Only and all of the above Breath spells (and their triggered spells) have these visuals
     SPELL_VISUAL_BREATH_B       = 4919,
 
-    SPELL_BREATH                = 21131,
+    SPELL_BREATH                = 21131,                    //stronger flamebreath
 
     SPELL_BELLOWINGROAR         = 18431,
     SPELL_HEATED_GROUND         = 22191,                    // TODO
@@ -156,6 +154,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     bool touchGround;
     bool fearMode;
     bool hasTank;
+    bool stopMeleeAttacking;
 
     Unit* mTank;
 
@@ -176,8 +175,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         m_uiMovementTimer       = 20000;
         m_pPointData            = GetMoveData();
 
-        m_uiFireballTimer       = 15000;
-        m_uiSummonWhelpsTimer   = 15000;
+        m_uiFireballTimer       = 5000;
+        m_uiSummonWhelpsTimer   = 5000;
         m_uiBellowingRoarTimer  = 2000;                      // Immediately after landing
         m_uiWhelpTimer          = 1000;
 
@@ -192,6 +191,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         touchGround             = false;
         fearMode                = false;
         hasTank                 = false;
+        stopMeleeAttacking      = false;
 
         mTank                   = 0;
 
@@ -240,6 +240,17 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     void KilledUnit(Unit* pVictim)
     {
         DoScriptText(SAY_KILL, m_creature);
+    }
+
+    void SpellHitTarget(Unit* pTarget, const SpellEntry* pSpell)
+    {
+        //Wingbuffet reduces aggro by 10 - 30 %
+        if (pSpell->Id == SPELL_WINGBUFFET)
+        {
+            uint8 uiThreatReduce = urand(10, 30);
+            m_creature->getThreatManager().modifyThreatPercent(pTarget, -uiThreatReduce);
+            return;
+        }
     }
 
     void SpellHit(Unit* pCaster, const SpellEntry* pSpell)
@@ -310,14 +321,16 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         if (uiMoveType != POINT_MOTION_TYPE || !m_pInstance)
             return;
 
-
         if (m_uiPhase == PHASE_BREATH_PRE || m_uiPhase == PHASE_BREATH)
         {
             if (Creature* pTrigger = m_pInstance->GetSingleCreatureFromStorage(NPC_ONYXIA_TRIGGER))
                 m_creature->SetFacingToObject(pTrigger);
 
             if (m_uiPhase == PHASE_BREATH_PRE)
+            {
+                stopMeleeAttacking = true;
                 m_uiLiftOffTimer = 1000;
+            }
         }
 
         if (m_uiPhase == PHASE_BREATH_POST)
@@ -326,7 +339,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
     void AttackStart(Unit* pWho)
     {
-        if (m_uiPhase == PHASE_START || m_uiPhase == PHASE_END)
+        if (!stopMeleeAttacking)
         {
             if (pWho && m_creature->Attack(pWho, true))
             {
@@ -361,6 +374,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
         switch (m_uiPhase)
         {
+              //////////////////////
+             ///////PHASE 3////////
+            //////////////////////
             case PHASE_END:
             {
                 // Fear Calculation
@@ -398,6 +414,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     m_uiBellowingRoarTimer -= uiDiff;
                 // no break, phase 3 will use same abilities as in 1
             }
+              //////////////////////
+             ///////PHASE 1////////
+            //////////////////////
             case PHASE_START:
             {
                 if (m_uiPhase == PHASE_START && m_creature->GetHealthPercent() < 65.0f)
@@ -415,11 +434,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
                 if (m_uiFlameBreathTimer < uiDiff)
                 {
-                    uint32 uiSpell = SPELL_BREATH;
-                    if (m_creature->IsWithinDistInMap(m_creature->getVictim(), 100.0f))
-                        uiSpell = SPELL_FLAMEBREATH;
-
-                    if (DoCastSpellIfCan(m_creature->getVictim(), uiSpell) == CAST_OK)
+                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAMEBREATH) == CAST_OK)
                         m_uiFlameBreathTimer = urand(10000, 20000);
                 }
                 else
@@ -463,6 +478,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 DoMeleeAttackIfReady();
                 break;
             }
+              ////////////////////////////////////////////
+             ///////PHASE 2 TO PHASE 3 (lift off)////////
+            ////////////////////////////////////////////
             case PHASE_BREATH_PRE:
             {
                 if (m_uiPhase == PHASE_BREATH_PRE && m_pInstance->GetData(TYPE_ONYXIA) == DATA_LIFTOFF)
@@ -490,6 +508,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                             case 1:
                             {
                                 m_creature->AddSplineFlag(SPLINEFLAG_FLYING);
+
                                 if (m_pInstance)
                                     m_pInstance->SetData(TYPE_ONYXIA, DATA_LIFTOFF);
                                 break;
@@ -502,6 +521,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 }
                 break;
             }
+              //////////////////////
+             ///////PHASE 2////////
+            //////////////////////
             case PHASE_BREATH:
             {
                 if (m_creature->GetHealthPercent() < 40.0f)
@@ -516,12 +538,13 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
                 if (m_uiMovementTimer < uiDiff)
                 {
-                    m_uiMovementTimer = 25000;
+                    m_uiMovementTimer = urand(20000, 30000);
 
                     // 3 possible actions
                     switch(urand(0, 4))
                     {
-                        case 0:                             // breath
+                        // breath
+                        case 0:                             
                             if (m_pPointData = GetMoveData())
                             {
                                 DoScriptText(EMOTE_BREATH, m_creature);
@@ -529,15 +552,16 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                                 m_uiMovePoint = m_pPointData->uiLocIdEnd;
                             }
                             return;
-                        case 1:                             // a point on the left side
+                        // a point on the left side
+                        case 1:
                         case 2:
                         {
-                            // C++ is stupid, so add -1 with +7
                             m_uiMovePoint += m_uiMaxBreathPositions - 1;
                             m_uiMovePoint %= m_uiMaxBreathPositions;
                             break;
                         }
-                        case 3:                             // a point on the right side
+                        // a point on the right side
+                        case 3:
                         case 4:
                             ++m_uiMovePoint %= m_uiMaxBreathPositions;
                             break;
@@ -587,43 +611,25 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
                 break;
             }
+              ///////////////////////////////////////////
+             ///////PHASE 2 TO PHASE 3 (landing)////////
+            ///////////////////////////////////////////
             case PHASE_BREATH_POST:
             {
                 if (touchGround)
                 {
                     m_uiPhase = PHASE_END;
                
-                    //landing animation is missing, anyone know this???
-                    //m_creature->HandleEmoteCommand(EMOTE_ONESHOT_LAND);
                     m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
                     m_creature->SetSplineFlags(SPLINEFLAG_WALKMODE);
                     m_creature->SetHover(false);
 
+                    stopMeleeAttacking = false;
                     SetCombatMovement(true);
                     m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
                 }
             }
         }
-    }
-
-    void SpellHitTarget(Unit* pTarget, const SpellEntry* pSpell)
-    {
-        // Fireball triggers Engulfing Flames after hitting
-        if (pSpell->Id == SPELL_FIREBALL)
-        {
-            uint8 uiThreatReduce = urand(60, 100);
-            m_creature->getThreatManager().modifyThreatPercent(pTarget, -uiThreatReduce);
-            m_creature->CastSpell(pTarget, SPELL_ENGULFING_FLAMES, true);
-            return;
-        }
-
-        // Only hit players with Deep Breath...
-        if (pTarget->GetTypeId() != TYPEID_PLAYER || !m_pInstance)
-            return;
-
-        // All and only the Onyxia Deep Breath Spells have these visuals
-        if (pSpell->SpellVisual == SPELL_VISUAL_BREATH_A || pSpell->SpellVisual == SPELL_VISUAL_BREATH_B)
-            m_pInstance->SetData(TYPE_ONYXIA, DATA_PLAYER_TOASTED);
     }
 };
 

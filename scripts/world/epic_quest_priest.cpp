@@ -263,7 +263,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
                     pSummoned->ForcedDespawn();
        
         //Cler Summons from list
-        m_lSummonedGUIDList.clear();
+        m_lSummonedGUIDList.clear();        
     }
 
     //One Phase finished
