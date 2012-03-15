@@ -148,6 +148,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     uint32 m_uiLiftOffTimer;
     uint32 liftOffData;
 
+    uint32 m_uiToastTimer;
+    uint32 m_uiToastAgainTimer;
+
     uint8 m_uiSummonCount;
 
     bool m_bIsSummoningWhelps;
@@ -155,6 +158,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     bool fearMode;
     bool hasTank;
     bool stopMeleeAttacking;
+    bool toastUnits;
 
     Unit* mTank;
 
@@ -185,6 +189,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         m_uiLiftOffTimer		= 0;
         liftOffData				= 0;
 
+        m_uiToastTimer          = 0;
+        m_uiToastAgainTimer     = 0;
+
         m_uiSummonCount         = 0;
 
         m_bIsSummoningWhelps    = false;
@@ -192,6 +199,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         fearMode                = false;
         hasTank                 = false;
         stopMeleeAttacking      = false;
+        toastUnits              = false;
 
         mTank                   = 0;
 
@@ -266,6 +274,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
             case SPELL_BREATH_SOUTH_TO_NORTH:
             case SPELL_BREATH_NORTH_TO_SOUTH:
             {
+
                 if (m_pPointData = GetMoveData())
                 {
                     if (!m_pInstance)
@@ -536,6 +545,27 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     return;
                 }
 
+                //handle deep breath damage
+                if (toastUnits)
+                {
+                    //time how long the lair is toasted
+                    if (m_uiToastTimer > uiDiff)
+                    {
+                        //how often the player got hitted
+                        if (m_uiToastAgainTimer <= uiDiff)
+                        {
+                            m_creature->CastSpell(m_creature->getVictim(), m_pPointData->uiSpellId, true);
+                            m_uiToastAgainTimer = 500;
+                        }
+                        else
+                            m_uiToastAgainTimer -= uiDiff;
+
+                        m_uiToastTimer -= uiDiff;
+                    }
+                    else
+                        toastUnits = false;
+                }
+
                 if (m_uiMovementTimer < uiDiff)
                 {
                     m_uiMovementTimer = urand(20000, 30000);
@@ -547,9 +577,13 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                         case 0:                             
                             if (m_pPointData = GetMoveData())
                             {
+                                //handle deep breath animation
                                 DoScriptText(EMOTE_BREATH, m_creature);
                                 DoCastSpellIfCan(m_creature, m_pPointData->uiSpellId, CAST_INTERRUPT_PREVIOUS);
                                 m_uiMovePoint = m_pPointData->uiLocIdEnd;
+
+                                m_uiToastTimer = 2000;
+                                toastUnits = true;
                             }
                             return;
                         // a point on the left side
