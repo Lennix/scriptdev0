@@ -55,6 +55,14 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
         hasBeenAttacked = true;
         ScriptedAI::AttackedBy(pAttacker);
     }
+    
+    void AttackStart(Unit* pTarget)
+    {
+        if(pTarget->GetEntry() == NPC_SCOURGE_FOOTSOLDIER)
+            ScriptedAI::AttackStart(pTarget);
+        else
+            return; 
+    }
 
     void UpdateAI(const uint32 uiDiff)
     {         
