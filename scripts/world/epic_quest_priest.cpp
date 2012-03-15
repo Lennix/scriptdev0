@@ -197,6 +197,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
             m_uiTotalKilled, 
             m_uiFootsoldiersSpawnCount;
 
+    GameObject* m_goLightWell;
     ObjectGuid  m_playerGuid;
     GUIDList    m_lSummonedGUIDList;
 
@@ -241,7 +242,13 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         m_playerGuid.Clear();
         m_lCleaner.clear();
         m_lToCleanPlayers.clear();
-        
+
+        if(m_goLightWell = GetClosestGameObjectWithEntry(m_creature, 179693, 100.0f))
+        {    
+            m_goLightWell->RemoveFromWorld();
+            m_creature->GetMap()->RemoveAllObjectsInRemoveList();
+        }
+
         //Invisiblility
         m_creature->CastSpell(m_creature, QUEST_INVISIBILITY, true);
 
@@ -520,8 +527,26 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
     {
         // Nothing is needed to update when the event is not in progress
         if (!m_bIsQuestInProgress || m_uiCurrentWave == 0)
+        {
+            if(m_goLightWell = GetClosestGameObjectWithEntry(m_creature, 179693, 100.0f))
+            {    
+                m_goLightWell->RemoveFromWorld();       
+                m_creature->GetMap()->RemoveAllObjectsInRemoveList();
+            }
             return;
-
+        }
+        else
+        {
+            if(!m_goLightWell)
+            {
+                m_goLightWell = new GameObject;
+                m_goLightWell->LoadFromDB(632565, m_creature->GetMap());
+                m_goLightWell->AddToWorld();
+                m_goLightWell->Refresh();
+                m_goLightWell->Respawn();
+            }
+        }
+                
         //Get Player
         Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid);
 
