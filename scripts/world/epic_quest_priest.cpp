@@ -47,7 +47,7 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
         if(m_creature->GetEntry() == NPC_PLAGUED_PEASANT)
              m_creature->CastSpell(m_creature, SPELL_SEETHING_PLAGUE, false);
         if(!m_creature->HasAura(SPELL_SEETHING_PLAGUE) && rnd <= 10)
-                m_creature->CastSpell(m_creature, SPELL_DEATHS_DOOR, false);
+            m_creature->CastSpell(m_creature, SPELL_DEATHS_DOOR, false);
     }
 
     void AttackStart(Unit* pTarget)
@@ -55,7 +55,7 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
         if(pTarget->GetEntry() == NPC_SCOURGE_FOOTSOLDIER)
             ScriptedAI::AttackStart(pTarget);
         else
-           return; 
+            return; 
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -87,6 +87,15 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
                 return;
         }
         else
+        {
+            // reset movement if we're idling
+            if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE)
+            {
+                float fX, fY, fZ;
+                m_creature->GetRandomPoint(3343.270f, -3018.100f, 161.72f, 5.0f, fX, fY, fZ);
+                m_creature->GetMotionMaster()->MovePoint(0, fX, fY, fZ);
+            }
+
             return;
 
         DoMeleeAttackIfReady();
@@ -263,7 +272,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
                     pSummoned->ForcedDespawn();
        
         //Cler Summons from list
-        m_lSummonedGUIDList.clear();        
+        m_lSummonedGUIDList.clear();
     }
 
     //One Phase finished
@@ -556,7 +565,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
                 functionOfDoom(pSummoned);
 
         //Is our bad boy out already?
-        if(m_bCleaningInProgress)
+        if (m_bCleaningInProgress)
         {
             //Where is our boy
             m_lCleaner.clear();
@@ -567,17 +576,16 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         }
 
         //Get the frakkin Cleaner started
-        if(!m_bCleaningInProgress)
-            if(!m_lToCleanPlayers.empty())
-                for(std::list<Player*>::iterator i = m_lToCleanPlayers.begin(); i != m_lToCleanPlayers.end(); ++i)
-                    if((*i)->isAlive() && (*i)->isTargetableForAttack())
-                    {
-                        float fX, fY, fZ;
-                        m_creature->GetRandomPoint( (*i)->GetPositionX(), (*i)->GetPositionY(), (*i)->GetPositionZ(), 5.0f, fX, fY, fZ );
-                        Creature* pCleaner = m_creature->SummonCreature(NPC_CLEANER, fX, fY, fZ, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);		 
-                        pCleaner->AI()->AttackStart((*i));
-                        m_bCleaningInProgress = true;
-                    }
+        if (!m_bCleaningInProgress && !m_lToCleanPlayers.empty())
+            for(std::list<Player*>::iterator i = m_lToCleanPlayers.begin(); i != m_lToCleanPlayers.end(); ++i)
+                if((*i)->isAlive() && (*i)->isTargetableForAttack())
+                {
+                    float fX, fY, fZ;
+                    m_creature->GetRandomPoint( (*i)->GetPositionX(), (*i)->GetPositionY(), (*i)->GetPositionZ(), 5.0f, fX, fY, fZ );
+                    Creature* pCleaner = m_creature->SummonCreature(NPC_CLEANER, fX, fY, fZ, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);		 
+                    pCleaner->AI()->AttackStart((*i));
+                    m_bCleaningInProgress = true;
+                }
 
         //Different Footsoldier spawns
         if(m_bFootsoldiersSpawned)
@@ -608,9 +616,9 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
                 m_uiFootsoldierTimer3 -= uiDiff;
 
             //Function call depending on count
-            if(m_uiFootsoldiersSpawnCount > 0)
+            if (m_uiFootsoldiersSpawnCount > 0)
             {
-                if(m_uiFootsoldierSpawnTimer <= uiDiff)
+                if (m_uiFootsoldierSpawnTimer <= uiDiff)
                 {
                     DoSummonFootsoldier();
                     m_uiFootsoldiersSpawnCount--;
@@ -770,7 +778,7 @@ struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
 
         if (Player* pPlayer = GetPlayerAtMinimumRange(300.0f))
         {
-            if(pPlayer->isAlive() && !pPlayer->isInCombat() && pPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
+            if (pPlayer->isAlive() && !pPlayer->isInCombat() && pPlayer->GetQuestStatus(QUEST_THE_BALANCE_OF_LIGHT_AND_SHADOW) == QUEST_STATUS_INCOMPLETE)
                 pPlayer->SetInCombatWith(m_creature);
         }
 
@@ -781,13 +789,13 @@ struct MANGOS_DLL_DECL mob_scourge_archerAI : public ScriptedAI
 
         if (m_uiShotTimer)
         {
-            if(m_uiShotTimer <= uiDiff)
+            if (m_uiShotTimer <= uiDiff)
             {
                 //Get random Peasants for every shot
                 uint32 pPeasantRandom = urand(0,pPeasants.size()), j = 1;
-                for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
+                for (std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
                 {
-                    if((*i)->isAlive() && j == pPeasantRandom && m_creature->IsInRange((*i), 0.0f, 59.0f, true) && m_creature->IsWithinLOS((*i)->GetPositionX(), (*i)->GetPositionY(), (*i)->GetPositionZ()))
+                    if ((*i)->isAlive() && j == pPeasantRandom && m_creature->IsInRange((*i), 0.0f, 59.0f, true) && m_creature->IsWithinLOS((*i)->GetPositionX(), (*i)->GetPositionY(), (*i)->GetPositionZ()))
                     {
                         DoCastSpellIfCan((*i), SHOOT);
                         m_creature->AddThreat((*i));
@@ -832,10 +840,10 @@ struct MANGOS_DLL_DECL mob_scourge_footsoldierAI : public ScriptedAI
     //Temp Fix for Attacking Eris
     void AttackStart(Unit* pTarget)
     {
-        if(pTarget->GetEntry() != 14494)
+        if (pTarget->GetEntry() != 14494)
             ScriptedAI::AttackStart(pTarget);
         else
-           return; 
+            return; 
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -847,7 +855,7 @@ struct MANGOS_DLL_DECL mob_scourge_footsoldierAI : public ScriptedAI
         GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_INJURED_PEASANT, 300.0f);
         GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_PLAGUED_PEASANT, 300.0f);
 
-        if(Player* pPlayer = GetPlayerAtMinimumRange(300.0f))
+        if (Player* pPlayer = GetPlayerAtMinimumRange(300.0f))
             m_creature->AddThreat(pPlayer);
 
         if (!pPeasants.empty())
