@@ -95,9 +95,8 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
                 m_creature->GetRandomPoint(3343.270f, -3018.100f, 161.72f, 5.0f, fX, fY, fZ);
                 m_creature->GetMotionMaster()->MovePoint(0, fX, fY, fZ);
             }
-
             return;
-
+        }
         DoMeleeAttackIfReady();
     }
 };
