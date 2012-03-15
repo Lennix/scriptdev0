@@ -36,13 +36,13 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
     }
 
     uint32 m_uiDiseaseTimer, rnd;
-    bool m_bAttack;
+    bool hasBeenAttacked;
 
     void Reset() 
     {
         m_uiDiseaseTimer = urand(1000,10000);
         rnd = urand(0,100);
-        m_bAttack = false;
+        hasBeenAttacked = false;
         //Only Plagued Peasants get the Seething Plague
         if(m_creature->GetEntry() == NPC_PLAGUED_PEASANT)
              m_creature->CastSpell(m_creature, SPELL_SEETHING_PLAGUE, false);
@@ -50,12 +50,10 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
             m_creature->CastSpell(m_creature, SPELL_DEATHS_DOOR, false);
     }
 
-    void AttackStart(Unit* pTarget)
+    void AttackedBy(Unit* pAttacker)
     {
-        if(pTarget->GetEntry() == NPC_SCOURGE_FOOTSOLDIER)
-            ScriptedAI::AttackStart(pTarget);
-        else
-            return; 
+        hasBeenAttacked = true;
+        ScriptedAI::AttackedBy(pAttacker);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -80,23 +78,25 @@ struct MANGOS_DLL_DECL npc_infected_peasantAI : public ScriptedAI
         else
             m_uiDiseaseTimer -= uiDiff;
 
+        m_creature->GetSplineFlags();
+
         // Return since we have no target
-        if(m_creature->getVictim())
+        if(!m_creature->getVictim())
         {
-            if (m_creature->getVictim()->GetEntry() != NPC_SCOURGE_FOOTSOLDIER)
-                return;
-        }
-        else
-        {
-            // reset movement if we're idling
-            if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE)
+            if(hasBeenAttacked)
             {
-                float fX, fY, fZ;
-                m_creature->GetRandomPoint(3343.270f, -3018.100f, 161.72f, 5.0f, fX, fY, fZ);
-                m_creature->GetMotionMaster()->MovePoint(0, fX, fY, fZ);
+                //m_creature->DeleteThreatList();
+                m_creature->CombatStop(true);
+                hasBeenAttacked = false;
+                
+                float fX, fY,fZ;
+                m_creature->SetSplineFlags(SPLINEFLAG_WALKMODE);
+                m_creature->GetRandomPoint(3332.767f, -2979.002f, 160.97f, 5.0f, fX, fY, fZ);
+                m_creature->GetMotionMaster()->MovePoint(1, fX, fY, fZ);
             }
             return;
         }
+        
         DoMeleeAttackIfReady();
     }
 };
@@ -394,7 +394,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         }
     }
 
-    void SummonedMovementInform(Creature* pSummoned, uint32 /*uiMotionType*/, uint32 uiPointId)
+    void SummonedMovementInform(Creature* pSummoned, uint32 uiMotionType, uint32 uiPointId)
     {
         //First Waypoint reached
         if(uiPointId == 0)
@@ -839,31 +839,47 @@ struct MANGOS_DLL_DECL mob_scourge_footsoldierAI : public ScriptedAI
     //Temp Fix for Attacking Eris
     void AttackStart(Unit* pTarget)
     {
-        if (pTarget->GetEntry() != 14494)
+        if (pTarget->GetEntry() != 14494 && (pTarget->GetEntry() == NPC_PLAGUED_PEASANT || pTarget->GetEntry() == NPC_INJURED_PEASANT || (pTarget->GetTypeId() == TYPEID_PLAYER)) )
             ScriptedAI::AttackStart(pTarget);
         else
+        {
             return; 
+        }
     }
 
     void UpdateAI(const uint32 uiDiff)
     {   
-        //hier nur hinlaufen und fertig
-        //Peasant list
-        std::list<Creature*> pPeasants;
-        pPeasants.clear();
-        GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_INJURED_PEASANT, 300.0f);
-        GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_PLAGUED_PEASANT, 300.0f);
+        if(!m_creature->getVictim())
+        {
+            Unit* tempCreature = 0;
 
-        if (Player* pPlayer = GetPlayerAtMinimumRange(300.0f))
-            m_creature->AddThreat(pPlayer);
+            //hier nur hinlaufen und fertig
+            //Peasant list
+           std::list<Creature*> pPeasants;
+            pPeasants.clear();
+            GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_INJURED_PEASANT, 300.0f);
+            GetCreatureListWithEntryInGrid(pPeasants, m_creature, NPC_PLAGUED_PEASANT, 300.0f);
+            
+            tempCreature = GetPlayerAtMinimumRange(300.0f);
 
-        if (!pPeasants.empty())
-            for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
-                if((*i)->isAlive())
-                    m_creature->AddThreat((*i));
+            if (!pPeasants.empty())
+                for(std::list<Creature*>::iterator i = pPeasants.begin(); i != pPeasants.end(); ++i)
+                    if((*i)->isAlive())
+                    {
+                        if(tempCreature == 0)
+                            tempCreature = (*i);
+                        if(tempCreature->isDead())
+                            tempCreature = (*i);
+                        if(m_creature->GetDistanceOrder((*i), (Unit*)tempCreature))
+                            tempCreature = (*i);
+                    }
 
-      
-        // Return since we have no target
+            if(tempCreature)
+                if(tempCreature->isAlive())
+                    m_creature->AI()->AttackStart((Unit*)tempCreature);
+        }
+            
+        //Return since we have no target*/
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
         DoMeleeAttackIfReady();
