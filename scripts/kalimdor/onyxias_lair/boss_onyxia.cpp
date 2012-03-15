@@ -33,6 +33,8 @@ enum
     SAY_KILL                    = -1249001,
     SAY_PHASE_2_TRANS           = -1249002,
     SAY_PHASE_3_TRANS           = -1249003,
+
+    //"Onyxia takes in a deep breath..." not working now we need to write it to the database
     EMOTE_BREATH                = -1249004,
 
     SPELL_WINGBUFFET            = 18500,
@@ -42,10 +44,10 @@ enum
     SPELL_ERUPTION              = 17731,
     SPELL_KNOCK_AWAY            = 19633,
     SPELL_FIREBALL              = 18392,
-    SPELL_DEEPBREATH            = 23461,                    // only a flamebreath too :(
 
     // Not much choise about these. We have to make own defintion on the direction/start-end point
-    SPELL_BREATH_NORTH_TO_SOUTH = 17086,                    // 20x in "array"
+    //this are the spells which we have to trigger at the player for DAMAGE too!
+    SPELL_BREATH_NORTH_TO_SOUTH = 17086,                    // 20x in "array" 
     SPELL_BREATH_SOUTH_TO_NORTH = 18351,                    // 11x in "array"
 
     SPELL_BREATH_EAST_TO_WEST   = 18576,                    // 7x in "array"
@@ -58,8 +60,6 @@ enum
 
     SPELL_VISUAL_BREATH_A       = 4880,                     // Only and all of the above Breath spells (and their triggered spells) have these visuals
     SPELL_VISUAL_BREATH_B       = 4919,
-
-    SPELL_BREATH                = 21131,                    //stronger flamebreath
 
     SPELL_BELLOWINGROAR         = 18431,
     SPELL_HEATED_GROUND         = 22191,                    // TODO
