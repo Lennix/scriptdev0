@@ -262,8 +262,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
 
         if(m_goLightWell = GetClosestGameObjectWithEntry(m_creature, 179693, 100.0f))
         {    
-            m_goLightWell->RemoveFromWorld();
-            m_creature->GetMap()->RemoveAllObjectsInRemoveList();
+            m_goLightWell->Delete();
         }
 
         //Invisiblility
@@ -547,8 +546,7 @@ struct MANGOS_DLL_DECL npc_eris_havenfireAI : public ScriptedAI
         {
             if(m_goLightWell = GetClosestGameObjectWithEntry(m_creature, 179693, 100.0f))
             {    
-                m_goLightWell->RemoveFromWorld();       
-                m_creature->GetMap()->RemoveAllObjectsInRemoveList();
+                m_goLightWell->Delete();       
             }
             return;
         }
