@@ -165,6 +165,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         if (!IsCombatMovement())
             SetCombatMovement(true);
 
+        m_creature->SetBoundingValue(0, 16);
+        m_creature->SetBoundingValue(1, 16);
+
         m_uiPhase = PHASE_START;
 
         m_uiFlameBreathTimer    = urand(10000, 20000);
@@ -450,8 +453,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
                 if (m_uiTailSweepTimer < uiDiff)
                 {
-                    if (DoCastSpellIfCan(m_creature, SPELL_TAILSWEEP) == CAST_OK)
-                        m_uiTailSweepTimer = urand(15000, 20000);
+                    m_creature->CastSpell(m_creature, SPELL_TAILSWEEP, true);
+                    m_uiTailSweepTimer = urand(15000, 20000);
                 }
                 else
                     m_uiTailSweepTimer -= uiDiff;
