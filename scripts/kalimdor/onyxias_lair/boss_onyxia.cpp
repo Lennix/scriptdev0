@@ -20,7 +20,8 @@
 /* ScriptData
 SDName: Boss_Onyxia
 SD%Complete: 70
-SDComment: Phase 3 need additional code. The spawning Whelps need GO-Support. Use of spells 22191
+SDComment: Finally we need to check the hitbox of onyxia, you arent able to hit ony in phase 2 with melee autoattacks.
+           Furthermore this will crash her fly animation
 SDCategory: Onyxia's Lair
 EndScriptData */
 
@@ -33,20 +34,16 @@ enum
     SAY_KILL                    = -1249001,
     SAY_PHASE_2_TRANS           = -1249002,
     SAY_PHASE_3_TRANS           = -1249003,
-
-    //"Onyxia takes in a deep breath..." not working now we need to write it to the database
     EMOTE_BREATH                = -1249004,
 
     SPELL_WINGBUFFET            = 18500,
-    SPELL_FLAMEBREATH           = 18435,
+    SPELL_FLAMEBREATH           = 23461,                    // to weak flamebreath: 18435
     SPELL_CLEAVE                = 19983,
     SPELL_TAILSWEEP             = 15847,
     SPELL_ERUPTION              = 17731,
     SPELL_KNOCK_AWAY            = 19633,
     SPELL_FIREBALL              = 18392,
 
-    // Not much choise about these. We have to make own defintion on the direction/start-end point
-    //this are the spells which we have to trigger at the player for DAMAGE too!
     SPELL_BREATH_NORTH_TO_SOUTH = 17086,                    // 20x in "array" 
     SPELL_BREATH_SOUTH_TO_NORTH = 18351,                    // 11x in "array"
 
@@ -148,6 +145,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     uint32 m_uiLiftOffTimer;
     uint32 liftOffData;
 
+    uint32 spellDeepBreath;
     uint32 m_uiToastTimer;
     uint32 m_uiToastAgainTimer;
 
@@ -189,6 +187,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         m_uiLiftOffTimer		= 0;
         liftOffData				= 0;
 
+        spellDeepBreath         = 0;
         m_uiToastTimer          = 0;
         m_uiToastAgainTimer     = 0;
 
@@ -209,8 +208,6 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     void Aggro(Unit* pWho)
     {
         DoScriptText(SAY_AGGRO, m_creature);
-
-        m_creature->SetStandState(UNIT_STAND_STATE_STAND);
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_ONYXIA, IN_PROGRESS);
@@ -337,6 +334,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
             if (m_uiPhase == PHASE_BREATH_PRE)
             {
+                //set this flag here (not in void aggro!!!) cause else we get some visual flying bugs!
+                m_creature->SetStandState(UNIT_STAND_STATE_STAND);
                 stopMeleeAttacking = true;
                 m_uiLiftOffTimer = 1000;
             }
@@ -554,7 +553,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                         //how often the player got hitted
                         if (m_uiToastAgainTimer <= uiDiff)
                         {
-                            m_creature->CastSpell(m_creature->getVictim(), m_pPointData->uiSpellId, true);
+                            m_creature->CastSpell(m_creature->getVictim(), spellDeepBreath, true);
                             m_uiToastAgainTimer = 500;
                         }
                         else
@@ -573,16 +572,17 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     // 3 possible actions
                     switch(urand(0, 4))
                     {
-                        // breath
+                        // breath, maybe we need some other cases for deep breath, for example knubbel grp or to less dmg
                         case 0:                             
                             if (m_pPointData = GetMoveData())
                             {
                                 //handle deep breath animation
                                 DoScriptText(EMOTE_BREATH, m_creature);
-                                DoCastSpellIfCan(m_creature, m_pPointData->uiSpellId, CAST_INTERRUPT_PREVIOUS);
+                                spellDeepBreath = m_pPointData->uiSpellId;
+                                DoCastSpellIfCan(m_creature, spellDeepBreath, CAST_INTERRUPT_PREVIOUS);
                                 m_uiMovePoint = m_pPointData->uiLocIdEnd;
 
-                                m_uiToastTimer = 2000;
+                                m_uiToastTimer = 1000;
                                 toastUnits = true;
                             }
                             return;
@@ -609,8 +609,13 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
                 if (m_uiFireballTimer < uiDiff)
                 {
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIREBALL) == CAST_OK)
-                        m_uiFireballTimer = 3000;
+                    //fireball completly random watch real classic onyxia movie
+                    Unit* pRandom = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+                    if (pRandom && pRandom->isAlive())
+                    {
+                        if (DoCastSpellIfCan(pRandom, SPELL_FIREBALL) == CAST_OK)
+                            m_uiFireballTimer = 3000;
+                    }
                 }
                 else
                     m_uiFireballTimer -= uiDiff;
@@ -621,8 +626,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     {
                         if (m_uiWhelpTimer < uiDiff)
                         {
-                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[0][x], afSpawnLocations[0][y], afSpawnLocations[0][z], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10000);
-                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[1][x], afSpawnLocations[1][y], afSpawnLocations[1][z], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10000);
+                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[0][x], afSpawnLocations[0][y], afSpawnLocations[0][z], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
+                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[1][x], afSpawnLocations[1][y], afSpawnLocations[1][z], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
                             m_uiWhelpTimer = 500;
                         }
                         else
