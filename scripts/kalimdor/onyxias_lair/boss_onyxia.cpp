@@ -63,7 +63,7 @@ enum
 
     SPELL_SUMMONWHELP           = 17646,                    // TODO this spell is only a summon spell, but would need a spell to activate the eggs
 
-    MAX_WHELPS_PER_PACK         = 40,
+    MAX_WHELPS_PER_PACK         = 20,
 
     PHASE_START                 = 1,
     PHASE_BREATH                = 2,
