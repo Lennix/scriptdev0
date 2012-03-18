@@ -37,7 +37,7 @@ enum
     EMOTE_BREATH                = -1249004,
 
     SPELL_WINGBUFFET            = 18500,
-    SPELL_FLAMEBREATH           = 23461,                    // to weak flamebreath: 18435
+    SPELL_FLAMEBREATH           = 18435,
     SPELL_CLEAVE                = 19983,
     SPELL_TAILSWEEP             = 15847,
     SPELL_ERUPTION              = 17731,
@@ -629,9 +629,14 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     {
                         if (m_uiWhelpTimer < uiDiff)
                         {
+                            float x1,y1,z1;
+                            m_creature->GetRandomPoint(afSpawnLocations[0][x], afSpawnLocations[0][y], afSpawnLocations[0][z], 5.0f, x1, y1, z1);
                             m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[0][x], afSpawnLocations[0][y], afSpawnLocations[0][z], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
+                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, x1, y1, z1, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
+                            m_creature->GetRandomPoint(afSpawnLocations[1][x], afSpawnLocations[0][1], afSpawnLocations[1][z], 5.0f, x1, y1, z1);
                             m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[1][x], afSpawnLocations[1][y], afSpawnLocations[1][z], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
-                            m_uiWhelpTimer = 500;
+                            m_creature->SummonCreature(NPC_ONYXIA_WHELP, x1, y1, z1, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
+                            m_uiWhelpTimer = 2000;
                         }
                         else
                             m_uiWhelpTimer -= uiDiff;
