@@ -261,9 +261,15 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public npc_escortAI
                     case 28:
                         if (Creature* pRagnaros = GetRagnaros())
                             pRagnaros->CastSpell(m_creature, 19773, false);
-                        m_uiEventTimer = 6000;
+                        m_uiEventTimer = 750;
                         break;
                     case 29:
+                        // Majordomo died (fake corpse)
+                        m_creature->SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
+                        m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
+                        m_uiEventTimer = 6000;
+                        break;
+                    case 30:
                         if (Creature* pRagnaros = GetRagnaros())
                         {
                             DoScriptText(SAY_ARRIVAL5_RAG, pRagnaros);
@@ -275,7 +281,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public npc_escortAI
                         }
                         m_uiEventTimer = 12000; // ~15000
                         break;
-                    case 30:
+                    case 31:
                         if (Creature* pRagnaros = GetRagnaros())
                         {
                             pRagnaros->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
@@ -285,7 +291,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public npc_escortAI
                         }
                         m_uiEventTimer = 5000;
                         break;
-                    case 31:
+                    case 32:
                         // To complete escort.
                         m_uiEventPhase = 0;
 						m_uiRagnarosSummonPlayerGUID.Clear();
