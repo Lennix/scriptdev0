@@ -259,9 +259,8 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public npc_escortAI
                         m_uiEventTimer = 7500;
                         break;
                     case 28:
-                        // Majordomo died (fake corpse)
-                        m_creature->SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
-                        m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
+                        if (Creature* pRagnaros = GetRagnaros())
+                            pRagnaros->CastSpell(m_creature, 19773, false);
                         m_uiEventTimer = 6000;
                         break;
                     case 29:
