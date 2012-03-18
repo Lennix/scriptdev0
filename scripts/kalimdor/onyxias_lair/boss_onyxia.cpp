@@ -107,8 +107,8 @@ static const float afSpawnLocations[2][3]=
 
 static const float trans[2][3]=
 {
-   {-71.36, -214.745, -83.782},                            // liftOff
-   {-37.491, -214.39, -86.712}                             // landing
+   {-71.36f, -214.745f, -83.782f},                            // liftOff
+   {-37.491f, -214.39f, -86.712f}                             // landing
 };
 
 struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
@@ -633,7 +633,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                             m_creature->GetRandomPoint(afSpawnLocations[0][x], afSpawnLocations[0][y], afSpawnLocations[0][z], 5.0f, x1, y1, z1);
                             m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[0][x], afSpawnLocations[0][y], afSpawnLocations[0][z], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
                             m_creature->SummonCreature(NPC_ONYXIA_WHELP, x1, y1, z1, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
-                            m_creature->GetRandomPoint(afSpawnLocations[1][x], afSpawnLocations[0][1], afSpawnLocations[1][z], 5.0f, x1, y1, z1);
+                            m_creature->GetRandomPoint(afSpawnLocations[1][x], afSpawnLocations[1][y], afSpawnLocations[1][z], 5.0f, x1, y1, z1);
                             m_creature->SummonCreature(NPC_ONYXIA_WHELP, afSpawnLocations[1][x], afSpawnLocations[1][y], afSpawnLocations[1][z], 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
                             m_creature->SummonCreature(NPC_ONYXIA_WHELP, x1, y1, z1, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
                             m_uiWhelpTimer = 2000;
