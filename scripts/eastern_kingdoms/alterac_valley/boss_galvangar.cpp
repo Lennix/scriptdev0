@@ -61,6 +61,11 @@ struct MANGOS_DLL_DECL boss_galvangarAI : public ScriptedAI
         DoScriptText(YELL_AGGRO, m_creature);
     }
 
+    void YellBuff()
+    {
+        DoScriptText(YELL_BUFF, m_creature);
+    }
+
     void UpdateAI(const uint32 uiDiff)
     {
         // Fury of Frostwolf

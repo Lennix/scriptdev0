@@ -15,6 +15,7 @@
  */
 
 #include "precompiled.h"
+#include "BattleGround.h"
 
 enum Creatures
 {
@@ -181,11 +182,128 @@ CreatureAI* GetAI_mob_av_marshal_or_warmaster(Creature* pCreature)
     return new mob_av_marshal_or_warmasterAI(pCreature);
 }
 
+//TEAM SMITHS !!!
+/*DATABASE:
+ delete from creature_battleground where guid = 150102;
+ INSERT INTO `creature_battleground` VALUES ('150102', '66', '0');
+ delete from battleground_events where event1 = 65;
+ INSERT INTO `battleground_events` VALUES ('30', '65', '0', 'Alliance Smith');
+ delete from battleground_events where event1 = 66;^^
+ INSERT INTO `battleground_events` VALUES ('30', '66', '0', 'Horde Smith');
+ delete from creature_battleground where guid = 150107;
+ INSERT INTO `creature_battleground` VALUES ('150107', '65', '0');
+ UPDATE creature_template SET ScriptName = 'BG_AV_TeamSmith' WHERE entry = '13176';
+ UPDATE creature_template SET ScriptName = 'BG_AV_TeamSmith' WHERE entry = '13257';
+ */
+enum
+{
+    FACTION_FROSTWOLF       = 729,
+    FACTION_STORMPIKE       = 730,
+
+    BG_AV_WARCRY_BUFF_1     = 28418,
+    BG_AV_WARCRY_BUFF_2     = 28419,
+    BG_AV_WARCRY_BUFF_3     = 28420
+};
+
+struct MANGOS_DLL_DECL BG_AV_TeamSmith : public ScriptedAI
+{
+    BG_AV_TeamSmith(Creature* pCreature) : ScriptedAI(pCreature)
+    {   
+        //remove gossip until the core will handle it
+        m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+        m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+        Reset();
+    }
+
+    //maybe we will need additional code here!
+
+    void Reset() {}
+};
+
+bool GossipHello_BG_AV_TeamSmith(Player* pPlayer, Creature* pCreature)
+{
+    //u need enough reputation to speak with him, this reputation increased with each buff level
+    bool canTalkWithSmith = false;
+    uint8 reputationUNeed = 0;
+    GossipIndex Channel;
+    if (pPlayer->GetTeam() == ALLIANCE)
+        Channel = GOSSIP_CHANNEL1;
+    else
+        Channel = GOSSIP_CHANNEL2;
+
+    if (BattleGround *bg = pPlayer->GetBattleGround())
+    {
+        switch(bg->GetGossipStatus(Channel))
+        {
+            case STATUS_WAIT_ACTION: reputationUNeed = REP_HONORED; break;
+            case STATUS_ACTION1: reputationUNeed = REP_REVERED; break;
+            case STATUS_ACTION2: reputationUNeed = REP_EXALTED; break;
+        }
+    }
+
+    if (pPlayer->GetReputationRank(FACTION_STORMPIKE) >= reputationUNeed || pPlayer->GetReputationRank(FACTION_FROSTWOLF) >= reputationUNeed)
+        canTalkWithSmith = true;
+
+    if (canTalkWithSmith && pCreature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP))
+    {
+        pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, "Upgrade now !!!", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+        //wrong textid
+        pPlayer->SEND_GOSSIP_MENU(6066, pCreature->GetObjectGuid());
+
+        return true;
+    }
+    else
+        return false;
+}
+
+bool GossipSelect_BG_AV_TeamSmith(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+{
+    switch (uiAction)
+    {
+        case GOSSIP_ACTION_INFO_DEF + 1:
+        {
+            pPlayer->CLOSE_GOSSIP_MENU();
+            if (BattleGround *bg = pPlayer->GetBattleGround())
+            {
+                GossipIndex Channel;
+                GossipStatus Status;
+                if (pPlayer->GetTeam() == ALLIANCE)
+                    Channel = GOSSIP_CHANNEL1;
+                else
+                    Channel = GOSSIP_CHANNEL2;
+
+                switch(bg->GetGossipStatus(Channel))
+                {
+                    case STATUS_WAIT_ACTION: Status = STATUS_ACTION1; break;
+                    case STATUS_ACTION1: Status = STATUS_ACTION2; break;
+                    case STATUS_ACTION2: Status = STATUS_ACTION3; break;
+                }
+                pCreature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                bg->SetGossipStatus(Channel, Status, BATTLEGROUND_AV); 
+            }
+            break;
+        }
+    }
+    return true;
+}
+
+CreatureAI* GetAI_BG_AV_TeamSmith(Creature* pCreature)
+{
+    return new BG_AV_TeamSmith(pCreature);
+}
+
 void AddSC_alterac_valley()
 {
-    Script* pNewscript;
-    pNewscript = new Script;
-    pNewscript->Name = "mob_av_marshal_or_warmaster";
-    pNewscript->GetAI = &GetAI_mob_av_marshal_or_warmaster;
-    pNewscript->RegisterSelf();
+    Script* pNewScript;
+    pNewScript = new Script;
+    pNewScript->Name = "mob_av_marshal_or_warmaster";
+    pNewScript->GetAI = &GetAI_mob_av_marshal_or_warmaster;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "BG_AV_TeamSmith";
+    pNewScript->GetAI = &GetAI_BG_AV_TeamSmith;
+    pNewScript->pGossipHello = &GossipHello_BG_AV_TeamSmith;
+    pNewScript->pGossipSelect = &GossipSelect_BG_AV_TeamSmith;
+    pNewScript->RegisterSelf();
 }
