@@ -14,6 +14,15 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+/*
+-- AV_Immunity_Settings --
+update creature_template set mechanic_immune_mask = 617299803 where 
+entry = 11946 or entry = 12121 or entry = 12122 or entry = 14770 or entry = 14771 or entry = 14772 or entry = 14773 or entry = 14774 or entry = 14775 or entry = 14776 or entry = 14777 
+or entry = 11948 or entry = 14762 or entry = 14763 or entry = 14764 or entry = 14765 or entry = 14766 or entry = 14767 or entry = 14768 or entry = 14769
+or entry = 11949 or entry = 11947
+or entry = 13419 or entry = 13256;
+*/
+
 #include "precompiled.h"
 #include "BattleGround.h"
 
@@ -28,6 +37,23 @@ enum Creatures
     NPC_TOWER_POINT_WARMASTER                     = 14776,
     NPC_WEST_FROSTWOLF_WARMASTER                  = 14777,
 };
+
+enum Faction
+{
+    FACTION_FROSTWOLF       = 729,
+    FACTION_STORMPIKE       = 730,
+};
+
+enum Buffs
+{
+    BG_AV_WARCRY_BUFF_1     = 28418,
+    BG_AV_WARCRY_BUFF_2     = 28419,
+    BG_AV_WARCRY_BUFF_3     = 28420
+};
+
+
+const float centerX[2] = {722, -1372};
+const float centerY[2] = {-11, -216};
 
 enum Spells
 {
@@ -72,6 +98,11 @@ struct MANGOS_DLL_DECL mob_av_marshal_or_warmasterAI : public ScriptedAI
         m_uiWhirlwind1Timer = urand(1*IN_MILLISECONDS,12*IN_MILLISECONDS);
         m_uiWhirlwind2Timer = urand(5*IN_MILLISECONDS,20*IN_MILLISECONDS);
         m_uiEvadeTimer = 5*IN_MILLISECONDS;
+    }
+
+    void Aggro()
+    {
+        m_creature->CallForHelp(30.0f);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -164,9 +195,13 @@ struct MANGOS_DLL_DECL mob_av_marshal_or_warmasterAI : public ScriptedAI
         // Check if creature is not outside of building
         if (m_uiEvadeTimer <= uiDiff)
         {
-            float fX, fY, fZ, fO;
-            m_creature->GetSummonPoint(fX, fY, fZ, fO);
-            if (m_creature->GetDistance2d(fX, fY) > 50.0f)
+            uint8 team;
+            if (m_creature->getFaction() == FACTION_STORMPIKE)
+                team = 0;
+            else
+                team = 1;
+
+            if (m_creature->GetDistance2d(centerX[team], centerY[team]) > 30.0f)
                 EnterEvadeMode();
             m_uiEvadeTimer = 5*IN_MILLISECONDS;
         }
@@ -195,15 +230,6 @@ CreatureAI* GetAI_mob_av_marshal_or_warmaster(Creature* pCreature)
  UPDATE creature_template SET ScriptName = 'BG_AV_TeamSmith' WHERE entry = '13176';
  UPDATE creature_template SET ScriptName = 'BG_AV_TeamSmith' WHERE entry = '13257';
  */
-enum
-{
-    FACTION_FROSTWOLF       = 729,
-    FACTION_STORMPIKE       = 730,
-
-    BG_AV_WARCRY_BUFF_1     = 28418,
-    BG_AV_WARCRY_BUFF_2     = 28419,
-    BG_AV_WARCRY_BUFF_3     = 28420
-};
 
 struct MANGOS_DLL_DECL BG_AV_TeamSmith : public ScriptedAI
 {
