@@ -14,6 +14,33 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+/*
+-- AV HORDE_ENDBOSS_BASECAMP --
+update creature_template set ScriptName = 'mob_av_marshal_or_warmaster' where entry = 14770 or entry = 14771 or entry = 14772 or entry = 14773 or entry = 14774 or entry = 14775 or entry = 14776 or entry = 14777;
+delete from creature where id = 11946 or id = 12121 or id = 12122 or id = 14770 or id = 14771 or id = 14772 or id = 14773 or id = 14774 or id = 14775 or id = 14776 or id = 14777;
+INSERT INTO `creature` VALUES ('150143', '11946', '30', '0', '0', '-1370.9', '-219.793', '98.4258', '5.04381', '120', '0', '0', '158400', '0', '0', '0');
+INSERT INTO `creature` VALUES ('51987', '12121', '30', '0', '0', '-1369.71', '-214.568', '99.3712', '5.65565', '1785', '0', '0', '9132', '0', '0', '0');
+INSERT INTO `creature` VALUES ('51988', '12122', '30', '0', '0', '-1376.2', '-217.254', '99.3713', '4.59538', '1785', '0', '0', '9183', '0', '0', '0');
+INSERT INTO `creature` VALUES ('54297', '14774', '30', '0', '0', '-1360.65', '-233.507', '98.3973', '2.59731', '25', '5', '0', '59557', '0', '0', '0');
+INSERT INTO `creature` VALUES ('54298', '14775', '30', '0', '0', '-1369.87', '-236.527', '98.4254', '1.23935', '25', '5', '0', '60663', '0', '0', '0');
+INSERT INTO `creature` VALUES ('150152', '14773', '30', '0', '0', '-1376.4', '-225.599', '98.4262', '5.8135', '120', '0', '0', '60489', '0', '0', '0');
+INSERT INTO `creature` VALUES ('150150', '14772', '30', '0', '0', '-1367.53', '-218.8', '98.4262', '4.63384', '120', '0', '0', '60900', '0', '0', '0');
+INSERT INTO `creature` VALUES ('54299', '14770', '30', '0', '0', '-1363.49', '-235.971', '98.3966', '1.98154', '490', '0', '0', '60575', '0', '0', '0');
+INSERT INTO `creature` VALUES ('54300', '14771', '30', '0', '1416', '-1365.95', '-236.724', '98.4081', '1.84488', '25', '5', '0', '60089', '0', '0', 0);
+INSERT INTO `creature` VALUES ('150151', '14777', '30', '0', '0', '-1373.73', '-221.015', '98.4268', '5.18756', '120', '0', '0', '58547', '0', '0', '0');
+INSERT INTO `creature` VALUES ('150153', '14776', '30', '0', '0', '-1362.79', '-219.883', '98.3969', '3.95447', '120', '0', '0', '60076', '0', '0', '0');
+delete from creature_battleground where event1 = 68 or event1 = 67 or event1 = 69 or event1 = 70;
+INSERT INTO `creature_battleground` VALUES ('54297', '68', '0');
+INSERT INTO `creature_battleground` VALUES ('54298', '67', '0');
+INSERT INTO `creature_battleground` VALUES ('54299', '69', '0');
+INSERT INTO `creature_battleground` VALUES ('54300', '70', '0');
+delete from battleground_events where event1 = 68 or event1 = 67 or event1 = 69 or event1 = 70;
+INSERT INTO `battleground_events` VALUES ('30', '67', '0', 'warmaster spawn');
+INSERT INTO `battleground_events` VALUES ('30', '68', '0', 'warmaster spawn');
+INSERT INTO `battleground_events` VALUES ('30', '69', '0', 'warmaster spawn');
+INSERT INTO `battleground_events` VALUES ('30', '70', '0', 'warmaster spawn');
+*/
+
 #include "precompiled.h"
 
 enum Spells
@@ -64,6 +91,7 @@ struct MANGOS_DLL_DECL boss_drektharAI : public ScriptedAI
     void Aggro(Unit* /*pWho*/)
     {
         DoScriptText(YELL_AGGRO, m_creature);
+        m_creature->CallForHelp(50.0f);
     }
 
     void JustReachedHome()
