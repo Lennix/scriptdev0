@@ -194,7 +194,6 @@ struct MANGOS_DLL_DECL boss_drektharAI : public ScriptedAI
     }
 };
 
-
 CreatureAI* GetAI_boss_drekthar(Creature* pCreature)
 {
     return new boss_drektharAI(pCreature);
