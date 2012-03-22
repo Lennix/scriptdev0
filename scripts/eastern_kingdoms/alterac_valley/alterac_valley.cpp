@@ -15,6 +15,7 @@
  */
 
 /*
+DATABASE
 -- AV_Immunity_Settings --
 update creature_template set mechanic_immune_mask = 617299803 where 
 entry = 11946 or entry = 12121 or entry = 12122 or entry = 14770 or entry = 14771 or entry = 14772 or entry = 14773 or entry = 14774 or entry = 14775 or entry = 14776 or entry = 14777 
@@ -26,6 +27,65 @@ or entry = 13419 or entry = 13256;
 #include "precompiled.h"
 #include "BattleGround.h"
 #include "escort_ai.h"
+
+/*
+DATABASE:
+delete from instance_template where map = 30;
+INSERT INTO `instance_template` VALUES ('30', '0', '60', '60', '80', '0', '0', '0', '0', 'instance_BG_AV');
+*/
+
+//AV is a Battleground, but for global quest handling we need Events based on scriptdev0 too!
+enum Instance_BG_AV
+{
+    EVENT_MASTERS_START_SUMMONING_H     = 0,
+    EVENT_MASTERS_START_SUMMONING_A     = 1,
+
+    MAX_EVENTS                          = 2
+};
+
+class MANGOS_DLL_DECL instance_BG_AV : public ScriptedInstance
+{
+    public:
+        instance_BG_AV(Map* pMap);
+        ~instance_BG_AV() {}
+
+        void Initialize();
+
+        void SetData(uint32 uiType, uint32 uiData);
+
+        uint32 GetData(uint32 uiType);
+
+    protected:
+        uint32 m_uiEvent[MAX_EVENTS];
+};
+
+instance_BG_AV::instance_BG_AV(Map* pMap) : ScriptedInstance(pMap)
+{
+    memset(&m_uiEvent, 0, sizeof(m_uiEvent));
+}
+
+void instance_BG_AV::Initialize()
+{
+    for(uint8 i = 0; i < MAX_EVENTS; ++i)
+        m_uiEvent[i] = NOT_STARTED;
+}
+
+void instance_BG_AV::SetData(uint32 uiType, uint32 uiData)
+{
+    if (uiType < MAX_EVENTS && uiType >= 0)
+        m_uiEvent[uiType] = uiData;
+}
+
+uint32 instance_BG_AV::GetData(uint32 uiType)
+{
+    if (uiType < MAX_EVENTS && uiType >= 0)
+        return m_uiEvent[uiType];
+}
+
+InstanceData* GetInstanceData_instance_BG_AV(Map* pMap)
+{
+    return new instance_BG_AV(pMap);
+}
 
 enum Creatures
 {
@@ -407,7 +467,13 @@ delete from gameobject where guid = 632777 and id = 178465;
 INSERT INTO `gameobject` VALUES ('632777', '178465', '30', '-366.143', '-130.525', '26.4224', '5.50564', '0', '0', '0.379054', '-0.925375', '-25', '100', '1');
 delete from gameobject where guid = 632888 and id = 178670;
 INSERT INTO `gameobject` VALUES ('632888', '178670', '30', '-199.538', '-343.331', '6.79235', '1.95407', '0', '0', '0.828843', '0.559481', '-25', '100', '1');
+
+-- SET EVENTSCRIPTS --
+delete from scripted_event_id where id = 7060 or id = 7268;
+INSERT INTO `scripted_event_id` VALUES ('7060', 'event_spell_BG_AV_BOSS');
+INSERT INTO `scripted_event_id` VALUES ('7268', 'event_spell_BG_AV_BOSS');
 */
+
 const uint32 masterModellId[2] = {14578, 14331};
 const uint32 masterModellSpell[2] = {23249, 23221};
 const uint32 addModellId[2] = {10278, 6444};
@@ -446,8 +512,12 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
     { 
         m_creature->SetMaxPower(POWER_MANA, 42189);
         m_creature->SetPower(POWER_MANA, m_creature->GetMaxPower(POWER_MANA));
+
+        m_pInstance = (instance_BG_AV*)creature->GetInstanceData();
         Reset(); 
     }
+
+    instance_BG_AV* m_pInstance;
 
     uint32 m_uiAttackTimer;
     uint32 m_uiHealTimer;
@@ -512,7 +582,11 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
                 (*itr)->GetMotionMaster()->Clear();
                 (*itr)->GetMotionMaster()->MoveFollow(m_creature, 3.0f, (1.0f + pos));
                 (*itr)->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-                (*itr)->SetSpeedRate(MOVE_RUN, 1.4f);
+                //keep adds close at their master
+                if ((*itr)->GetDistance(m_creature) > 5.0f)
+                    (*itr)->SetSpeedRate(MOVE_RUN, 1.5f);
+                else
+                    (*itr)->SetSpeedRate(MOVE_RUN, 1.4f);
 
                 if (mount)
                     (*itr)->Mount(addModellId[id], addModellSpell[id]);
@@ -534,20 +608,6 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
         }
     }
 
-    void createNewSpawnPoints()
-    {
-        CreatureCreatePos pos(m_creature->GetMap(), m_creature->GetPositionX(), m_creature->GetPositionY(),m_creature->GetPositionZ(), m_creature->GetOrientation());
-        m_creature->SetSummonPoint(pos);
-        for(std::list<Creature*>::iterator itr = masterAdds.begin(); itr != masterAdds.end(); ++itr)
-		{
-            if ((*itr) && (*itr)->isAlive())
-            {
-                CreatureCreatePos pos2((*itr)->GetMap(), (*itr)->GetPositionX(), (*itr)->GetPositionY(), (*itr)->GetPositionZ(), (*itr)->GetOrientation());
-                (*itr)->SetSummonPoint(pos2);
-            }
-        }
-    }
-
     void WaypointReached(uint32 uiPointId)
 	{
         //start mount
@@ -558,13 +618,18 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
         if (dismountPosition[id] == uiPointId)
         {
             Dismount();
-            //new spawn points
-            createNewSpawnPoints();
+            //new spawn point
+            CreatureCreatePos pos(m_creature->GetMap(), m_creature->GetPositionX(), m_creature->GetPositionY(),m_creature->GetPositionZ(), m_creature->GetOrientation());
+            m_creature->SetSummonPoint(pos);
             //spawn summon object
             if (GameObject* summonObject = GetClosestGameObjectWithEntry(m_creature, object[id], 20.0f))
                 summonObject->SetRespawnTime(0);
             //stop escort
             SetEscortPaused(true);
+            //set global data
+            uint32 Data;
+            id == 0 ? Data = EVENT_MASTERS_START_SUMMONING_H : Data = EVENT_MASTERS_START_SUMMONING_A;
+            m_pInstance->SetData(Data, IN_PROGRESS);
         }
 	}
 
@@ -572,7 +637,7 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
 	{
         //PHASE 3: Defending summon object point
         //only return if we are in phase 3 cause we need the escort movement below
-        if ((!m_creature->SelectHostileTarget() || !m_creature->getVictim()) && HasEscortState(STATE_ESCORT_PAUSED))
+        if ((!m_creature->SelectHostileTarget() || !m_creature->getVictim()) && HasEscortState(STATE_ESCORT_PAUSED))                 
             return;
 
         //combat check for phase 2 while the escort is in progress, cause we cant return here!
@@ -684,8 +749,12 @@ struct MANGOS_DLL_DECL BG_AV_BossSummonerAdd : public ScriptedAI
     { 
         m_creature->SetMaxPower(POWER_MANA, 26432);
         m_creature->SetPower(POWER_MANA, m_creature->GetMaxPower(POWER_MANA));
+
+        m_pInstance = (instance_BG_AV*)pCreature->GetInstanceData();
         Reset(); 
     }
+
+    instance_BG_AV* m_pInstance;
 
     uint32 attackTimer;
     uint32 supportTimer;
@@ -712,10 +781,28 @@ struct MANGOS_DLL_DECL BG_AV_BossSummonerAdd : public ScriptedAI
         m_creature->DeleteThreatList();
         m_creature->CombatStop(true);
         m_creature->SetLootRecipient(NULL);
+
+        //follow your master while we are defending the summon object
+        uint32 Data = 0;
+        id == 0 ? Data = m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_H) : Data = m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_A);
+        if (Data >= IN_PROGRESS)
+        {
+            Creature* myMaster = GetClosestCreatureWithEntry(m_creature, masterId[id], 300.0f);
+            if (myMaster && myMaster->isAlive())
+                m_creature->GetMotionMaster()->MoveFollow(myMaster, urand(3, 8), urand(0, 10));
+        }
+
+        Reset();
     }
 
     void UpdateAI(const uint32 uiDiff)
     {
+        if (m_creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE + UNIT_FLAG_NOT_SELECTABLE))
+        {
+            CreatureCreatePos pos(m_creature->GetMap(), m_creature->GetPositionX(), m_creature->GetPositionY(),m_creature->GetPositionZ(), m_creature->GetOrientation());
+            m_creature->SetSummonPoint(pos);
+        }
+
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
@@ -755,6 +842,39 @@ static CreatureAI* GetAI_BG_AV_BossSummonerAdd(Creature* creature)
     return new BG_AV_BossSummonerAdd(creature);
 }
 
+enum event_summon_boss
+{
+    EVENT_LOKOLAR   = 7060,
+    EVENT_IVUS      = 7268,
+
+    CALL_LOKOLAR    = 21287,
+
+    NPC_LOKOLAR     = 13256,
+    NPC_IVUS        = 13419
+
+};
+
+bool ProcessEventId_event_spell_BG_AV_BOSS(uint32 uiEventId, Object* pSource, Object* pTarget, bool bIsStart)
+{
+    if (pSource->GetTypeId() == TYPEID_PLAYER)
+    {
+        instance_BG_AV* m_pInstance = (instance_BG_AV*)((Player*)pSource)->GetInstanceData();
+        if (m_pInstance)
+        {
+            if (uiEventId == EVENT_LOKOLAR && m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_H == IN_PROGRESS))
+            {
+                ((Player*)pSource)->CastSpell(0, 0, 0, CALL_LOKOLAR, true);
+                m_pInstance->SetData(EVENT_MASTERS_START_SUMMONING_H, DONE);
+            } 
+            else if (uiEventId == EVENT_IVUS && m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_A == IN_PROGRESS))
+            {
+                m_pInstance->SetData(EVENT_MASTERS_START_SUMMONING_A, DONE);
+            }
+        }
+    }
+    return true;
+}
+
 void AddSC_alterac_valley()
 {
     Script* pNewScript;
@@ -779,4 +899,14 @@ void AddSC_alterac_valley()
 	pNewScript->Name = "mob_AV_BossSummonerAdd";
 	pNewScript->GetAI = &GetAI_BG_AV_BossSummonerAdd;
 	pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "instance_BG_AV";
+    pNewScript->GetInstanceData = &GetInstanceData_instance_BG_AV;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "event_spell_BG_AV_BOSS";
+    pNewScript->pProcessEventId = &ProcessEventId_event_spell_BG_AV_BOSS;
+    pNewScript->RegisterSelf();
 }
