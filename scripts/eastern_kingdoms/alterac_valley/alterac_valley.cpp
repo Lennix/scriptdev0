@@ -323,7 +323,7 @@ CreatureAI* GetAI_mob_av_marshal_or_warmaster(Creature* pCreature)
  INSERT INTO `creature_battleground` VALUES ('150102', '66', '0');
  delete from battleground_events where event1 = 65;
  INSERT INTO `battleground_events` VALUES ('30', '65', '0', 'Alliance Smith');
- delete from battleground_events where event1 = 66;^^
+ delete from battleground_events where event1 = 66;
  INSERT INTO `battleground_events` VALUES ('30', '66', '0', 'Horde Smith');
  delete from creature_battleground where guid = 150107;
  INSERT INTO `creature_battleground` VALUES ('150107', '65', '0');
@@ -510,6 +510,16 @@ INSERT INTO `gameobject` VALUES ('632888', '178670', '30', '-199.538', '-343.331
 delete from scripted_event_id where id = 7060 or id = 7268;
 INSERT INTO `scripted_event_id` VALUES ('7060', 'event_spell_BG_AV_BOSS');
 INSERT INTO `scripted_event_id` VALUES ('7268', 'event_spell_BG_AV_BOSS');
+
+-- SET EVENTCORE --
+ delete from creature_battleground where guid = 150112;
+ INSERT INTO `creature_battleground` VALUES ('150112', '75', '0');
+ delete from battleground_events where event1 = 75;
+ INSERT INTO `battleground_events` VALUES ('30', '75', '0', 'Alliance Boss Summon Master');
+ delete from battleground_events where event1 = 76;
+ INSERT INTO `battleground_events` VALUES ('30', '76', '0', 'Horde Boss Summon Master');
+ delete from creature_battleground where guid = 150106;
+ INSERT INTO `creature_battleground` VALUES ('150106', '76', '0');
 */
 
 static const uint32 masterModellId[2] = {14578, 14331};
@@ -538,6 +548,9 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
 {
     mob_AV_BossSummonerMaster(Creature* creature) : npc_escortAI(creature) 
     { 
+        //core will handle this
+        m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_OUTDOORPVP);
+
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP);
         m_creature->SetMaxPower(POWER_MANA, 42189);
         m_creature->SetPower(POWER_MANA, m_creature->GetMaxPower(POWER_MANA));
@@ -757,7 +770,7 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
         }
 
         //PHASE 1: Start escorting
-        if (HasEscortState(STATE_ESCORT_ESCORTING) || m_creature->isInCombat())
+        if (HasEscortState(STATE_ESCORT_ESCORTING) || !m_creature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_OUTDOORPVP) || m_creature->isInCombat())
             return;
 
         GetCreatureListWithEntryInGrid(masterAdds, m_creature, masterAddId[id], 100.0f);
@@ -1023,9 +1036,15 @@ struct MANGOS_DLL_DECL mob_AV_Boss : public npc_escortAI
         bossSpell5Timer = urand(5000, 15000);
 
         if (m_creature->GetEntry() == NPC_LOKHOLAR)
+        {
             id = 0;
+            m_creature->setFaction(FACTION_FROSTWOLF);
+        }
         else
+        {
             id = 1;
+            m_creature->setFaction(FACTION_STORMPIKE);
+        }
     };
 
     void defendPosition()
