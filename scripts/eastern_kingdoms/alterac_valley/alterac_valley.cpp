@@ -40,7 +40,11 @@ enum Instance_BG_AV
     EVENT_MASTERS_START_SUMMONING_H     = 0,
     EVENT_MASTERS_START_SUMMONING_A     = 1,
 
-    MAX_EVENTS                          = 2
+    MAX_EVENTS                          = 2,
+
+    ARRIVED_BASE                        = 5,
+
+    BOSS_START_TIME                     = 30000    //5 minutes
 };
 
 class MANGOS_DLL_DECL instance_BG_AV : public ScriptedInstance
@@ -50,12 +54,13 @@ class MANGOS_DLL_DECL instance_BG_AV : public ScriptedInstance
         ~instance_BG_AV() {}
 
         void Initialize();
-
         void SetData(uint32 uiType, uint32 uiData);
+        void Update(uint32 uiDiff);
 
         uint32 GetData(uint32 uiType);
 
     protected:
+        uint32 moveBossTimer[2];
         uint32 m_uiEvent[MAX_EVENTS];
 };
 
@@ -68,18 +73,52 @@ void instance_BG_AV::Initialize()
 {
     for(uint8 i = 0; i < MAX_EVENTS; ++i)
         m_uiEvent[i] = NOT_STARTED;
+
+    moveBossTimer[0] = 0;
+    moveBossTimer[1] = 0;
 }
 
 void instance_BG_AV::SetData(uint32 uiType, uint32 uiData)
 {
     if (uiType < MAX_EVENTS && uiType >= 0)
+    {
+        switch(uiType)
+        {
+            case EVENT_MASTERS_START_SUMMONING_H:   
+                if(uiData == DONE)
+                    moveBossTimer[0] = BOSS_START_TIME;
+                break;
+            case EVENT_MASTERS_START_SUMMONING_A:
+                if(uiData == DONE)
+                    moveBossTimer[1] = BOSS_START_TIME;
+                break;
+        }
+
         m_uiEvent[uiType] = uiData;
+    }
 }
 
 uint32 instance_BG_AV::GetData(uint32 uiType)
 {
     if (uiType < MAX_EVENTS && uiType >= 0)
         return m_uiEvent[uiType];
+}
+
+void instance_BG_AV::Update(uint32 uiDiff)
+{
+    for (uint8 i = 0; i < 2; i++)
+    {
+        if (moveBossTimer[i])
+        {
+            if (moveBossTimer[i] <= uiDiff)
+            {
+                i == 0 ? SetData(EVENT_MASTERS_START_SUMMONING_H, SPECIAL) : SetData(EVENT_MASTERS_START_SUMMONING_A, SPECIAL);
+                moveBossTimer[i] = 0;
+            }
+            else
+                moveBossTimer[i] -= uiDiff;
+        }
+    }
 }
 
 InstanceData* GetInstanceData_instance_BG_AV(Map* pMap)
@@ -457,10 +496,9 @@ INSERT INTO `script_waypoint` VALUES (13442, '37', -183, -362, 6, '0', '');
 INSERT INTO `script_waypoint` VALUES (13442, '38', -195, -347, 6, '0', 'abmounten!');
 
 -- SET SCRIPTS --
-update creature_template set ScriptName = "mob_AV_BossSummonerMaster" where entry = 13236;
-update creature_template set ScriptName = "mob_AV_BossSummonerAdd" where entry = 13284;
-update creature_template set ScriptName = "mob_AV_BossSummonerMaster" where entry = 13442;
-update creature_template set ScriptName = "mob_AV_BossSummonerAdd" where entry = 13443;
+update creature_template set ScriptName = "mob_AV_BossSummonerMaster" where entry = 13236 or entry = 13442;
+update creature_template set ScriptName = "mob_AV_BossSummonerAdd" where entry = 13443 or entry = 13284;
+update creature_template set ScriptName = "mob_AV_Boss" where entry = 13256 or entry = 13419;
 
 -- SET OBJECTS --
 delete from gameobject where guid = 632777 and id = 178465;
@@ -483,17 +521,7 @@ const uint32 masterId[2] = {13236, 13442};
 const uint32 object[2] = {178465, 178670};
 const uint32 mountPosition[2] = {3, 6};
 const uint32 dismountPosition[2] = {29, 38};
-
-struct SummonLocation
-{
-    float x, y, z;
-};
-
-const SummonLocation spawnPoint[2] =
-{
-    {-370.0f, -128.0f, 26.0f},
-    {-196.0f, -346.0f, 6.0f}   
-};
+const uint32 spellSummonObject[2] = {21267, 21646};
 
 const uint32 masterAttackSpell[2] = {15234, 22206};
 const uint32 masterHealSpell[2] = {15982, 15981};
@@ -623,7 +651,10 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
             m_creature->SetSummonPoint(pos);
             //spawn summon object
             if (GameObject* summonObject = GetClosestGameObjectWithEntry(m_creature, object[id], 20.0f))
+            {
+                DoCastSpellIfCan(m_creature, spellSummonObject[id]);
                 summonObject->SetRespawnTime(0);
+            }
             //stop escort
             SetEscortPaused(true);
             //set global data
@@ -842,16 +873,53 @@ static CreatureAI* GetAI_BG_AV_BossSummonerAdd(Creature* creature)
     return new BG_AV_BossSummonerAdd(creature);
 }
 
+/*
+DATENBANK:
+-- HORDE BOSS WAYPOINTS --
+delete from script_waypoint where entry = 13256;
+INSERT INTO `script_waypoint` VALUES (13256, '0', -291, -198, 8, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '1', -229, -238, 6, '0', 'wait 5 minutes');
+INSERT INTO `script_waypoint` VALUES (13256, '2', -174, -233, 10, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '3', -110, -262, 6, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '4', -53, -235, 10, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '5', -28, -231, 9, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '6', 4, -243, 11, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '7', 72, -244, 16, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '8', 111, -339, 40, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '9', 125, -371, 42, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '10', 143, -392, 42, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '11', 200, -410, 42, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '12', 230, -419, 38, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '13', 251, -412, 32, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '14', 274, -392, 11, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '15', 297, -382, 2, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '16', 383, -391, -1, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '17', 462, -369, -1, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '18', 498, -336, -1, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '19', 520, -324, 0, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '20', 546, -322, 8, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '21', 581, -332, 29, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '22', 601, -338, 30, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '23', 623, -323, 30, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '24', 635, -299, 30, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '25', 635, -267, 30, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '26', 630, -231, 37, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '27', 624, -189, 38, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '28', 620, -154, 33, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '29', 618, -131, 33, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '30', 629, -98, 40, '0', '');
+INSERT INTO `script_waypoint` VALUES (13256, '31', 634, -48, 42, '0', '');
+*/
 enum event_summon_boss
 {
-    EVENT_LOKOLAR   = 7060,
-    EVENT_IVUS      = 7268,
+    EVENT_LOKHOLAR      = 7060,
+    EVENT_IVUS          = 7268,
 
-    CALL_LOKOLAR    = 21287,
+    CALL_LOKHOLAR       = 21287,
+    VISUAL_IVUS         = 21649,
 
-    NPC_LOKOLAR     = 13256,
-    NPC_IVUS        = 13419
-
+    NPC_LOKHOLAR        = 13256,
+    NPC_IVUS            = 13419
 };
 
 bool ProcessEventId_event_spell_BG_AV_BOSS(uint32 uiEventId, Object* pSource, Object* pTarget, bool bIsStart)
@@ -861,18 +929,194 @@ bool ProcessEventId_event_spell_BG_AV_BOSS(uint32 uiEventId, Object* pSource, Ob
         instance_BG_AV* m_pInstance = (instance_BG_AV*)((Player*)pSource)->GetInstanceData();
         if (m_pInstance)
         {
-            if (uiEventId == EVENT_LOKOLAR && m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_H == IN_PROGRESS))
+            if (uiEventId == EVENT_LOKHOLAR /*&& m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_H == IN_PROGRESS)*/)
             {
-                ((Player*)pSource)->CastSpell(0, 0, 0, CALL_LOKOLAR, true);
+                ((Player*)pSource)->CastSpell(-325.0f, -168.0f, 9.0f, CALL_LOKHOLAR, true);
                 m_pInstance->SetData(EVENT_MASTERS_START_SUMMONING_H, DONE);
             } 
-            else if (uiEventId == EVENT_IVUS && m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_A == IN_PROGRESS))
+            else if (uiEventId == EVENT_IVUS /*&& m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_A == IN_PROGRESS)*/)
             {
+                if (Creature* myIvus = ((Player*)pSource)->SummonCreature(NPC_IVUS, -259.0f, -342.0f, 6.6f, 2.9, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 60000))
+                    myIvus->CastSpell(myIvus, VISUAL_IVUS, true);
                 m_pInstance->SetData(EVENT_MASTERS_START_SUMMONING_A, DONE);
             }
         }
     }
     return true;
+}
+
+const uint32 bossSpell1[2] = {19133, 21670}; // Frostschock, Feenfeuer
+const uint32 bossSpell2[2] = {21367, 21669}; // Blizzard, Mondfeuer
+const uint32 bossSpell3[2] = {14907, 21668}; // Frostnova, Sternenfeuer
+const uint32 bossSpell4[2] = {16869, 20654}; // Eisgrabmal, Wucherwurzeln
+const uint32 bossSpell5[2] = {21369, 21667}; // Frostblitz, Zorn
+const uint32 bossWaypointWait[2] = {1, 0};
+const uint32 bossWaypointEnd[2] = {31, 0};
+
+#define SPELL_GROW 21307
+
+struct MANGOS_DLL_DECL mob_AV_Boss : public npc_escortAI
+{
+    mob_AV_Boss(Creature* creature) : npc_escortAI(creature) 
+    { 
+        m_creature->SetMaxPower(POWER_MANA, 112932);
+        m_creature->SetPower(POWER_MANA, m_creature->GetMaxPower(POWER_MANA));
+
+        m_pInstance = (instance_BG_AV*)creature->GetInstanceData();
+        Reset(); 
+    }
+
+    instance_BG_AV* m_pInstance;
+
+    int id;
+
+    uint32 bossSpell1Timer;
+    uint32 bossSpell2Timer;
+    uint32 bossSpell3Timer;
+    uint32 bossSpell4Timer;
+    uint32 bossSpell5Timer;
+
+    void Reset() 
+    {
+        bossSpell1Timer = urand(5000, 15000);
+        bossSpell2Timer = urand(5000, 15000);
+        bossSpell3Timer = urand(5000, 15000);
+        bossSpell4Timer = urand(5000, 15000);
+        bossSpell5Timer = urand(5000, 15000);
+
+        if (m_creature->GetEntry() == NPC_LOKHOLAR)
+            id = 0;
+        else
+            id = 1;
+    };
+
+    void defendPosition()
+    {
+        CreatureCreatePos pos(m_creature->GetMap(), m_creature->GetPositionX(), m_creature->GetPositionY(),m_creature->GetPositionZ(), m_creature->GetOrientation());
+        m_creature->SetSummonPoint(pos);
+        SetEscortPaused(true);
+        m_creature->GetMotionMaster()->MoveRandom();
+    }
+
+    void WaypointReached(uint32 uiPointId)
+	{
+        if (bossWaypointWait[id] == uiPointId)
+            defendPosition();
+
+        if (bossWaypointEnd[id] == uiPointId)
+        {
+            //defendPosition();
+            uint32 Type;
+            id == 0 ? Type = EVENT_MASTERS_START_SUMMONING_H : Type = EVENT_MASTERS_START_SUMMONING_A;
+            m_pInstance->SetData(Type, ARRIVED_BASE);
+        }
+    }
+
+    void KilledUnit(Unit* pVictim)
+    {
+        //need grow visual and effect
+        if (!id)
+        {
+            if (pVictim->GetTypeId() == TYPEID_PLAYER)
+                m_creature->MonsterYell("I drink in your suffering, puny mortal. Let your essence congeal with Lokholar!", LANG_UNIVERSAL);
+
+            m_creature->CastSpell(m_creature, SPELL_GROW, true);
+        }
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {   
+        if (m_creature->isInCombat())
+        {
+            
+            if (bossSpell1Timer <= uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature->getVictim(), bossSpell1[id]) == CAST_OK)
+                    bossSpell1Timer = urand(5000, 15000);
+            }
+            else
+                bossSpell1Timer -= uiDiff;
+
+            if (bossSpell2Timer <= uiDiff)
+            {
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                {
+                    if (DoCastSpellIfCan(pTarget, bossSpell2[id]) == CAST_OK)
+                    {
+                        if (id)
+                            bossSpell2Timer = urand(3000, 5000);
+                        else
+                            bossSpell2Timer = urand(10000, 20000);
+                    }
+                }
+            }
+            else
+                bossSpell2Timer -= uiDiff;
+
+            //FROSTNOVA OF THE ICELORD WILL CRASH THE SERVER (therefore id condition)!!!
+            if (bossSpell3Timer <= uiDiff && id)
+            {
+                if (DoCastSpellIfCan(m_creature->getVictim(), bossSpell3[id]) == CAST_OK)
+                    bossSpell3Timer = urand(5000, 10000);
+            }
+            else
+                bossSpell3Timer -= uiDiff;
+
+            if (bossSpell4Timer <= uiDiff)
+            {
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                {
+                    if (DoCastSpellIfCan(pTarget, bossSpell4[id]) == CAST_OK)
+                        bossSpell4Timer = urand(5000, 15000);
+                }
+            }
+            else
+                bossSpell4Timer -= uiDiff;
+
+            if (bossSpell5Timer <= uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature->getVictim(), bossSpell5[id]) == CAST_OK)
+                    bossSpell5Timer = urand(5000, 8000);
+            }
+            else
+                bossSpell5Timer -= uiDiff;
+
+            DoMeleeAttackIfReady();
+        }
+
+        uint32 Data;
+        id == 0 ? Data = m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_H) : Data = m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_A);
+        if (Data == ARRIVED_BASE)
+            return;
+
+        if (HasEscortState(STATE_ESCORT_PAUSED))
+        {
+            uint32 Data;
+            id == 0 ? Data = m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_H) : Data = m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_A);
+            if (Data == SPECIAL)
+                SetEscortPaused(false);
+
+            return;
+        }
+
+        if (HasEscortState(STATE_ESCORT_ESCORTING))
+        {
+            m_creature->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
+            m_creature->SetSpeedRate(MOVE_RUN, 1.3f);
+            npc_escortAI::UpdateAI(uiDiff);        
+        }
+
+        //PHASE 1: Start escorting
+        if (HasEscortState(STATE_ESCORT_ESCORTING) || m_creature->isInCombat())
+            return;
+
+        Start(true);
+    }
+};
+
+static CreatureAI* GetAI_mob_AV_Boss(Creature* creature)
+{
+    return new mob_AV_Boss(creature);
 }
 
 void AddSC_alterac_valley()
@@ -909,4 +1153,9 @@ void AddSC_alterac_valley()
     pNewScript->Name = "event_spell_BG_AV_BOSS";
     pNewScript->pProcessEventId = &ProcessEventId_event_spell_BG_AV_BOSS;
     pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+	pNewScript->Name = "mob_AV_Boss";
+	pNewScript->GetAI = &GetAI_mob_AV_Boss;
+	pNewScript->RegisterSelf();
 }
