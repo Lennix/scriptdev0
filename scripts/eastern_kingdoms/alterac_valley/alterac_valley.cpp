@@ -44,7 +44,7 @@ enum Instance_BG_AV
 
     ARRIVED_BASE                        = 5,
 
-    BOSS_START_TIME                     = 30000    //5 minutes
+    BOSS_START_TIME                     = 6000    //10 minutes
 };
 
 class MANGOS_DLL_DECL instance_BG_AV : public ScriptedInstance
@@ -512,20 +512,20 @@ INSERT INTO `scripted_event_id` VALUES ('7060', 'event_spell_BG_AV_BOSS');
 INSERT INTO `scripted_event_id` VALUES ('7268', 'event_spell_BG_AV_BOSS');
 */
 
-const uint32 masterModellId[2] = {14578, 14331};
-const uint32 masterModellSpell[2] = {23249, 23221};
-const uint32 addModellId[2] = {10278, 6444};
-const uint32 addModellSpell[2] = {6746, 16056};
-const uint32 masterAddId[2] = {13284, 13443};
-const uint32 masterId[2] = {13236, 13442};
-const uint32 object[2] = {178465, 178670};
-const uint32 mountPosition[2] = {3, 6};
-const uint32 dismountPosition[2] = {29, 38};
-const uint32 spellSummonObject[2] = {21267, 21646};
+static const uint32 masterModellId[2] = {14578, 14331};
+static const uint32 masterModellSpell[2] = {23249, 23221};
+static const uint32 addModellId[2] = {10278, 6444};
+static const uint32 addModellSpell[2] = {6746, 16056};
+static const uint32 masterAddId[2] = {13284, 13443};
+static const uint32 masterId[2] = {13236, 13442};
+static const uint32 object[2] = {178465, 178670};
+static const uint32 mountPosition[2] = {3, 6};
+static const uint32 dismountPosition[2] = {29, 38};
+static const uint32 spellSummonObject[2] = {21267, 21646};
 
-const uint32 masterAttackSpell[2] = {15234, 22206};
-const uint32 masterHealSpell[2] = {15982, 15981};
-const uint32 masterSupportSpell[2] = {15786,22127};
+static const uint32 masterAttackSpell[2] = {15234, 22206};
+static const uint32 masterHealSpell[2] = {15982, 15981};
+static const uint32 masterSupportSpell[2] = {15786,22127};
 
 enum master0_additional_spells
 {
@@ -538,6 +538,7 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
 {
     mob_AV_BossSummonerMaster(Creature* creature) : npc_escortAI(creature) 
     { 
+        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP);
         m_creature->SetMaxPower(POWER_MANA, 42189);
         m_creature->SetPower(POWER_MANA, m_creature->GetMaxPower(POWER_MANA));
 
@@ -646,6 +647,8 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
         if (dismountPosition[id] == uiPointId)
         {
             Dismount();
+            //stop escort
+            SetEscortPaused(true);
             //new spawn point
             CreatureCreatePos pos(m_creature->GetMap(), m_creature->GetPositionX(), m_creature->GetPositionY(),m_creature->GetPositionZ(), m_creature->GetOrientation());
             m_creature->SetSummonPoint(pos);
@@ -655,8 +658,6 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
                 DoCastSpellIfCan(m_creature, spellSummonObject[id]);
                 summonObject->SetRespawnTime(0);
             }
-            //stop escort
-            SetEscortPaused(true);
             //set global data
             uint32 Data;
             id == 0 ? Data = EVENT_MASTERS_START_SUMMONING_H : Data = EVENT_MASTERS_START_SUMMONING_A;
@@ -770,14 +771,15 @@ static CreatureAI* GetAI_mob_AV_BossSummonerMaster(Creature* creature)
     return new mob_AV_BossSummonerMaster(creature);
 }
 
-const uint32 addBuff[2] = {12550, 22128};           //Blitzschlagschild, Dornen
-const uint32 addAttackSpell[2] = {21401, 21668};    //Frostschock, Sternenfeuer
-const uint32 addSupportSpell[2] = {12492, 22127};   //Welle der Heilung, Wucherwurzeln
+static const uint32 addBuff[2] = {12550, 22128};           //Blitzschlagschild, Dornen
+static const uint32 addAttackSpell[2] = {21401, 21668};    //Frostschock, Sternenfeuer
+static const uint32 addSupportSpell[2] = {12492, 22127};   //Welle der Heilung, Wucherwurzeln
 
 struct MANGOS_DLL_DECL BG_AV_BossSummonerAdd : public ScriptedAI
 {
     BG_AV_BossSummonerAdd (Creature* pCreature) : ScriptedAI(pCreature) 
     { 
+        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP);
         m_creature->SetMaxPower(POWER_MANA, 26432);
         m_creature->SetPower(POWER_MANA, m_creature->GetMaxPower(POWER_MANA));
 
@@ -878,7 +880,7 @@ DATENBANK:
 -- HORDE BOSS WAYPOINTS --
 delete from script_waypoint where entry = 13256;
 INSERT INTO `script_waypoint` VALUES (13256, '0', -291, -198, 8, '0', '');
-INSERT INTO `script_waypoint` VALUES (13256, '1', -229, -238, 6, '0', 'wait 5 minutes');
+INSERT INTO `script_waypoint` VALUES (13256, '1', -229, -238, 6, '0', 'wait 10 minutes');
 INSERT INTO `script_waypoint` VALUES (13256, '2', -174, -233, 10, '0', '');
 INSERT INTO `script_waypoint` VALUES (13256, '3', -110, -262, 6, '0', '');
 INSERT INTO `script_waypoint` VALUES (13256, '4', -53, -235, 10, '0', '');
@@ -909,6 +911,42 @@ INSERT INTO `script_waypoint` VALUES (13256, '28', 620, -154, 33, '0', '');
 INSERT INTO `script_waypoint` VALUES (13256, '29', 618, -131, 33, '0', '');
 INSERT INTO `script_waypoint` VALUES (13256, '30', 629, -98, 40, '0', '');
 INSERT INTO `script_waypoint` VALUES (13256, '31', 634, -48, 42, '0', '');
+
+-- ALLIANCE BOSS WAYPOINTS --
+delete from script_waypoint where entry = 13419;
+INSERT INTO `script_waypoint` VALUES (13419, '0', -273, -294, 6, '0', 'wait 10 minutes');
+INSERT INTO `script_waypoint` VALUES (13419, '1', -402, -283, 13, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '2', -441, -277, 20, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '3', -487, -284, 28, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '4', -523, -341, 34, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '5', -544, -339, 37, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '6', -578, -315, 45, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '7', -620, -352, 55, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '8', -624, -395, 58, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '9', -671, -379, 65, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '10', -712, -364, 66, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '11', -718, -408, 67, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '12', -760, -429, 64, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '13', -812, -447, 54, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '14', -844, -393, 50, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '15', -898, -382, 48, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '16', -1003, -399, 50, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '17', -1043, -385, 50, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '18', -1062, -363, 51, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '19', -1092, -368, 51, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '20', -1139, -349, 51, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '21', -1198, -366, 53, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '22', -1240, -368, 59, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '23', -1248, -342, 59, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '24', -1231, -316, 61, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '25', -1212, -294, 70, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '26', -1194, -273, 72, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '27', -1206, -253, 72, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '28', -1241, -250, 73, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '29', -1262, -279, 74, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '30', -1279, -289, 87, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '31', -1293, -289, 90, '0', '');
+INSERT INTO `script_waypoint` VALUES (13419, '32', -1343, -294, 91, '0', '');
 */
 enum event_summon_boss
 {
@@ -917,6 +955,7 @@ enum event_summon_boss
 
     CALL_LOKHOLAR       = 21287,
     VISUAL_IVUS         = 21649,
+    SPELL_GROW          = 21307,
 
     NPC_LOKHOLAR        = 13256,
     NPC_IVUS            = 13419
@@ -945,20 +984,19 @@ bool ProcessEventId_event_spell_BG_AV_BOSS(uint32 uiEventId, Object* pSource, Ob
     return true;
 }
 
-const uint32 bossSpell1[2] = {19133, 21670}; // Frostschock, Feenfeuer
-const uint32 bossSpell2[2] = {21367, 21669}; // Blizzard, Mondfeuer
-const uint32 bossSpell3[2] = {14907, 21668}; // Frostnova, Sternenfeuer
-const uint32 bossSpell4[2] = {16869, 20654}; // Eisgrabmal, Wucherwurzeln
-const uint32 bossSpell5[2] = {21369, 21667}; // Frostblitz, Zorn
-const uint32 bossWaypointWait[2] = {1, 0};
-const uint32 bossWaypointEnd[2] = {31, 0};
-
-#define SPELL_GROW 21307
+static const uint32 bossSpell1[2] = {19133, 21670}; // Frostschock, Feenfeuer
+static const uint32 bossSpell2[2] = {21367, 21669}; // Blizzard, Mondfeuer
+static const uint32 bossSpell3[2] = {14907, 21668}; // Frostnova, Sternenfeuer
+static const uint32 bossSpell4[2] = {16869, 20654}; // Eisgrabmal, Wucherwurzeln
+static const uint32 bossSpell5[2] = {21369, 21667}; // Frostblitz, Zorn
+static const uint32 bossWaypointWait[2] = {1, 0};
+static const uint32 bossWaypointEnd[2] = {31, 32};
 
 struct MANGOS_DLL_DECL mob_AV_Boss : public npc_escortAI
 {
     mob_AV_Boss(Creature* creature) : npc_escortAI(creature) 
     { 
+        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP);
         m_creature->SetMaxPower(POWER_MANA, 112932);
         m_creature->SetPower(POWER_MANA, m_creature->GetMaxPower(POWER_MANA));
 
@@ -992,10 +1030,10 @@ struct MANGOS_DLL_DECL mob_AV_Boss : public npc_escortAI
 
     void defendPosition()
     {
-        CreatureCreatePos pos(m_creature->GetMap(), m_creature->GetPositionX(), m_creature->GetPositionY(),m_creature->GetPositionZ(), m_creature->GetOrientation());
-        m_creature->SetSummonPoint(pos);
         SetEscortPaused(true);
         m_creature->GetMotionMaster()->MoveRandom();
+        CreatureCreatePos pos(m_creature->GetMap(), m_creature->GetPositionX(), m_creature->GetPositionY(),m_creature->GetPositionZ(), m_creature->GetOrientation());
+        m_creature->SetSummonPoint(pos);       
     }
 
     void WaypointReached(uint32 uiPointId)
@@ -1005,16 +1043,17 @@ struct MANGOS_DLL_DECL mob_AV_Boss : public npc_escortAI
 
         if (bossWaypointEnd[id] == uiPointId)
         {
-            //defendPosition();
             uint32 Type;
             id == 0 ? Type = EVENT_MASTERS_START_SUMMONING_H : Type = EVENT_MASTERS_START_SUMMONING_A;
             m_pInstance->SetData(Type, ARRIVED_BASE);
+
+            defendPosition();
         }
     }
 
     void KilledUnit(Unit* pVictim)
     {
-        //need grow visual and effect
+        //we have to stop that this aura will be removed by going evade mode
         if (!id)
         {
             if (pVictim->GetTypeId() == TYPEID_PLAYER)
