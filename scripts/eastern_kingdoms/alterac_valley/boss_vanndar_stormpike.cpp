@@ -52,8 +52,8 @@ enum Spells
     SPELL_THUNDERCLAP   = 15588,
 };
 
-const float centerX = 722;
-const float centerY = -11;
+static const float centerX = 722;
+static const float centerY = -11;
 
 enum Yells
 {
@@ -92,7 +92,7 @@ struct MANGOS_DLL_DECL boss_vanndar_stormpikeAI : public ScriptedAI
     void Aggro(Unit* /*pWho*/)
     {
         DoScriptText(YELL_AGGRO, m_creature);
-        m_creature->CallForHelp(30.0f);
+        m_creature->CallForHelp(50.0f);
     }
 
     void JustReachedHome()
@@ -175,7 +175,8 @@ struct MANGOS_DLL_DECL boss_vanndar_stormpikeAI : public ScriptedAI
         // Check if creature is not outside of building
         if (m_uiEvadeTimer <= uiDiff)
         {
-            if (m_creature->GetDistance2d(centerX, centerY) > 30.0f)
+            m_creature->CallForHelp(50.0f);
+            if (m_creature->GetDistance2d(centerX, centerY) > 40.0f)
             {
                 EnterEvadeMode();
                 DoScriptText(YELL_EVADE, m_creature);

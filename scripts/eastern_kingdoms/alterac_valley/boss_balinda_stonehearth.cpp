@@ -32,6 +32,9 @@ enum Yells
     YELL_EVADE                  = -1030024,
 };
 
+static const float centerX = -57;
+static const float centerY = -286;
+
 struct MANGOS_DLL_DECL boss_balinda_stonehearthAI : public ScriptedAI
 {
     boss_balinda_stonehearthAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
@@ -105,9 +108,7 @@ struct MANGOS_DLL_DECL boss_balinda_stonehearthAI : public ScriptedAI
         // Check if creature is not outside of building
         if (m_uiEvadeTimer <= uiDiff)
         {
-            float fX, fY, fZ, fO;
-            m_creature->GetSummonPoint(fX, fY, fZ, fO);
-            if (m_creature->GetDistance2d(fX, fY) > 50.0f)
+            if (m_creature->GetDistance2d(centerX, centerY) > 30.0f)
             {
                 EnterEvadeMode();
                 DoScriptText(YELL_EVADE, m_creature);

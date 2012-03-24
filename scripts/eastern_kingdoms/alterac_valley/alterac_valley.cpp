@@ -152,8 +152,8 @@ enum Buffs
 };
 
 
-const float centerX[2] = {722, -1372};
-const float centerY[2] = {-11, -216};
+static const float centerX[2] = {722, -1372};
+static const float centerY[2] = {-11, -216};
 
 enum Spells
 {
@@ -202,7 +202,7 @@ struct MANGOS_DLL_DECL mob_av_marshal_or_warmasterAI : public ScriptedAI
 
     void Aggro(Unit*)
     {
-        m_creature->CallForHelp(30.0f);
+        m_creature->CallForHelp(50.0f);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -301,7 +301,8 @@ struct MANGOS_DLL_DECL mob_av_marshal_or_warmasterAI : public ScriptedAI
             else
                 team = 1;
 
-            if (m_creature->GetDistance2d(centerX[team], centerY[team]) > 30.0f)
+            m_creature->CallForHelp(50.0f);
+            if (m_creature->GetDistance2d(centerX[team], centerY[team]) > 40.0f)
                 EnterEvadeMode();
             m_uiEvadeTimer = 5*IN_MILLISECONDS;
         }
@@ -1172,6 +1173,161 @@ static CreatureAI* GetAI_mob_AV_Boss(Creature* creature)
     return new mob_AV_Boss(creature);
 }
 
+/*
+DATABASE:
+update creature_template set ScriptName = 'mob_av_bowman' where entry = 13358 or entry = 13359;
+*/
+enum myBowman
+{
+	SPELL_SHOOT = 22121,
+	SHOOT_RANGE	= 100
+};
+
+struct MANGOS_DLL_DECL mob_av_bowman : public ScriptedAI
+{
+    mob_av_bowman(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+
+	uint32 shootTimer;
+	Player* pTarget;
+
+	void Reset()
+	{
+		shootTimer = 0;
+		pTarget = 0;
+
+		SetCombatMovement(false);
+	}
+
+	void getShootTarget()
+	{
+		pTarget = GetPlayerAtMinimumRange(SHOOT_RANGE);
+	}
+	
+	void UpdateAI(const uint32 uiDiff)
+	{
+		if (!pTarget)
+		{
+			getShootTarget();
+			return;
+		}
+		else
+		{
+			if (pTarget->isAlive() && pTarget->IsWithinDist(m_creature, SHOOT_RANGE))
+			{
+				if (m_creature->IsWithinLOSInMap(pTarget))
+				{
+					if (shootTimer <= uiDiff)
+					{
+						m_creature->CastSpell(pTarget, SPELL_SHOOT, true);
+						shootTimer = 3000;
+					}
+					else 
+						shootTimer -= uiDiff;
+				}
+				else
+					getShootTarget();
+			}
+			else
+				getShootTarget();
+		}
+	}
+
+};
+
+CreatureAI* GetAI_mob_av_bowman(Creature* pCreature)
+{
+    return new mob_av_bowman(pCreature);
+}
+
+/*
+DATABASE:
+update creature_template set ScriptName = 'mob_av_mounted' where entry = 13152 or entry = 13137 or entry = 13143 or entry = 13144 or entry = 13147
+or entry = 13300 or entry = 13296 or entry = 13138 or entry = 13298 or entry = 13297 or entry = 13318 or entry = 13299;
+*/
+
+struct MANGOS_DLL_DECL mob_av_mounted : public ScriptedAI
+{
+    mob_av_mounted(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+
+	void Reset()
+	{
+		Mount(m_creature->GetEntry());
+	}
+
+	void Aggro(Unit* /*pWho*/)
+	{
+		m_creature->Unmount();
+        m_creature->RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
+	}
+
+	void Mount(uint32 entry)
+	{
+		uint32 MountDisplayId = 0;
+		uint32 MountSpell = 0;
+		switch(entry)
+		{
+			//Wolf
+			case 13152:
+			case 13137:
+				MountDisplayId = 14334;
+				MountSpell = 22724;
+				break;
+			//Kodo
+			case 13143:
+				MountDisplayId = 14348;
+				MountSpell = 22718;
+				break;
+			//Raptor
+			case 13144:
+				MountDisplayId = 14388;
+				MountSpell = 22721;
+				break;
+			//Skeletal Horse
+			case 13147:
+				MountDisplayId = 10671;
+				MountSpell = 17643;
+				break;
+			//Horse
+			case 13300:
+			case 13296:
+			case 13138:
+				MountDisplayId = 14337;
+				MountSpell = 22717;
+				break;
+			//Strider
+			case 13298:
+				MountDisplayId = 6569;
+				MountSpell = 10969;
+				break;
+			//Ram
+			case 13297:
+			case 13318:
+				MountDisplayId = 14577;
+				MountSpell = 22720;
+				break;
+			//Tiger
+			case 13299:
+				MountDisplayId = 9991;
+				MountSpell = 22723;
+				break;
+		}
+		m_creature->Mount(MountDisplayId, MountSpell);
+	}
+
+	void UpdateAI(const uint32 uiDiff)
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+		DoMeleeAttackIfReady();
+	}
+};
+
+CreatureAI* GetAI_mob_av_mounted(Creature* pCreature)
+{
+    return new mob_av_mounted(pCreature);
+}
+
 void AddSC_alterac_valley()
 {
     Script* pNewScript;
@@ -1211,4 +1367,14 @@ void AddSC_alterac_valley()
 	pNewScript->Name = "mob_AV_Boss";
 	pNewScript->GetAI = &GetAI_mob_AV_Boss;
 	pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "mob_av_bowman";
+    pNewScript->GetAI = &GetAI_mob_av_bowman;
+    pNewScript->RegisterSelf();
+
+	pNewScript = new Script;
+    pNewScript->Name = "mob_av_mounted";
+    pNewScript->GetAI = &GetAI_mob_av_mounted;
+    pNewScript->RegisterSelf();
 }

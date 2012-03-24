@@ -33,6 +33,9 @@ enum Yells
     YELL_EVADE                = -1030021,
 };
 
+static const float centerX = -549;
+static const float centerY = -163;
+
 struct MANGOS_DLL_DECL boss_galvangarAI : public ScriptedAI
 {
     boss_galvangarAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
@@ -129,9 +132,7 @@ struct MANGOS_DLL_DECL boss_galvangarAI : public ScriptedAI
         // Check if creature is not outside of building
         if (m_uiEvadeTimer <= uiDiff)
         {
-            float fX, fY, fZ, fO;
-            m_creature->GetSummonPoint(fX, fY, fZ, fO);
-            if (m_creature->GetDistance2d(fX, fY) > 50.0f)
+            if (m_creature->GetDistance2d(centerX, centerY) > 30.0f)
             {
                 EnterEvadeMode();
                 DoScriptText(YELL_EVADE, m_creature);

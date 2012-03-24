@@ -55,8 +55,8 @@ enum Spells
     SPELL_STORMPIKE         = 51876, // not sure
 };
 
-const float centerX = -1372;
-const float centerY = -216;
+static const float centerX = -1372;
+static const float centerY = -216;
 
 enum Yells
 {
@@ -95,7 +95,7 @@ struct MANGOS_DLL_DECL boss_drektharAI : public ScriptedAI
     void Aggro(Unit* /*pWho*/)
     {
         DoScriptText(YELL_AGGRO, m_creature);
-        m_creature->CallForHelp(30.0f);
+        m_creature->CallForHelp(50.0f);
         for (uint8 i = 0; i < 2; i++)
             wolf[i] = GetClosestCreatureWithEntry(m_creature, (12121 + i), 50.0f);
     }
@@ -107,6 +107,8 @@ struct MANGOS_DLL_DECL boss_drektharAI : public ScriptedAI
         {
             if (wolf[i] && wolf[i]->isDead())
                 wolf[i]->Respawn();
+            else if (wolf[i] && wolf[i]->isAlive())
+                wolf[i]->AI()->EnterEvadeMode();
         }
     }
 
@@ -180,10 +182,19 @@ struct MANGOS_DLL_DECL boss_drektharAI : public ScriptedAI
         // Check if creature is not outside of building     
         if (m_uiEvadeTimer <= uiDiff)
         {
-            if (m_creature->GetDistance2d(centerX, centerY) > 30.0f)
+            m_creature->CallForHelp(50.0f);
+            if (m_creature->GetDistance2d(centerX, centerY) > 40.0f)
             {
                 EnterEvadeMode();
                 DoScriptText(YELL_EVADE, m_creature);
+            }
+            for (uint8 i = 0; i < 2; i++)
+            {
+                if (wolf[i] && wolf[i]->isAlive() && wolf[i]->GetDistance2d(centerX, centerY) > 40.0f)
+                {
+                    wolf[i]->AI()->EnterEvadeMode();
+                    wolf[i]->CallForHelp(50.0f);
+                }
             }
             m_uiEvadeTimer = 5*IN_MILLISECONDS;
         }
