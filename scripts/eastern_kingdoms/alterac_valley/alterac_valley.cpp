@@ -44,7 +44,7 @@ enum Instance_BG_AV
 
     ARRIVED_BASE                        = 5,
 
-    BOSS_START_TIME                     = 6000    //10 minutes
+    BOSS_START_TIME                     = 600000    //10 minutes
 };
 
 class MANGOS_DLL_DECL instance_BG_AV : public ScriptedInstance
@@ -981,12 +981,12 @@ bool ProcessEventId_event_spell_BG_AV_BOSS(uint32 uiEventId, Object* pSource, Ob
         instance_BG_AV* m_pInstance = (instance_BG_AV*)((Player*)pSource)->GetInstanceData();
         if (m_pInstance)
         {
-            if (uiEventId == EVENT_LOKHOLAR /*&& m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_H == IN_PROGRESS)*/)
+            if (uiEventId == EVENT_LOKHOLAR && m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_H == IN_PROGRESS))
             {
                 ((Player*)pSource)->CastSpell(-325.0f, -168.0f, 9.0f, CALL_LOKHOLAR, true);
                 m_pInstance->SetData(EVENT_MASTERS_START_SUMMONING_H, DONE);
             } 
-            else if (uiEventId == EVENT_IVUS /*&& m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_A == IN_PROGRESS)*/)
+            else if (uiEventId == EVENT_IVUS && m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_A == IN_PROGRESS))
             {
                 if (Creature* myIvus = ((Player*)pSource)->SummonCreature(NPC_IVUS, -259.0f, -342.0f, 6.6f, 2.9, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 60000))
                     myIvus->CastSpell(myIvus, VISUAL_IVUS, true);
@@ -1036,15 +1036,9 @@ struct MANGOS_DLL_DECL mob_AV_Boss : public npc_escortAI
         bossSpell5Timer = urand(5000, 15000);
 
         if (m_creature->GetEntry() == NPC_LOKHOLAR)
-        {
             id = 0;
-            m_creature->setFaction(FACTION_FROSTWOLF);
-        }
         else
-        {
             id = 1;
-            m_creature->setFaction(FACTION_STORMPIKE);
-        }
     };
 
     void defendPosition()
@@ -1066,6 +1060,7 @@ struct MANGOS_DLL_DECL mob_AV_Boss : public npc_escortAI
             id == 0 ? Type = EVENT_MASTERS_START_SUMMONING_H : Type = EVENT_MASTERS_START_SUMMONING_A;
             m_pInstance->SetData(Type, ARRIVED_BASE);
 
+            //not finished now
             defendPosition();
         }
     }
