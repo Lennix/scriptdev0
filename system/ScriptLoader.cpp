@@ -24,6 +24,7 @@ extern void AddSC_Priest_Epic_Quest();
 extern void AddSC_Hunter_Epic_Quest();
 
 //eastern kingdoms
+extern void AddSC_instance_alterac_valley();
 extern void AddSC_alterac_valley();                         // alterac valley
 extern void AddSC_boss_balinda_stonehearth();
 extern void AddSC_boss_drekthar();
@@ -299,6 +300,7 @@ void AddScripts()
     AddSC_Hunter_Epic_Quest();
 
     //eastern kingdoms
+    AddSC_instance_alterac_valley();
     AddSC_alterac_valley();                                 //alterac valley
     AddSC_boss_balinda_stonehearth();
     AddSC_boss_drekthar();

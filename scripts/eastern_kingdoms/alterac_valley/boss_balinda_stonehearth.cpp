@@ -37,7 +37,12 @@ static const float centerY = -286;
 
 struct MANGOS_DLL_DECL boss_balinda_stonehearthAI : public ScriptedAI
 {
-    boss_balinda_stonehearthAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    boss_balinda_stonehearthAI(Creature* pCreature) : ScriptedAI(pCreature) 
+    {
+        m_creature->SetMaxPower(POWER_MANA, 122189);
+        m_creature->SetPower(POWER_MANA, m_creature->GetMaxPower(POWER_MANA));
+        Reset();
+    }
 
     uint32 m_uiArcaneExplosionTimer;
     uint32 m_uiConeOfColdTimer;

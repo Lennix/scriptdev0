@@ -20,7 +20,8 @@ delete from creature where (guid = 52044 or guid = 52035) and id = 12127;
 delete from creature where (guid = 53606 or guid = 53607) and id = 13331;
 delete from creature where (guid = 53622 or guid = 53621) and id = 13422;
 delete from creature where guid = 150121  and id = 13816;
-update creature_template set ScriptName = 'mob_av_marshal_or_warmaster' where entry = 14762 or entry = 14763 or entry = 14764 or entry = 14765 or entry = 14766 or entry = 14767 or entry = 14768 or entry = 14769;
+update creature_template set ScriptName = 'mob_av_marshal_or_warmaster', flags_extra = 4096 where entry = 14762 or entry = 14763 or entry = 14764 or entry = 14765 or entry = 14766 or entry = 14767 or entry = 14768 or entry = 14769;
+update creature_template set flags_extra = 4096 where entry = 11948;
 delete from creature where id = 11948 or id = 14762 or id = 14763 or id = 14764 or id = 14765 or id = 14766 or id = 14767 or id = 14768 or id = 14769;
 INSERT INTO `creature` VALUES ('150142', '11948', '30', '0', '0', '722.43', '-10.9982', '50.7046', '3.42085', '120', '0', '0', '160587', '0', '0', '0');
 INSERT INTO `creature` VALUES ('54289', '14762', '30', '0', '0', 723.058, 	-14.1548, 	50.7046, 	3.40339, '490', '0', '0', '61800', '0', '0', '0');
@@ -44,8 +45,9 @@ INSERT INTO `battleground_events` VALUES ('30', '74', '0', 'warmaster spawn');
 */
 
 #include "precompiled.h"
+#include "alterac_valley.h"
 
-enum Spells
+enum Vanndar_Spells
 {
     SPELL_AVATAR        = 19135,
     SPELL_STORMBOLT     = 20685,
@@ -72,7 +74,13 @@ enum Yells
 
 struct MANGOS_DLL_DECL boss_vanndar_stormpikeAI : public ScriptedAI
 {
-    boss_vanndar_stormpikeAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    boss_vanndar_stormpikeAI(Creature* pCreature) : ScriptedAI(pCreature) 
+    {
+        m_pInstance = (instance_BG_AV*)pCreature->GetInstanceData();
+        Reset();
+    }
+
+    instance_BG_AV* m_pInstance;
 
     uint32 m_uiAvatarTimer;
     uint32 m_uiStormboltTimer;
@@ -91,6 +99,7 @@ struct MANGOS_DLL_DECL boss_vanndar_stormpikeAI : public ScriptedAI
 
     void Aggro(Unit* /*pWho*/)
     {
+        m_pInstance->SetData(EVENT_ENDBOSS_STATUS_A, IN_PROGRESS);
         DoScriptText(YELL_AGGRO, m_creature);
         m_creature->CallForHelp(50.0f);
     }
@@ -175,13 +184,13 @@ struct MANGOS_DLL_DECL boss_vanndar_stormpikeAI : public ScriptedAI
         // Check if creature is not outside of building
         if (m_uiEvadeTimer <= uiDiff)
         {
-            m_creature->CallForHelp(50.0f);
-            if (m_creature->GetDistance2d(centerX, centerY) > 40.0f)
+            if (m_creature->GetDistance2d(centerX, centerY) > 35.0f)
             {
+                m_pInstance->SetData(EVENT_ENDBOSS_STATUS_A, FAIL);
                 EnterEvadeMode();
                 DoScriptText(YELL_EVADE, m_creature);
             }
-            m_uiEvadeTimer = 5*IN_MILLISECONDS;
+            m_uiEvadeTimer = 2*IN_MILLISECONDS;
         }
         else
             m_uiEvadeTimer -= uiDiff;

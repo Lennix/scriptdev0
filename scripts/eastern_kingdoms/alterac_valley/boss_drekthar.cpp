@@ -16,7 +16,8 @@
 
 /*
 -- AV HORDE_ENDBOSS_BASECAMP --
-update creature_template set ScriptName = 'mob_av_marshal_or_warmaster' where entry = 14770 or entry = 14771 or entry = 14772 or entry = 14773 or entry = 14774 or entry = 14775 or entry = 14776 or entry = 14777;
+update creature_template set ScriptName = 'mob_av_marshal_or_warmaster', flags_extra = 4096 where entry = 14770 or entry = 14771 or entry = 14772 or entry = 14773 or entry = 14774 or entry = 14775 or entry = 14776 or entry = 14777;
+update creature_template set flags_extra = 4096 where entry = 11946 or entry = 12121 or entry = 12122;
 delete from creature where id = 11946 or id = 12121 or id = 12122 or id = 14770 or id = 14771 or id = 14772 or id = 14773 or id = 14774 or id = 14775 or id = 14776 or id = 14777;
 INSERT INTO `creature` VALUES ('150143', '11946', '30', '0', '0', '-1370.9', '-219.793', '98.4258', '5.04381', '120', '0', '0', '158400', '0', '0', '0');
 INSERT INTO `creature` VALUES ('51987', '12121', '30', '0', '0', '-1369.71', '-214.568', '99.3712', '5.65565', '1785', '0', '0', '9132', '0', '0', '0');
@@ -42,15 +43,16 @@ INSERT INTO `battleground_events` VALUES ('30', '70', '0', 'warmaster spawn');
 */
 
 #include "precompiled.h"
+#include "alterac_valley.h"
 
-enum Spells
+enum Dreakthar_Spells
 {
     SPELL_FRENZY            = 8269,
     SPELL_KNOCKDOWN         = 19128,
-    SPELL_WHIRLWIND         = 15589,
-    SPELL_WHIRLWIND2        = 13736,
+    SPELL_WHIRLWIND       = 15589,
+    SPELL_WHIRLWIND2      = 13736,
     SPELL_SWEEPING_STRIKES  = 18765, // not sure
-    SPELL_CLEAVE            = 20677, // not sure
+    SPELL_CLEAVE          = 20677, // not sure
     SPELL_WINDFURY          = 35886, // not sure
     SPELL_STORMPIKE         = 51876, // not sure
 };
@@ -72,7 +74,13 @@ enum Yells
 
 struct MANGOS_DLL_DECL boss_drektharAI : public ScriptedAI
 {
-    boss_drektharAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    boss_drektharAI(Creature* pCreature) : ScriptedAI(pCreature) 
+    {
+        m_pInstance = (instance_BG_AV*)pCreature->GetInstanceData();
+        Reset();
+    }  
+
+    instance_BG_AV* m_pInstance;
 
     uint32 m_uiFrenzyTimer;
     uint32 m_uiKnockdownTimer;
@@ -94,6 +102,7 @@ struct MANGOS_DLL_DECL boss_drektharAI : public ScriptedAI
 
     void Aggro(Unit* /*pWho*/)
     {
+        m_pInstance->SetData(EVENT_ENDBOSS_STATUS_H, IN_PROGRESS);
         DoScriptText(YELL_AGGRO, m_creature);
         m_creature->CallForHelp(50.0f);
         for (uint8 i = 0; i < 2; i++)
@@ -182,21 +191,18 @@ struct MANGOS_DLL_DECL boss_drektharAI : public ScriptedAI
         // Check if creature is not outside of building     
         if (m_uiEvadeTimer <= uiDiff)
         {
-            m_creature->CallForHelp(50.0f);
             if (m_creature->GetDistance2d(centerX, centerY) > 40.0f)
             {
+                m_pInstance->SetData(EVENT_ENDBOSS_STATUS_H, FAIL);
                 EnterEvadeMode();
                 DoScriptText(YELL_EVADE, m_creature);
             }
             for (uint8 i = 0; i < 2; i++)
             {
-                if (wolf[i] && wolf[i]->isAlive() && wolf[i]->GetDistance2d(centerX, centerY) > 40.0f)
-                {
+                if (wolf[i] && wolf[i]->isAlive() && wolf[i]->GetDistance2d(centerX, centerY) > 35.0f)
                     wolf[i]->AI()->EnterEvadeMode();
-                    wolf[i]->CallForHelp(50.0f);
-                }
             }
-            m_uiEvadeTimer = 5*IN_MILLISECONDS;
+            m_uiEvadeTimer = 2*IN_MILLISECONDS;
         }
         else
             m_uiEvadeTimer -= uiDiff;

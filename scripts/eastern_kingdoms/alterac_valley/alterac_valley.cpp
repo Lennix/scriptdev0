@@ -15,116 +15,21 @@
  */
 
 /*
-DATABASE
+DATABASE^^
 -- AV_Immunity_Settings --
 update creature_template set mechanic_immune_mask = 617299803 where 
 entry = 11946 or entry = 12121 or entry = 12122 or entry = 14770 or entry = 14771 or entry = 14772 or entry = 14773 or entry = 14774 or entry = 14775 or entry = 14776 or entry = 14777 
 or entry = 11948 or entry = 14762 or entry = 14763 or entry = 14764 or entry = 14765 or entry = 14766 or entry = 14767 or entry = 14768 or entry = 14769
 or entry = 11949 or entry = 11947
 or entry = 13419 or entry = 13256;
-*/
 
+-- AV_Disable_Pathfinding --
+update creature_template set flags_extra = 4096 where entry = 13140 or entry = 13154 or entry = 13597 or entry = 13144 or entry = 13147 or entry = 13296  or entry = 13298;
+*/
 #include "precompiled.h"
-#include "BattleGround.h"
+#include "alterac_valley.h"
 #include "escort_ai.h"
-
-/*
-DATABASE:
-delete from instance_template where map = 30;
-INSERT INTO `instance_template` VALUES ('30', '0', '60', '60', '80', '0', '0', '0', '0', 'instance_BG_AV');
-*/
-
-//AV is a Battleground, but for global quest handling we need Events based on scriptdev0 too!
-enum Instance_BG_AV
-{
-    EVENT_MASTERS_START_SUMMONING_H     = 0,
-    EVENT_MASTERS_START_SUMMONING_A     = 1,
-
-    MAX_EVENTS                          = 2,
-
-    ARRIVED_BASE                        = 5,
-
-    BOSS_START_TIME                     = 600000    //10 minutes
-};
-
-class MANGOS_DLL_DECL instance_BG_AV : public ScriptedInstance
-{
-    public:
-        instance_BG_AV(Map* pMap);
-        ~instance_BG_AV() {}
-
-        void Initialize();
-        void SetData(uint32 uiType, uint32 uiData);
-        void Update(uint32 uiDiff);
-
-        uint32 GetData(uint32 uiType);
-
-    protected:
-        uint32 moveBossTimer[2];
-        uint32 m_uiEvent[MAX_EVENTS];
-};
-
-instance_BG_AV::instance_BG_AV(Map* pMap) : ScriptedInstance(pMap)
-{
-    memset(&m_uiEvent, 0, sizeof(m_uiEvent));
-}
-
-void instance_BG_AV::Initialize()
-{
-    for(uint8 i = 0; i < MAX_EVENTS; ++i)
-        m_uiEvent[i] = NOT_STARTED;
-
-    moveBossTimer[0] = 0;
-    moveBossTimer[1] = 0;
-}
-
-void instance_BG_AV::SetData(uint32 uiType, uint32 uiData)
-{
-    if (uiType < MAX_EVENTS && uiType >= 0)
-    {
-        switch(uiType)
-        {
-            case EVENT_MASTERS_START_SUMMONING_H:   
-                if(uiData == DONE)
-                    moveBossTimer[0] = BOSS_START_TIME;
-                break;
-            case EVENT_MASTERS_START_SUMMONING_A:
-                if(uiData == DONE)
-                    moveBossTimer[1] = BOSS_START_TIME;
-                break;
-        }
-
-        m_uiEvent[uiType] = uiData;
-    }
-}
-
-uint32 instance_BG_AV::GetData(uint32 uiType)
-{
-    if (uiType < MAX_EVENTS && uiType >= 0)
-        return m_uiEvent[uiType];
-}
-
-void instance_BG_AV::Update(uint32 uiDiff)
-{
-    for (uint8 i = 0; i < 2; i++)
-    {
-        if (moveBossTimer[i])
-        {
-            if (moveBossTimer[i] <= uiDiff)
-            {
-                i == 0 ? SetData(EVENT_MASTERS_START_SUMMONING_H, SPECIAL) : SetData(EVENT_MASTERS_START_SUMMONING_A, SPECIAL);
-                moveBossTimer[i] = 0;
-            }
-            else
-                moveBossTimer[i] -= uiDiff;
-        }
-    }
-}
-
-InstanceData* GetInstanceData_instance_BG_AV(Map* pMap)
-{
-    return new instance_BG_AV(pMap);
-}
+#include "Battleground.h"
 
 enum Creatures
 {
@@ -151,9 +56,7 @@ enum Buffs
     BG_AV_WARCRY_BUFF_3     = 28420
 };
 
-
-static const float centerX[2] = {722, -1372};
-static const float centerY[2] = {-11, -216};
+static const uint32 Data[2] = {EVENT_ENDBOSS_STATUS_A, EVENT_ENDBOSS_STATUS_H};
 
 enum Spells
 {
@@ -161,8 +64,8 @@ enum Spells
     SPELL_CLEAVE                                  = 40504,
     SPELL_DEMORALIZING_SHOUT                      = 23511,
     SPELL_ENRAGE                                  = 8599,
-    SPELL_WHIRLWIND1                              = 15589,
-    SPELL_WHIRLWIND2                              = 13736,
+    SPELL_WHIRLWIND1                            = 15589,
+    SPELL_WHIRLWIND2                            = 13736,
     
     // Are there some preTBC equivalents ?
     SPELL_NORTH_MARSHAL                           = 45828,
@@ -177,7 +80,13 @@ enum Spells
 
 struct MANGOS_DLL_DECL mob_av_marshal_or_warmasterAI : public ScriptedAI
 {
-    mob_av_marshal_or_warmasterAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    mob_av_marshal_or_warmasterAI(Creature* pCreature) : ScriptedAI(pCreature) 
+    {
+        m_pInstance = (instance_BG_AV*)pCreature->GetInstanceData();
+        Reset();
+    }
+    
+    instance_BG_AV* m_pInstance;
 
     bool m_bHasAura;
 
@@ -296,15 +205,15 @@ struct MANGOS_DLL_DECL mob_av_marshal_or_warmasterAI : public ScriptedAI
         if (m_uiEvadeTimer <= uiDiff)
         {
             uint8 team;
-            if (m_creature->getFaction() == FACTION_STORMPIKE)
+            if (m_creature->getFaction() != 1214)
                 team = 0;
             else
                 team = 1;
 
-            m_creature->CallForHelp(50.0f);
-            if (m_creature->GetDistance2d(centerX[team], centerY[team]) > 40.0f)
+            if (m_pInstance->GetData(Data[team]) == FAIL)
                 EnterEvadeMode();
-            m_uiEvadeTimer = 5*IN_MILLISECONDS;
+
+            m_uiEvadeTimer = 2*IN_MILLISECONDS;
         }
         else
             m_uiEvadeTimer -= uiDiff;
@@ -1352,11 +1261,6 @@ void AddSC_alterac_valley()
 	pNewScript->Name = "mob_AV_BossSummonerAdd";
 	pNewScript->GetAI = &GetAI_BG_AV_BossSummonerAdd;
 	pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "instance_BG_AV";
-    pNewScript->GetInstanceData = &GetInstanceData_instance_BG_AV;
-    pNewScript->RegisterSelf();
 
     pNewScript = new Script;
     pNewScript->Name = "event_spell_BG_AV_BOSS";
