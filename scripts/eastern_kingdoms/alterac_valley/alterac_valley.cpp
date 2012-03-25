@@ -29,7 +29,7 @@ update creature_template set flags_extra = 4096 where entry = 13140 or entry = 1
 #include "precompiled.h"
 #include "alterac_valley.h"
 #include "escort_ai.h"
-#include "Battleground.h"
+#include "BattleGround.h"
 
 enum Creatures
 {
