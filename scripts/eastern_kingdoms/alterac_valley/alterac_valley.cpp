@@ -1237,6 +1237,27 @@ CreatureAI* GetAI_mob_av_mounted(Creature* pCreature)
     return new mob_av_mounted(pCreature);
 }
 
+/*
+DATABASE:
+update creature_template set ScriptName = 'mob_av_windrider' where entry = 13181 or entry = 13180 or entry = 13179 or entry = 13438  or entry = 13439 or entry = 13437;
+*/
+//later we have script more content here but no time today(only visual handling atm)
+struct MANGOS_DLL_DECL mob_av_windrider : public ScriptedAI
+{
+    mob_av_windrider(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+
+	void Reset()
+	{
+        m_creature->setFaction(35);
+        m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
+	}
+};
+
+CreatureAI* GetAI_mob_av_windrider(Creature* pCreature)
+{
+    return new mob_av_windrider(pCreature);
+}
+
 void AddSC_alterac_valley()
 {
     Script* pNewScript;
@@ -1280,5 +1301,10 @@ void AddSC_alterac_valley()
 	pNewScript = new Script;
     pNewScript->Name = "mob_av_mounted";
     pNewScript->GetAI = &GetAI_mob_av_mounted;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "mob_av_windrider";
+    pNewScript->GetAI = &GetAI_mob_av_windrider;
     pNewScript->RegisterSelf();
 }
