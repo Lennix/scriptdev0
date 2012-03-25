@@ -1110,6 +1110,8 @@ struct MANGOS_DLL_DECL mob_av_bowman : public ScriptedAI
 	void getShootTarget()
 	{
 		pTarget = GetPlayerAtMinimumRange(SHOOT_RANGE);
+        if (pTarget && m_creature->IsFriendlyTo(pTarget))
+            pTarget = 0;
 	}
 	
 	void UpdateAI(const uint32 uiDiff)
