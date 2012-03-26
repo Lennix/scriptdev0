@@ -102,7 +102,8 @@ struct MANGOS_DLL_DECL boss_drektharAI : public ScriptedAI
 
     void Aggro(Unit* /*pWho*/)
     {
-        m_pInstance->SetData(EVENT_ENDBOSS_STATUS_H, IN_PROGRESS);
+        if (m_pInstance)
+            m_pInstance->SetData(EVENT_ENDBOSS_STATUS_H, IN_PROGRESS);
         DoScriptText(YELL_AGGRO, m_creature);
         m_creature->CallForHelp(50.0f);
         for (uint8 i = 0; i < 2; i++)
@@ -193,7 +194,8 @@ struct MANGOS_DLL_DECL boss_drektharAI : public ScriptedAI
         {
             if (m_creature->GetDistance2d(centerX, centerY) > 40.0f)
             {
-                m_pInstance->SetData(EVENT_ENDBOSS_STATUS_H, FAIL);
+                if (m_pInstance)
+                    m_pInstance->SetData(EVENT_ENDBOSS_STATUS_H, FAIL);
                 EnterEvadeMode();
                 DoScriptText(YELL_EVADE, m_creature);
             }

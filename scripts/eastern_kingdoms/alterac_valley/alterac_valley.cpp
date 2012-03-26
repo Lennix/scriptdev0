@@ -57,6 +57,7 @@ enum Buffs
 };
 
 static const uint32 Data[2] = {EVENT_ENDBOSS_STATUS_A, EVENT_ENDBOSS_STATUS_H};
+static const uint32 typeData[2] = {EVENT_MASTERS_START_SUMMONING_H, EVENT_MASTERS_START_SUMMONING_A};
 
 enum Spells
 {
@@ -210,7 +211,7 @@ struct MANGOS_DLL_DECL mob_av_marshal_or_warmasterAI : public ScriptedAI
             else
                 team = 1;
 
-            if (m_pInstance->GetData(Data[team]) == FAIL)
+            if (m_pInstance && m_pInstance->GetData(Data[team]) == FAIL)
                 EnterEvadeMode();
 
             m_uiEvadeTimer = 2*IN_MILLISECONDS;
@@ -497,6 +498,14 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
             id = 0;
         else
             id = 1;
+
+        magnetAdds();    
+    }
+
+    void magnetAdds()
+    {
+        GetCreatureListWithEntryInGrid(masterAdds, m_creature, masterAddId[id], 100.0f);
+        mountAdds(false);
     }
 
     void Aggro(Unit*) 
@@ -582,9 +591,8 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
                 summonObject->SetRespawnTime(0);
             }
             //set global data
-            uint32 Data;
-            id == 0 ? Data = EVENT_MASTERS_START_SUMMONING_H : Data = EVENT_MASTERS_START_SUMMONING_A;
-            m_pInstance->SetData(Data, IN_PROGRESS);
+            if (m_pInstance)
+                m_pInstance->SetData(typeData[id], IN_PROGRESS);
         }
 	}
 
@@ -683,8 +691,7 @@ struct MANGOS_DLL_DECL mob_AV_BossSummonerMaster : public npc_escortAI
         if (HasEscortState(STATE_ESCORT_ESCORTING) || !m_creature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_OUTDOORPVP) || m_creature->isInCombat())
             return;
 
-        GetCreatureListWithEntryInGrid(masterAdds, m_creature, masterAddId[id], 100.0f);
-        mountAdds(false);
+        magnetAdds();
 	    Start(false);
     }
 };
@@ -739,9 +746,7 @@ struct MANGOS_DLL_DECL BG_AV_BossSummonerAdd : public ScriptedAI
         m_creature->SetLootRecipient(NULL);
 
         //follow your master while we are defending the summon object
-        uint32 Data = 0;
-        id == 0 ? Data = m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_H) : Data = m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_A);
-        if (Data >= IN_PROGRESS)
+        if (m_pInstance && m_pInstance->GetData(typeData[id]) >= IN_PROGRESS)
         {
             Creature* myMaster = GetClosestCreatureWithEntry(m_creature, masterId[id], 300.0f);
             if (myMaster && myMaster->isAlive())
@@ -919,7 +924,7 @@ struct MANGOS_DLL_DECL mob_AV_Boss : public npc_escortAI
 {
     mob_AV_Boss(Creature* creature) : npc_escortAI(creature) 
     { 
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP);
+        m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_OUTDOORPVP);
         m_creature->SetMaxPower(POWER_MANA, 112932);
         m_creature->SetPower(POWER_MANA, m_creature->GetMaxPower(POWER_MANA));
 
@@ -948,15 +953,18 @@ struct MANGOS_DLL_DECL mob_AV_Boss : public npc_escortAI
         if (m_creature->GetEntry() == NPC_LOKHOLAR)
             id = 0;
         else
+        {
             id = 1;
+            m_creature->setFaction(11);
+        }
     };
 
     void defendPosition()
     {
         SetEscortPaused(true);
-        m_creature->GetMotionMaster()->MoveRandom();
         CreatureCreatePos pos(m_creature->GetMap(), m_creature->GetPositionX(), m_creature->GetPositionY(),m_creature->GetPositionZ(), m_creature->GetOrientation());
-        m_creature->SetSummonPoint(pos);       
+        m_creature->SetSummonPoint(pos);
+        m_creature->GetMotionMaster()->MoveRandom();
     }
 
     void WaypointReached(uint32 uiPointId)
@@ -966,11 +974,8 @@ struct MANGOS_DLL_DECL mob_AV_Boss : public npc_escortAI
 
         if (bossWaypointEnd[id] == uiPointId)
         {
-            uint32 Type;
-            id == 0 ? Type = EVENT_MASTERS_START_SUMMONING_H : Type = EVENT_MASTERS_START_SUMMONING_A;
-            m_pInstance->SetData(Type, ARRIVED_BASE);
-
-            //not finished now
+            if (m_pInstance)
+                m_pInstance->SetData(typeData[id], ARRIVED_BASE);
             defendPosition();
         }
     }
@@ -988,7 +993,10 @@ struct MANGOS_DLL_DECL mob_AV_Boss : public npc_escortAI
     }
 
     void UpdateAI(const uint32 uiDiff)
-    {   
+    {
+        if ((!m_creature->SelectHostileTarget() || !m_creature->getVictim()) && m_pInstance && m_pInstance->GetData(typeData[id]) == ARRIVED_BASE)
+            return;
+
         if (m_creature->isInCombat())
         {
             
@@ -1016,8 +1024,7 @@ struct MANGOS_DLL_DECL mob_AV_Boss : public npc_escortAI
             else
                 bossSpell2Timer -= uiDiff;
 
-            //FROSTNOVA OF THE ICELORD WILL CRASH THE SERVER (therefore id condition)!!!
-            if (bossSpell3Timer <= uiDiff && id)
+            if (bossSpell3Timer <= uiDiff)
             {
                 if (DoCastSpellIfCan(m_creature->getVictim(), bossSpell3[id]) == CAST_OK)
                     bossSpell3Timer = urand(5000, 10000);
@@ -1047,16 +1054,12 @@ struct MANGOS_DLL_DECL mob_AV_Boss : public npc_escortAI
             DoMeleeAttackIfReady();
         }
 
-        uint32 Data;
-        id == 0 ? Data = m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_H) : Data = m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_A);
-        if (Data == ARRIVED_BASE)
+        if (m_pInstance && m_pInstance->GetData(typeData[id]) == ARRIVED_BASE)
             return;
 
         if (HasEscortState(STATE_ESCORT_PAUSED))
         {
-            uint32 Data;
-            id == 0 ? Data = m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_H) : Data = m_pInstance->GetData(EVENT_MASTERS_START_SUMMONING_A);
-            if (Data == SPECIAL)
+            if (m_pInstance && m_pInstance->GetData(typeData[id]) == SPECIAL)
                 SetEscortPaused(false);
 
             return;

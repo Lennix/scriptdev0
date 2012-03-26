@@ -99,7 +99,8 @@ struct MANGOS_DLL_DECL boss_vanndar_stormpikeAI : public ScriptedAI
 
     void Aggro(Unit* /*pWho*/)
     {
-        m_pInstance->SetData(EVENT_ENDBOSS_STATUS_A, IN_PROGRESS);
+        if (m_pInstance)
+            m_pInstance->SetData(EVENT_ENDBOSS_STATUS_A, IN_PROGRESS);
         DoScriptText(YELL_AGGRO, m_creature);
         m_creature->CallForHelp(50.0f);
     }
@@ -186,7 +187,8 @@ struct MANGOS_DLL_DECL boss_vanndar_stormpikeAI : public ScriptedAI
         {
             if (m_creature->GetDistance2d(centerX, centerY) > 35.0f)
             {
-                m_pInstance->SetData(EVENT_ENDBOSS_STATUS_A, FAIL);
+                if (m_pInstance)
+                    m_pInstance->SetData(EVENT_ENDBOSS_STATUS_A, FAIL);
                 EnterEvadeMode();
                 DoScriptText(YELL_EVADE, m_creature);
             }

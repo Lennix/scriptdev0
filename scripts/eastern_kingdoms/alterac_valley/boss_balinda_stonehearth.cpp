@@ -77,8 +77,8 @@ struct MANGOS_DLL_DECL boss_balinda_stonehearthAI : public ScriptedAI
         // Arcane Explosion
         if (m_uiArcaneExplosionTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_ARCANE_EXPLOSION);
-            m_uiArcaneExplosionTimer =  urand(5*IN_MILLISECONDS,15*IN_MILLISECONDS);
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_ARCANE_EXPLOSION) == CAST_OK)
+                m_uiArcaneExplosionTimer =  urand(5*IN_MILLISECONDS,15*IN_MILLISECONDS);
         }
         else
             m_uiArcaneExplosionTimer -= uiDiff;
@@ -86,8 +86,8 @@ struct MANGOS_DLL_DECL boss_balinda_stonehearthAI : public ScriptedAI
         // Cone Of Cold
         if (m_uiConeOfColdTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_CONE_OF_COLD);
-            m_uiConeOfColdTimer = urand(10*IN_MILLISECONDS,20*IN_MILLISECONDS);
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CONE_OF_COLD) == CAST_OK)
+                m_uiConeOfColdTimer = urand(10*IN_MILLISECONDS,20*IN_MILLISECONDS);
         }
         else
             m_uiConeOfColdTimer -= uiDiff;
@@ -95,8 +95,8 @@ struct MANGOS_DLL_DECL boss_balinda_stonehearthAI : public ScriptedAI
         // Firebolt
         if (m_uiFireBoltTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIREBALL);
-            m_uiFireBoltTimer = urand(5*IN_MILLISECONDS,9*IN_MILLISECONDS);
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIREBALL) == CAST_OK)
+                m_uiFireBoltTimer = urand(5*IN_MILLISECONDS,9*IN_MILLISECONDS);
         }
         else
             m_uiFireBoltTimer -= uiDiff;
@@ -104,8 +104,8 @@ struct MANGOS_DLL_DECL boss_balinda_stonehearthAI : public ScriptedAI
         // Frostbolt
         if (m_uiFrostboltTimer <= uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_FROSTBOLT);
-            m_uiFrostboltTimer = urand(4*IN_MILLISECONDS,12*IN_MILLISECONDS);
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FROSTBOLT) == CAST_OK)
+                m_uiFrostboltTimer = urand(4*IN_MILLISECONDS,12*IN_MILLISECONDS);
         }
         else
             m_uiFrostboltTimer -= uiDiff;
