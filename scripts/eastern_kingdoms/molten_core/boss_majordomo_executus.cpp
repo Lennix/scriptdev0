@@ -52,7 +52,7 @@ enum eMajordomoExecutus
 
     // Flamewaker Healer
     SPELL_SHADOW_BOLT           = 21077,
-    SPELL_GREATER_HEAL          = 22883,                // need correct pretbc spell id
+    SPELL_GREATER_HEAL          = 24208,                //22883 (old) need correct pretbc spell id
 
     // Ragnaros's "underwater" spells
     SPELL_RAGNAROS_EMERGE       = 20568,
