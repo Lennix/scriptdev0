@@ -467,7 +467,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 else
                     m_uiCleaveTimer -= uiDiff;
 
-                if (m_uiKnockAwayTimer < uiDiff)
+                /*if (m_uiKnockAwayTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_KNOCK_AWAY) == CAST_OK)
                     {
@@ -477,7 +477,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 }
                 else
                     m_uiKnockAwayTimer -= uiDiff;
-
+		*/
                 if (m_uiWingBuffetTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_WINGBUFFET) == CAST_OK)
