@@ -80,19 +80,15 @@ struct MANGOS_DLL_DECL boss_lordkazzakAI : public ScriptedAI
     uint32 MarkOfKazzak_Timer;
     uint32 Enrage_Timer;
     uint32 Twisted_Reflection_Timer;
-    uint8 MarkedPlayerCounter;
-    Player* MarkedPlayer[MAX_MARK_TARGETS];
     bool enrage;
 
     void Reset()
     {
-        memset(&MarkedPlayer, 0, sizeof(MarkedPlayer));
-        MarkedPlayerCounter = 0;
         ShadowVolley_Timer = urand(7000,11000);
         Cleave_Timer = 7000;
         ThunderClap_Timer = urand(14000,17000);
         VoidBolt_Timer = 20000;
-        MarkOfKazzak_Timer = 25000;
+        MarkOfKazzak_Timer = 18000;
         Enrage_Timer = 180000;
         Twisted_Reflection_Timer = 15000;  
         enrage = false;
@@ -123,7 +119,8 @@ struct MANGOS_DLL_DECL boss_lordkazzakAI : public ScriptedAI
                 }
             }
         }
-         if (!vManaPlayers.empty())
+        
+        if (!vManaPlayers.empty())
         {
             std::vector<Player*>::iterator i = vManaPlayers.begin();
             advance(i, (rand() % vManaPlayers.size()));
