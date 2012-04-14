@@ -125,6 +125,9 @@ struct MANGOS_DLL_DECL boss_razorgoreAI : public ScriptedAI
 
     void SpellHit(Unit* pCaster, const SpellEntry* pSpell)
     {
+        if (Player* pPrevController = m_creature->GetMap()->GetPlayer(m_uiControllerGUID))
+            return;
+
         if (pSpell->Id != SPELL_USE_DRAGON_ORB || pCaster->GetTypeId() != TYPEID_PLAYER)
             return;
 
@@ -140,6 +143,9 @@ struct MANGOS_DLL_DECL boss_razorgoreAI : public ScriptedAI
 
     void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
     {
+        if (Player* pPrevController = m_creature->GetMap()->GetPlayer(m_uiControllerGUID))
+            return;
+
         if (m_bFinalPhase)
             return;
 
