@@ -1560,6 +1560,39 @@ CreatureAI* GetAI_npc_avalanchion(Creature* pCreature)
     return new npc_avalanchionAI(pCreature);
 }
 
+/*######
+## npc_berlumir
+######*/
+
+bool GossipHello_npc_berlumir(Player* pPlayer, Creature* pCreature)
+{
+    if (pPlayer->GetCharType() != 1)
+        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_TRAINER, "Level 60, biatch!", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
+    return true;
+}
+
+bool GossipSelect_npc_berlumir(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+{
+    switch(uiAction)
+    {
+        case GOSSIP_ACTION_INFO_DEF + 1:
+            pPlayer->UpgradeCharacter(1);
+            break;
+    }
+
+    pPlayer->CLOSE_GOSSIP_MENU();
+    return true;
+}
+
+struct MANGOS_DLL_DECL npc_berlumirAI : public ScriptedAI
+{
+    npc_berlumirAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+
+    void Reset() {}
+};
+
 /* AddSC() */
 
 void AddSC_npcs_special()
@@ -1664,5 +1697,11 @@ void AddSC_npcs_special()
     pNewScript = new Script;
     pNewScript->Name = "npc_avalanchion";
     pNewScript->GetAI = &GetAI_npc_avalanchion;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_berlumir";
+    pNewScript->pGossipHello = &GossipHello_npc_berlumir;
+    pNewScript->pGossipSelect = &GossipSelect_npc_berlumir;
     pNewScript->RegisterSelf();
 }
