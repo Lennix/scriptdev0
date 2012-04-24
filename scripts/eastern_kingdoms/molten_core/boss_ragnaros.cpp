@@ -51,14 +51,11 @@ enum eRanaros
 
 struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
 {
-    bool m_bIntroDone;
-
     boss_ragnarosAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (instance_molten_core*)pCreature->GetInstanceData();
         SetCombatMovement(false);
         m_creature->ApplySpellImmune(0, IMMUNITY_DAMAGE, SPELL_SCHOOL_MASK_FIRE, true);
-        m_bIntroDone = false;
         Reset();
     }
 
@@ -106,9 +103,11 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
         m_uiLavaBurstTimer = urand(1000, 10000);
         m_uiPhase = 0;
        
-        if (m_bIntroDone)
+        // Intro event already done - set visible and unfriendly
+        if (m_pInstance->GetData(TYPE_MAJORDOMO_FIRST_SPAWN) == SPECIAL)
         {
             m_creature->SetVisibility(VISIBILITY_ON);
+            m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
         }
 
         m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_FADE);
@@ -226,7 +225,7 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                     // Ragnaros is fully emerged
                     m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_EFFECT);
                     m_bSubmerged = false;
-                    m_bIntroDone = true;
+                    m_pInstance->SetData(TYPE_MAJORDOMO_FIRST_SPAWN, SPECIAL);
                     m_uiPhase = 0;
                     m_uiSubmergeTimer = 180000; // 180000
                 }
