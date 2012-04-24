@@ -225,7 +225,6 @@ struct MANGOS_DLL_DECL boss_ragnarosAI : public ScriptedAI
                     // Ragnaros is fully emerged
                     m_creature->RemoveAurasDueToSpell(SPELL_RAGNAROS_SUBMERGE_EFFECT);
                     m_bSubmerged = false;
-                    m_pInstance->SetData(TYPE_MAJORDOMO_FIRST_SPAWN, SPECIAL);
                     m_uiPhase = 0;
                     m_uiSubmergeTimer = 180000; // 180000
                 }

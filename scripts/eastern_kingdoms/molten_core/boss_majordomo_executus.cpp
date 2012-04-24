@@ -296,6 +296,8 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public npc_escortAI
                         m_uiEventPhase = 0;
 						m_uiRagnarosSummonPlayerGUID.Clear();
                         m_bCanWalk = true;
+                        if (m_pInstance)
+                            m_pInstance->SetData(TYPE_MAJORDOMO_FIRST_SPAWN, SPECIAL);
                         return;
                         //break;
                 }
