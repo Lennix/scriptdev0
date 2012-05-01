@@ -1593,6 +1593,49 @@ struct MANGOS_DLL_DECL npc_berlumirAI : public ScriptedAI
     void Reset() {}
 };
 
+/*######
+## npc_verlost
+######*/
+
+bool GossipHello_npc_verlost(Player* pPlayer, Creature* pCreature)
+{
+    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Create WSG_10 Tean", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Create AB Team", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
+    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Create WSG_5 Team", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+3);
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
+    return true;
+}
+
+bool GossipSelect_npc_verlost(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+{
+    uint32 teamReference = 0;
+    switch(uiAction)
+    {
+        case GOSSIP_ACTION_INFO_DEF + 1:
+            teamReference = 1;     
+            break;
+        case GOSSIP_ACTION_INFO_DEF + 2:
+            teamReference = 2;     
+            break;
+        case GOSSIP_ACTION_INFO_DEF + 3:
+            teamReference = 3;     
+            break;
+    }
+
+    if (teamReference)
+        pPlayer->CreateTeam(teamReference);
+
+    pPlayer->CLOSE_GOSSIP_MENU();
+    return true;
+}
+
+struct MANGOS_DLL_DECL npc_verlostAI : public ScriptedAI
+{
+    npc_verlostAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+
+    void Reset() {}
+};
+
 /* AddSC() */
 
 void AddSC_npcs_special()
