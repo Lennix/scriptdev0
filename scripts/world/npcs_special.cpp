@@ -1747,4 +1747,10 @@ void AddSC_npcs_special()
     pNewScript->pGossipHello = &GossipHello_npc_berlumir;
     pNewScript->pGossipSelect = &GossipSelect_npc_berlumir;
     pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_verlost";
+    pNewScript->pGossipHello = &GossipHello_npc_verlost;
+    pNewScript->pGossipSelect = &GossipSelect_npc_verlost;
+    pNewScript->RegisterSelf();
 }
