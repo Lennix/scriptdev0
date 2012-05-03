@@ -41,7 +41,9 @@ enum
 
     SPELL_SPIRIT_HEAL               = 22012,                // Spirit Heal
 
-    SPELL_WAITING_TO_RESURRECT      = 2584                  // players who cancel this aura don't want a resurrection
+    SPELL_WAITING_TO_RESURRECT      = 2584,                 // players who cancel this aura don't want a resurrection
+
+    SPELL_IMMUNE                    = 29230                 //immune to all    
 };
 
 struct MANGOS_DLL_DECL npc_spirit_guideAI : public ScriptedAI
@@ -54,6 +56,7 @@ struct MANGOS_DLL_DECL npc_spirit_guideAI : public ScriptedAI
 
     void Reset()
     {
+        m_creature->CastSpell(m_creature, SPELL_IMMUNE, true);
     }
 
     void MoveInLineOfSight(Unit* /*pWho*/)
@@ -68,6 +71,7 @@ struct MANGOS_DLL_DECL npc_spirit_guideAI : public ScriptedAI
             m_creature->CastSpell(m_creature, SPELL_SPIRIT_HEAL_CHANNEL, false);
     }
 
+    //port player to other graveyard if the spiritguide is no longer available
     void CorpseRemoved(uint32 &)
     {
         // TODO: would be better to cast a dummy spell
@@ -94,11 +98,15 @@ struct MANGOS_DLL_DECL npc_spirit_guideAI : public ScriptedAI
     }
 };
 
+
 bool GossipHello_npc_spirit_guide(Player* pPlayer, Creature* pCreature)
 {
-    pPlayer->CastSpell(pPlayer, SPELL_WAITING_TO_RESURRECT, true);
+    if (!pPlayer->HasAura(SPELL_WAITING_TO_RESURRECT))
+        pPlayer->CastSpell(pPlayer, SPELL_WAITING_TO_RESURRECT, true);
+
     return true;
 }
+
 
 CreatureAI* GetAI_npc_spirit_guide(Creature* pCreature)
 {
