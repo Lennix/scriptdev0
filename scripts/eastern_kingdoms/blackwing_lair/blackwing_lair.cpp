@@ -176,6 +176,62 @@ CreatureAI* GetAI_mob_suppression_trigger(Creature* pCreature)
     return new mob_suppression_triggerAI(pCreature);
 }
 
+/*######
+## mob_blackwing_taskmaster
+## ToDo: need to implement a group pat function for same ids
+######*/
+
+enum blackwingTaskmaster
+{
+    SPELL_HEALING_CIRCLE = 22458,
+    SPELL_SHADOW_SHOCK   = 17289,
+};
+
+struct MANGOS_DLL_DECL mob_blackwing_taskmasterAI : public ScriptedAI
+{
+    mob_blackwing_taskmasterAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        Reset();
+    }
+
+    uint32 shadowShock_Timer;
+    uint32 healingCircle_Timer;
+
+    void Reset()
+    {
+        shadowShock_Timer = urand(1000, 7000);
+        healingCircle_Timer = urand(8000, 18000);
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        //we have to implement sync for every pat group but if no pat group is possible it doesnt matter
+        if (healingCircle_Timer <= uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_HEALING_CIRCLE) == CAST_OK)
+                healingCircle_Timer = urand(8000, 18000);
+        }
+        else
+            healingCircle_Timer -= uiDiff;
+
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        if (shadowShock_Timer <= uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOW_SHOCK) == CAST_OK)
+                shadowShock_Timer = urand(1000, 7000);
+        }
+        else
+            shadowShock_Timer -= uiDiff;
+    }
+};
+
+CreatureAI* GetAI_mob_blackwing_taskmaster(Creature* pCreature)
+{
+    return new mob_blackwing_taskmasterAI(pCreature);
+}
+
 /// !!! RAZORGORE ADDS !!! \\\
 //UPDATE `creature_template` SET `ScriptName` = 'blackwing_mage' WHERE `creature_template`.`entry` =12420 LIMIT 1 ;
 //UPDATE `creature_template` SET `ScriptName` = 'blackwing_melee' WHERE `creature_template`.`entry` =12416 LIMIT 1 ;
@@ -416,5 +472,10 @@ void AddSC_blackwing_lair()
 	pNewScript = new Script;
     pNewScript->Name = "death_talon_dragonspawn";
     pNewScript->GetAI = &GetAI_death_talon_dragonspawn;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "mob_blackwing_taskmaster";
+    pNewScript->GetAI = &GetAI_mob_blackwing_taskmaster;
     pNewScript->RegisterSelf();
 }
