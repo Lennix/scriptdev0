@@ -25,7 +25,6 @@ EndScriptData */
 #include "blackwing_lair.h"
 
 instance_blackwing_lair::instance_blackwing_lair(Map* pMap) : ScriptedInstance(pMap),
-    m_bRazorgoreSummon(false),
 
     m_uiRazorgoreSummonTimer(10000),
     m_uiDragonkinSummoned(0),
@@ -91,8 +90,6 @@ void instance_blackwing_lair::OnCreatureEnterCombat(Creature* pCreature)
         case NPC_GRETHOK_THE_CONTROLLER:
         case NPC_RAZORGORE:
         {
-            HandleGameObject(GO_PORTCULLIS_ENTRANCE, false);
-
             if (pCreature->GetEntry() != NPC_RAZORGORE)
             {
                 if (Creature* pRazorgore = GetSingleCreatureFromStorage(NPC_RAZORGORE))
@@ -101,8 +98,6 @@ void instance_blackwing_lair::OnCreatureEnterCombat(Creature* pCreature)
             else
                 pCreature->SetInCombatWithZone();
 
-            if (!m_bRazorgoreSummon)
-                m_bRazorgoreSummon = true;
             break;
         }
         case NPC_VAELASTRASZ:
@@ -121,13 +116,11 @@ void instance_blackwing_lair::OnCreatureEvade(Creature* pCreature)
         case NPC_GRETHOK_THE_CONTROLLER:                // Reset Razorgore encounter
         case NPC_RAZORGORE:
         {
-            m_bRazorgoreSummon = false;
             m_uiRazorgoreSummonTimer = 10000;
             m_uiDragonkinSummoned = 0;
             m_uiOrcSummoned = 0;
             m_lTempList.clear();
 
-            HandleGameObject(GO_PORTCULLIS_ENTRANCE, true);
             for(GUIDList::iterator itr = m_lBlackDragonEgg.begin(); itr != m_lBlackDragonEgg.end(); ++itr)
             {
                 if (GameObject* pEgg = instance->GetGameObject(*itr))
@@ -160,11 +153,6 @@ void instance_blackwing_lair::OnCreatureDeath(Creature* pCreature)
     {
         case NPC_GRETHOK_THE_CONTROLLER:                // Razorgore encounter - start destroying eggs phase
             m_lTempList = m_lBlackDragonEgg;
-            SetData(TYPE_RAZORGORE, IN_PROGRESS);
-            break;
-        case NPC_RAZORGORE:
-            if (GetData(TYPE_RAZORGORE) == SPECIAL)
-                SetData(TYPE_RAZORGORE, DONE);
             break;
         case NPC_VAELASTRASZ:
             SetData(TYPE_VAELASTRASZ, DONE);
@@ -265,10 +253,18 @@ void instance_blackwing_lair::SetData(uint32 uiType, uint32 uiData)
     {
         case TYPE_RAZORGORE:
             m_auiEncounter[0] = uiData;
-            if (uiData == DONE)
+            switch (uiData)
             {
-                HandleGameObject(GO_PORTCULLIS_ENTRANCE, true);
-                HandleGameObject(GO_PORTCULLIS_RAZORGORE, true);
+                case FAIL:
+                    HandleGameObject(GO_PORTCULLIS_ENTRANCE, true);
+                    break;
+                case IN_PROGRESS:
+                    HandleGameObject(GO_PORTCULLIS_ENTRANCE, false);
+                    break;
+                case DONE:
+                    HandleGameObject(GO_PORTCULLIS_ENTRANCE, true);
+                    HandleGameObject(GO_PORTCULLIS_RAZORGORE, true);
+                    break;
             }
             break;
         case TYPE_VAELASTRASZ:
@@ -365,7 +361,8 @@ uint32 instance_blackwing_lair::GetData(uint32 uiType)
 //IF RAZORGORE IS CONTROLLED HE WONT USE HIS SCRIPT ANYMORE, THEREFORE WE HAVE TO SCRIPT THIS SHIT HERE
 void instance_blackwing_lair::Update(uint32 uiDiff)
 {
-    if (m_bRazorgoreSummon)
+    //IN_PROGRESS = Razorgore Phase 1
+    if (GetData(TYPE_RAZORGORE) == IN_PROGRESS)
     {
         if (m_uiRazorgoreSummonTimer <= uiDiff)
         {
@@ -378,7 +375,7 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
                 {
                     ++m_uiOrcSummoned;
                     Creature* myOrc = pRazorgore->SummonCreature(urand(0,1) ? NPC_BLACKWING_LEGIONNAIRE : NPC_BLACKWING_MAGE, Corner[i].x,
-                            Corner[i].y, Corner[i].z, Corner[i].o, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 15000);
+                            Corner[i].y, Corner[i].z, Corner[i].o, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
 
                     if (myOrc)
                         myOrc->SetInCombatWithZone();            
@@ -388,17 +385,13 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
                 {
                     ++m_uiDragonkinSummoned;
                     Creature* myDragon = pRazorgore->SummonCreature(NPC_DEATH_TALON_DRAGONSPAWN, Corner[i].x, Corner[i].y, Corner[i].z, Corner[i].o,
-                        TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 15000);
+                        TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
                     if (myDragon)
                         myDragon->SetInCombatWithZone();
                 }
             }
 
-            //Stop spawming mobs if phase 2 has begun
-            if (GetData(TYPE_RAZORGORE) == SPECIAL)
-                m_bRazorgoreSummon = false;
-            else
-                m_uiRazorgoreSummonTimer = 1000;
+            m_uiRazorgoreSummonTimer = 1000;
         }
         else
             m_uiRazorgoreSummonTimer -= uiDiff;

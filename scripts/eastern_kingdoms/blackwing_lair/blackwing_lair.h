@@ -128,8 +128,6 @@ class MANGOS_DLL_DECL instance_blackwing_lair : public ScriptedInstance
         uint32 m_auiEncounter[MAX_ENCOUNTER];
         std::string strInstData;
 
-        bool m_bRazorgoreSummon;
-
         uint32 m_uiRazorgoreSummonTimer;
         uint32 m_uiDragonkinSummoned;
         uint32 m_uiOrcSummoned;

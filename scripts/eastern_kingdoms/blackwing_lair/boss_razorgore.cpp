@@ -59,7 +59,7 @@ struct MANGOS_DLL_DECL boss_razorgoreAI : public ScriptedAI
 
     instance_blackwing_lair* m_pInstance;
 
-    bool m_bFinalPhase;
+    bool PHASE_TWO;
 
     uint32 m_uiCheckControllerAggroTimer;
     uint32 m_uiCleaveTimer;
@@ -71,7 +71,7 @@ struct MANGOS_DLL_DECL boss_razorgoreAI : public ScriptedAI
 
     void Reset()
     {
-        m_bFinalPhase = false;
+        PHASE_TWO = false;
 
         m_uiCheckControllerAggroTimer = 3000;
         m_uiCleaveTimer = 15000;
@@ -82,14 +82,34 @@ struct MANGOS_DLL_DECL boss_razorgoreAI : public ScriptedAI
 		m_uiControllerGUID.Clear();
     }
 
+    /* DATA RAZORGORE
+     * ==============
+     * FAIL         = Wipe
+     * IN_PROGRESS  = Phase 1
+     * SPECIAL      = Phase 2
+     * DONE         = Razorgore is defeated
+     */
+
     void Aggro(Unit* /*pWho*/)
     {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_RAZORGORE, IN_PROGRESS);
+    }
+
+    void JustReachedHome()
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_RAZORGORE, FAIL);
     }
 
     void JustDied(Unit* /*pKiller*/)
     {
-        if (m_bFinalPhase)
+        if (PHASE_TWO)
+        {
             DoScriptText(SAY_DEATH, m_creature);
+            if (m_pInstance)
+                m_pInstance->SetData(TYPE_RAZORGORE, DONE);
+        }
         else
         {
             // TODO: we should kill whole raid -> find proper spell for that
@@ -140,12 +160,12 @@ struct MANGOS_DLL_DECL boss_razorgoreAI : public ScriptedAI
 
     void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
     {
-        if (m_bFinalPhase)
+        if (PHASE_TWO)
             return;
 
         if (m_pInstance && m_pInstance->GetData(TYPE_RAZORGORE) == SPECIAL)
         {
-            m_bFinalPhase = true;
+            PHASE_TWO = true;
             DoCastSpellIfCan(m_creature->getVictim(), SPELL_WARMING_FLAMES, CAST_TRIGGERED);
             return;
         }
