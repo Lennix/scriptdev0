@@ -103,7 +103,7 @@ CreatureAI* GetAI_mob_demon_portal(Creature* pCreature)
 
 /*######
 ## mob_suppression_trigger
-## ToDo: spawn whelps
+## ToDo: whelp timer should be 30 seconds(hordeguides), dust animation ist missing
 ######*/
 
 enum eSuppressionTrigger
@@ -137,27 +137,37 @@ struct MANGOS_DLL_DECL mob_suppression_triggerAI : public Scripted_NoMovementAI
         if (!pDevice)
             pDevice = GetClosestGameObjectWithEntry(m_creature, GO_SUPPRESSION_DEVICE, 5.0f);
 
+        //deactivated - dont cast
         if (pDevice && pDevice->GetGoState() == GO_STATE_ACTIVE)
         {
             if (ActivationTimer < uiDiff)
             {
                 ActivationTimer = urand(15000, 30000/*DEVICE_RESPAWN*/);
                 pDevice->SetGoState(GO_STATE_READY);
+                //instant cast possible if the trap is reactivated 
+                SuppressionTimer = urand(1000, 8000);
             }
             else
                 ActivationTimer -= uiDiff;
 
             return;
         }
-
-        // Erstmal deaktivieren
-        if (SuppressionTimer < uiDiff)
+        //active - cast
+        else if (pDevice && pDevice->GetGoState() == GO_STATE_READY)
         {
-            SuppressionTimer = 6000;
-            DoCastSpellIfCan(m_creature, SPELL_SUPPRESSION_AURA);
+            if (SuppressionTimer < uiDiff)
+            {
+                /*
+                 *minimum delay is equal to the cast time of disarm trap ( 2 seconds)
+                 *but we also have to calculate the time to move as close as possible to the trap,
+                 *therefore we take a minimum delay of 4 seconds
+                 */
+                SuppressionTimer = urand(4000, 8000);
+                DoCastSpellIfCan(m_creature, SPELL_SUPPRESSION_AURA);
+            }
+            else
+                SuppressionTimer -= uiDiff;
         }
-        else
-            SuppressionTimer -= uiDiff;
 	}
 };
 

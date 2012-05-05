@@ -20,7 +20,7 @@
 /* ScriptData
 SDName: Boss_Vaelastrasz
 SD%Complete: 100
-SDComment: gossip text is missing
+SDComment: 30% health always, goblins flee
 SDCategory: Blackwing Lair
 EndScriptData */
 
@@ -47,10 +47,6 @@ enum
 
     SPELL_NEFARIUS_CORRUPTION   = 23642,
 
-    GOSSIP_ITEM_VAEL_1          = -3469003,
-    GOSSIP_ITEM_VAEL_2          = -3469004,
-    // Vael Gossip texts might be 7156 and 7256; At the moment are missing from DB
-    // For the moment add the default values
     GOSSIP_TEXT_VAEL_1          = 7156,
     GOSSIP_TEXT_VAEL_2          = 7256,
 
@@ -67,6 +63,7 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
         m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
         m_creature->setFaction(35);
         m_creature->SetMaxHealth(3331000);
+        //start orientation while he is laying on the ground
         m_creature->SetOrientation(4.90);
         m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
         m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
@@ -99,9 +96,6 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 
     void Reset()
     {
-        //no regen health
-        //m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
-
         m_playerGuid.Clear();
         m_uiIntroTimer                   = 0;
         m_uiIntroPhase                   = 0;
@@ -222,6 +216,9 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
                         case 4:
                             if (pNef)
                             {
+                                //set vail health and no health reg
+                                m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
+                                m_creature->SetHealthPercent(30);                  
                                 //despawn nef
                                 pNef->ForcedDespawn();
                                 pNef->AddObjectToRemoveList();
@@ -251,6 +248,8 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
                         switch (m_uiSpeechNum)
                         {
                             case 0:
+                                //new orientation
+                                m_creature->SetOrientation(2.158f);
                                 // 16 seconds till next line
                                 DoScriptText(SAY_LINE_2, m_creature);
                                 m_uiSpeechTimer = 16000;
@@ -263,7 +262,7 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
                                 ++m_uiSpeechNum;
                                 break;
                             case 2:
-                                m_creature->HandleEmote(EMOTE_ONESHOT_ROAR);
+                                m_creature->HandleEmoteCommand(EMOTE_ONESHOT_ROAR);
                                 m_uiSpeechTimer = 1500;
                                 ++m_uiSpeechNum;
                             case 3:
@@ -392,7 +391,7 @@ bool GossipSelect_boss_vaelastrasz(Player* pPlayer, Creature* pCreature, uint32 
     switch (uiAction)
     {
         case GOSSIP_ACTION_INFO_DEF + 1:
-            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_VAEL_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, "Vaelastrasz, no!!!", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
             pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_VAEL_2, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF + 2:
@@ -410,7 +409,7 @@ bool GossipHello_boss_vaelastrasz(Player* pPlayer, Creature* pCreature)
     if (pCreature->isQuestGiver())
         pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
 
-    pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_VAEL_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+    pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, "I cannot, Vaelastrasz! Surely something can be done to heal you!", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
     pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_VAEL_1, pCreature->GetObjectGuid());
 
     return true;
@@ -429,11 +428,22 @@ bool AreaTrigger_at_vaelastrasz(Player* pPlayer, AreaTriggerEntry const* pAt)
             if (pInstance->GetData(TYPE_VAELASTRASZ) == NOT_STARTED)
             {
                 if (Creature* pVaelastrasz = pInstance->GetSingleCreatureFromStorage(NPC_VAELASTRASZ))
+                {
                     if (boss_vaelastraszAI* pVaelAI = dynamic_cast<boss_vaelastraszAI*>(pVaelastrasz->AI()))
                         pVaelAI->BeginIntro();
-            }
 
-            // ToDo: make goblins flee
+                    //goblins flee
+                    std::list<Creature*> technicianArroundVael;
+                    GetCreatureListWithEntryInGrid(technicianArroundVael, pVaelastrasz, NPC_BLACKWING_TECHNICIAN, 15.0f);
+                    for(std::list<Creature*>::iterator itr = technicianArroundVael.begin(); itr != technicianArroundVael.end(); ++itr)
+                    {
+                        if ((*itr))
+                        {
+                            (*itr)->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                        }
+                    }                    
+                }
+            }
         }
     }
 
