@@ -69,6 +69,10 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
         m_creature->SetOrientation(4.90);
         m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
         m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+        //player can hit at
+        m_creature->SetBoundingValue(0, 13);
+        //boss can hit at:
+        m_creature->SetBoundingValue(1, 11);
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
         Reset();
     }

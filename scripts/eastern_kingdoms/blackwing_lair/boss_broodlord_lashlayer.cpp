@@ -39,6 +39,7 @@ struct MANGOS_DLL_DECL boss_broodlordAI : public ScriptedAI
 {
     boss_broodlordAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
+        m_creature->SetMaxHealth(916025);
         Reset();
     }
 
