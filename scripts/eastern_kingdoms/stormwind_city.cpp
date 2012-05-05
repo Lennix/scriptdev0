@@ -1131,13 +1131,18 @@ struct MANGOS_DLL_DECL npc_reginald_windsorAI : public npc_escortAI
                         m_uiEventTimer = 2000;
                         break;
                     case 13:
+                    {
+                        //get SquireRowe GUID for seting gossip flag if the event ends
+                        Creature* pSquireRowe = GetClosestCreatureWithEntry(m_creature, 17804, 100.0f);
+                        if (pSquireRowe && pSquireRowe->isAlive())
+                            m_uiSquireRoweGUID = pSquireRowe->GetObjectGuid();
                         m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP + UNIT_NPC_FLAG_QUESTGIVER);
                         m_creature->SetFacingToObject(GetPlayerForWindsorEscort());
                         DoScriptText(SAY_SW_WINDSOR_2, m_creature, GetPlayerForWindsorEscort());
                         m_creature->HandleEmoteCommand(EMOTE_ONESHOT_TALK);
                         // Escort will continue by accepting next quest in chain.
                         break;
-
+                    }
                     case 20:
                         m_creature->SetFacingTo(0.67f);
                         DoScriptText(SAY_SW_WINDSOR_3, m_creature);
@@ -1836,6 +1841,11 @@ struct MANGOS_DLL_DECL npc_squire_roweAI : public npc_escortAI
 
     void Reset()
     {
+        //creature reset after spawning windsor so we have to remove the flags of the NEW squire rowe creature again if the event is in progress
+        Creature* pWindsor = GetClosestCreatureWithEntry(m_creature, NPC_REGINALD_WINDSOR, 300.0f);
+        if (pWindsor && pWindsor->isAlive())
+            m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+
         m_uiChangeStandStateTimer = 3500;
         bStandStateChanged = false;
         m_uiReginaldWindsorGUID.Clear();
@@ -1858,7 +1868,6 @@ struct MANGOS_DLL_DECL npc_squire_roweAI : public npc_escortAI
                             m_uiReginaldWindsorGUID = pReginaldWindsor->GetObjectGuid();
                             pEscortAI->Start(false, 0, 0, true);
                             pEscortAI->m_uiEscorterGUID = GetPlayerForEscort()->GetObjectGuid();
-                            pEscortAI->m_uiSquireRoweGUID = m_creature->GetObjectGuid();
                         }
                 }
                 break;
