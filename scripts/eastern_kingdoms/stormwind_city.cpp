@@ -870,6 +870,7 @@ struct MANGOS_DLL_DECL npc_reginald_windsorAI : public npc_escortAI
     ObjectGuid m_uiMarcusGUID;
     ObjectGuid m_uiAnduinWrynnGUID;
     ObjectGuid m_uiMarcusGuardsGUID[6];
+    ObjectGuid m_uiSquireRoweGUID;
 
     Creature* MarcusGuard[6];
 
@@ -892,6 +893,7 @@ struct MANGOS_DLL_DECL npc_reginald_windsorAI : public npc_escortAI
         m_uiWindsorsHorseGUID.Clear();
         m_uiMarcusGUID.Clear();
         m_uiAnduinWrynnGUID.Clear();
+        m_uiSquireRoweGUID.Clear();
 
         for(uint8 itr = 0; itr < 6; ++itr)
         {
@@ -913,6 +915,10 @@ struct MANGOS_DLL_DECL npc_reginald_windsorAI : public npc_escortAI
             //GetPlayerForWindsorEscort()->GetGroup();
             GetPlayerForWindsorEscort()->FailQuest(QUEST_THE_GREAT_MASQUERADE);
         }
+
+        //event is over allow new event
+        if (GetEventStarterSquireRowe())
+            GetEventStarterSquireRowe()->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
     }
 
     void MoveInLineOfSight(Unit* pWho)
@@ -988,6 +994,11 @@ struct MANGOS_DLL_DECL npc_reginald_windsorAI : public npc_escortAI
     Player* GetPlayerForWindsorEscort()
     {
         return m_creature->GetMap()->GetPlayer(m_uiEscorterGUID);
+    }
+
+    Creature* GetEventStarterSquireRowe()
+    {
+        return m_creature->GetMap()->GetCreature(m_uiSquireRoweGUID);
     }
 
     void JustStartedEscort()
@@ -1703,6 +1714,9 @@ struct MANGOS_DLL_DECL npc_reginald_windsorAI : public npc_escortAI
                             for(GUIDList::iterator itr = m_uiLadyOnyxiasSpawns.begin(); itr != m_uiLadyOnyxiasSpawns.end(); ++itr)
                                 if (Creature* pTarget = m_creature->GetMap()->GetCreature(*itr))
                                     pTarget->RemoveFromWorld();
+                        //event is over allow new event
+                        if (GetEventStarterSquireRowe())
+                            GetEventStarterSquireRowe()->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                         m_uiEventTimer = 1000;
                         break;
                     case 122:
@@ -1844,6 +1858,7 @@ struct MANGOS_DLL_DECL npc_squire_roweAI : public npc_escortAI
                             m_uiReginaldWindsorGUID = pReginaldWindsor->GetObjectGuid();
                             pEscortAI->Start(false, 0, 0, true);
                             pEscortAI->m_uiEscorterGUID = GetPlayerForEscort()->GetObjectGuid();
+                            pEscortAI->m_uiSquireRoweGUID = m_creature->GetObjectGuid();
                         }
                 }
                 break;
@@ -1928,6 +1943,8 @@ bool GossipSelect_npc_squire_rowe(Player* pPlayer, Creature* pCreature, uint32 u
     {
         if (npc_squire_roweAI* pEscortAI = dynamic_cast<npc_squire_roweAI*>(pCreature->AI()))
         {
+            //only allow one event in world
+            pCreature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
             pPlayer->CLOSE_GOSSIP_MENU();
             pEscortAI->Start(true, pPlayer, NULL, true);
         }

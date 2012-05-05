@@ -138,8 +138,6 @@ class MANGOS_DLL_DECL instance_blackwing_lair : public ScriptedInstance
         GUIDList m_lBlackDragonEgg;
         GUIDList m_lTempList;
         GUIDList m_lDragonTrio;
-
-        GUIDList m_lTechnicianGuids;
 };
 
 #endif

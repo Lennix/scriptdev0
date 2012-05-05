@@ -52,9 +52,12 @@ void instance_blackwing_lair::OnCreatureCreate(Creature* pCreature)
             m_lBlackwingGuardsman.push_back(pCreature->GetObjectGuid());
             return;
         case NPC_BLACKWING_TECHNICIAN:
-            // Sort creatures so we can get only the ones near Vaelastrasz
-            if (pCreature->IsWithinDist2d(aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], 50.0f))
-                m_lTechnicianGuids.push_back(pCreature->GetObjectGuid());
+            // hide event vael goblins if we enter instance and vael is already defeated
+            if (pCreature->IsWithinDist2d(aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], 50.0f) && GetData(TYPE_VAELASTRASZ) == DONE)
+            {
+                pCreature->SetVisibility(VISIBILITY_OFF);
+                pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE + UNIT_FLAG_NOT_SELECTABLE);
+            }
             return;
         case NPC_GRETHOK_THE_CONTROLLER:
         case NPC_RAZORGORE:

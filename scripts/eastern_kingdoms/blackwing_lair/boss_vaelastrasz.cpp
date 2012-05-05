@@ -20,7 +20,7 @@
 /* ScriptData
 SDName: Boss_Vaelastrasz
 SD%Complete: 100
-SDComment: 30% health always, goblins flee
+SDComment: 30% health always
 SDCategory: Blackwing Lair
 EndScriptData */
 
@@ -54,6 +54,8 @@ enum
 
     AREATRIGGER_VAEL_INTRO      = 3626,
 };
+
+std::list<Creature*> technicianArroundVael;
 
 struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 {
@@ -144,6 +146,18 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 
         // Make boss stand
         m_creature->SetStandState(UNIT_STAND_STATE_STAND);
+
+        //at this time we can hide the event goblins
+        for(std::list<Creature*>::iterator itr = technicianArroundVael.begin(); itr != technicianArroundVael.end(); ++itr)
+        {
+            if ((*itr))
+            {
+                (*itr)->SetVisibility(VISIBILITY_OFF);
+                (*itr)->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE + UNIT_FLAG_NOT_SELECTABLE);
+                (*itr)->SetDefaultMovementType(IDLE_MOTION_TYPE);
+                (*itr)->GetMotionMaster()->Initialize();
+            }
+        }
     }
 
     void KilledUnit(Unit* pVictim)
@@ -166,7 +180,7 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
     void JustDied(Unit* pKiller)
     {
         if (m_pInstance)
-            m_pInstance->SetData(TYPE_VAELASTRASZ, DONE);
+            m_pInstance->SetData(TYPE_VAELASTRASZ, DONE);  
     }
 
     void JustReachedHome()
@@ -433,13 +447,15 @@ bool AreaTrigger_at_vaelastrasz(Player* pPlayer, AreaTriggerEntry const* pAt)
                         pVaelAI->BeginIntro();
 
                     //goblins flee
-                    std::list<Creature*> technicianArroundVael;
                     GetCreatureListWithEntryInGrid(technicianArroundVael, pVaelastrasz, NPC_BLACKWING_TECHNICIAN, 15.0f);
                     for(std::list<Creature*>::iterator itr = technicianArroundVael.begin(); itr != technicianArroundVael.end(); ++itr)
                     {
                         if ((*itr))
                         {
-                            (*itr)->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                            (*itr)->SetDefaultMovementType(WAYPOINT_MOTION_TYPE);
+                            (*itr)->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
+                            (*itr)->SetSpeedRate(MOVE_RUN, 1.3f);
+                            (*itr)->GetMotionMaster()->Initialize();
                         }
                     }                    
                 }
