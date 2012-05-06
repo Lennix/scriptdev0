@@ -125,11 +125,19 @@ struct MANGOS_DLL_DECL mob_suppression_triggerAI : public Scripted_NoMovementAI
 	GameObject* pDevice;
 	uint32 SuppressionTimer;
 	uint32 ActivationTimer;
+    uint32 FogDurationHolder;
+    uint32 FogCastTimer;
+
+    bool startSupression;
 
 	void Reset()
     {
+        FogDurationHolder = 0;
+        FogCastTimer = 0;
         SuppressionTimer = 1000;
         ActivationTimer = urand(15000, 30000/*DEVICE_RESPAWN*/);
+
+        startSupression = false;
 	}
 
 	void UpdateAI(const uint32 uiDiff)
@@ -155,18 +163,42 @@ struct MANGOS_DLL_DECL mob_suppression_triggerAI : public Scripted_NoMovementAI
         //active - cast
         else if (pDevice && pDevice->GetGoState() == GO_STATE_READY)
         {
-            if (SuppressionTimer < uiDiff)
+            if (SuppressionTimer < uiDiff && !startSupression)
             {
+                //fog animation
+                pDevice->SendGameObjectCustomAnim(pDevice->GetGUID());              
+                FogCastTimer = 500;
+                startSupression = true;
+            }
+            else
+                SuppressionTimer -= uiDiff;
+        }
+
+        //fog animation is visible for ~ 4 seconds, therefore we handle the supression aura over this time here
+        if (startSupression)
+        {
+            if (FogDurationHolder > 3500)
+            {
+                startSupression = false;
+                FogDurationHolder = 0;
                 /*
                  *minimum delay is equal to the cast time of disarm trap ( 2 seconds)
                  *but we also have to calculate the time to move as close as possible to the trap,
                  *therefore we take a minimum delay of 4 seconds
                  */
                 SuppressionTimer = urand(4000, 8000);
-                DoCastSpellIfCan(m_creature, SPELL_SUPPRESSION_AURA);
             }
             else
-                SuppressionTimer -= uiDiff;
+            {
+                if (FogCastTimer <= uiDiff)
+                {
+                    DoCastSpellIfCan(m_creature, SPELL_SUPPRESSION_AURA);
+                    FogCastTimer = 1000;
+                    FogDurationHolder += 1000;
+                }
+                else
+                    FogCastTimer -= uiDiff;
+            }
         }
 	}
 };
