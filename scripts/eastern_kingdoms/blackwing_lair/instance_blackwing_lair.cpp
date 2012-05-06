@@ -26,7 +26,7 @@ EndScriptData */
 
 instance_blackwing_lair::instance_blackwing_lair(Map* pMap) : ScriptedInstance(pMap),
 
-    m_uiRazorgoreSummonTimer(10000),
+    m_uiRazorgoreSummonTimer(TIMER_START_SPAWMING_ADDS),
     m_uiDragonkinSummoned(0),
     m_uiOrcSummoned(0)
 {
@@ -62,16 +62,21 @@ void instance_blackwing_lair::OnCreatureCreate(Creature* pCreature)
         case NPC_RAZORGORE:
         case NPC_VAELASTRASZ:
         case NPC_BROODLORD:
+            break;
         case NPC_NEFARIAN:
+            //BWL REALEASE PART ONE - NEFARIAN IS NOT AVAILABLE
+            pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
             break;
         case NPC_FIREMAW:
         case NPC_EBONROC:
         case NPC_FLAMEGOR:
+            //BWL REALEASE PART ONE - DRAGONTRIO IS NOT AVAILABLE
+            pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
             m_lDragonTrio.push_back(pCreature->GetObjectGuid());
             return;
         case NPC_CHROMAGGUS:
-            if (GetData(TYPE_DRAGON_TRIO) != DONE)
-                pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+            //BWL REALEASE PART ONE - CHROMAGGUS IS NOT AVAILABLE
+            pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
             // VALUE_BREATH1, VALUE_BREATH2 and so forth are the ID-specific spells
             if (GetData(VALUE_BREATH1) == NOT_STARTED && GetData(VALUE_BREATH2) == NOT_STARTED)
                 SetData(VALUE_BREATH1, DONE);
@@ -134,6 +139,9 @@ void instance_blackwing_lair::OnCreatureEvade(Creature* pCreature)
                     pGuard->Respawn();
             }
 
+            if (GameObject* Orb = GetSingleGameObjectFromStorage(GO_ORB_OF_DOMINATION))
+                Orb->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
+
             Creature* pGrethok = GetSingleCreatureFromStorage(NPC_GRETHOK_THE_CONTROLLER);
             if (pGrethok && !pGrethok->isAlive())
                 pGrethok->Respawn();
@@ -152,6 +160,8 @@ void instance_blackwing_lair::OnCreatureDeath(Creature* pCreature)
     switch(pCreature->GetEntry())
     {
         case NPC_GRETHOK_THE_CONTROLLER:                // Razorgore encounter - start destroying eggs phase
+            if (GameObject* Orb = GetSingleGameObjectFromStorage(GO_ORB_OF_DOMINATION))
+                Orb->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
             m_lTempList = m_lBlackDragonEgg;
             break;
         case NPC_VAELASTRASZ:
@@ -207,6 +217,9 @@ void instance_blackwing_lair::OnObjectCreate(GameObject* pGo)
         case GO_PORTCULLIS_NEFARIAN:
             if (m_auiEncounter[4] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
+            break;
+        case GO_ORB_OF_DOMINATION:
+            pGo->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
             break;
         default:
             return;
@@ -275,11 +288,13 @@ void instance_blackwing_lair::SetData(uint32 uiType, uint32 uiData)
                 HandleGameObject(GO_PORTCULLIS_VAELASTRASZ, true);
             }
             break;
+        /* BWL REALEASE PART ONE - ENDS HERE
         case TYPE_BROODLORD:
             m_auiEncounter[2] = uiData;
             if (uiData == DONE)
                 HandleGameObject(GO_PORTCULLIS_BROODLORD, true);
             break;
+         */
         case TYPE_DRAGON_TRIO:
             m_auiEncounter[3] = uiData;
             if (uiData == DONE)
@@ -368,30 +383,50 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
         {
             if (Creature* pRazorgore = GetSingleCreatureFromStorage(NPC_RAZORGORE))
             {
-                uint32 i = urand(0,7);
-                uint32 uiOrc = urand(0,2);
-
-                if (m_uiOrcSummoned < MAX_BLACKWING_ORC && (uiOrc || m_uiDragonkinSummoned >= MAX_BLACKWING_DRAGONKIN))
+                for (uint32 i = 0; i < 8; i++)
                 {
-                    ++m_uiOrcSummoned;
-                    Creature* myOrc = pRazorgore->SummonCreature(urand(0,1) ? NPC_BLACKWING_LEGIONNAIRE : NPC_BLACKWING_MAGE, Corner[i].x,
-                            Corner[i].y, Corner[i].z, Corner[i].o, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
+                    /* SPAWNS BY VALUE
+                     * ===========
+                     * 0         = nothing
+                     * 1 - 3     = orc
+                     * 4         = dragon
+                     */
+                    uint8 orcCount = 0;
+                    if (m_uiOrcSummoned < MAX_BLACKWING_ORC)
+                        orcCount = 3;
 
-                    if (myOrc)
-                        myOrc->SetInCombatWithZone();            
-                }
+                    uint8 dragonCount = 0;
+                    if (m_uiDragonkinSummoned < MAX_BLACKWING_DRAGONKIN)
+                        dragonCount = 1;
 
-                if (m_uiDragonkinSummoned < MAX_BLACKWING_DRAGONKIN && (!uiOrc || m_uiOrcSummoned >= MAX_BLACKWING_ORC))
-                {
-                    ++m_uiDragonkinSummoned;
-                    Creature* myDragon = pRazorgore->SummonCreature(NPC_DEATH_TALON_DRAGONSPAWN, Corner[i].x, Corner[i].y, Corner[i].z, Corner[i].o,
-                        TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
-                    if (myDragon)
-                        myDragon->SetInCombatWithZone();
+                    if (orcCount || dragonCount)
+                    {
+                        uint32 spawnType = urand(1, orcCount + dragonCount);
+                        if (!orcCount)
+                            spawnType = 4;
+
+                        if (spawnType < 4)
+                        {
+                            ++m_uiOrcSummoned;
+                            Creature* myOrc = pRazorgore->SummonCreature(urand(0,1) ? NPC_BLACKWING_LEGIONNAIRE : NPC_BLACKWING_MAGE, Corner[i].x,
+                                    Corner[i].y, Corner[i].z, Corner[i].o, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 1000);
+
+                            if (myOrc)
+                                myOrc->SetInCombatWithZone();            
+                        }
+                        else
+                        {
+                            ++m_uiDragonkinSummoned;
+                            Creature* myDragon = pRazorgore->SummonCreature(NPC_DEATH_TALON_DRAGONSPAWN, Corner[i].x, Corner[i].y, Corner[i].z, Corner[i].o,
+                                TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 1000);
+                            if (myDragon)
+                                myDragon->SetInCombatWithZone();
+                        }
+                    }
                 }
             }
 
-            m_uiRazorgoreSummonTimer = 1000;
+            m_uiRazorgoreSummonTimer = TIMER_NEXT_ADD_SPAWN;
         }
         else
             m_uiRazorgoreSummonTimer -= uiDiff;

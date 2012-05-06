@@ -57,7 +57,8 @@ enum GameObjects
     GO_PORTCULLIS_BROODLORD     = 179365,                       // Door after Broodlord
     GO_PORTCULLIS_CHROMAGGUS    = 179116,                       // Door before Chromaggus
     GO_PORTCULLIS_NEFARIAN      = 179117,                       // Door before Nefarian
-    GO_SUPPRESSION_DEVICE       = 179784
+    GO_SUPPRESSION_DEVICE       = 179784,
+    GO_ORB_OF_DOMINATION        = 177808,
 };
 
 enum Misc
@@ -68,6 +69,12 @@ enum Misc
 
     MAX_BLACKWING_ORC           = 40,
     MAX_BLACKWING_DRAGONKIN     = 12
+};
+
+enum Timer
+{
+    TIMER_START_SPAWMING_ADDS   = 30000,
+    TIMER_NEXT_ADD_SPAWN        = 20000,
 };
 
 struct Location
