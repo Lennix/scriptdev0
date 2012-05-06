@@ -121,7 +121,7 @@ void instance_blackwing_lair::OnCreatureEvade(Creature* pCreature)
         case NPC_GRETHOK_THE_CONTROLLER:                // Reset Razorgore encounter
         case NPC_RAZORGORE:
         {
-            m_uiRazorgoreSummonTimer = 10000;
+            m_uiRazorgoreSummonTimer = TIMER_START_SPAWMING_ADDS;
             m_uiDragonkinSummoned = 0;
             m_uiOrcSummoned = 0;
             m_lTempList.clear();

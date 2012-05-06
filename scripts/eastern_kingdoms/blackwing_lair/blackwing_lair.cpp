@@ -237,6 +237,20 @@ CreatureAI* GetAI_mob_blackwing_taskmaster(Creature* pCreature)
 //UPDATE `creature_template` SET `ScriptName` = 'blackwing_melee' WHERE `creature_template`.`entry` =12416 LIMIT 1 ;
 //UPDATE `creature_template` SET `ScriptName` = 'death_talon_dragonspawn' WHERE `creature_template`.`entry` =12422 LIMIT 1;
 
+struct centerPoints
+{
+    float fX, fY, fZ;
+};
+
+static centerPoints movePoint[]=
+{
+    {-7595.0f, -1053.0f, 409.0f},
+    {-7593.0f, -1041.0f, 408.0f},
+    {-7608.0f, -1051.0f, 409.0f},
+    {-7598.0f, -1066.0f, 409.0f},
+    {-7583.0f, -1056.0f, 408.0f},
+};
+
 //NPC_BLACKWING_MAGE
 #define SPELL_ARKANE_EXPLOSION	22271
 #define SPELL_FIREBALL			17290
@@ -251,9 +265,9 @@ struct MANGOS_DLL_DECL blackwing_mageAI : public ScriptedAI
     }
 
 	uint32 arkane_explosion_timer;
-	uint32 fireball_timer;
+	uint32 fireball_timer; 
     uint32 CENTERPOINT;
-
+    bool startMoving;
     bool movedToCenter;
 
     void Reset()
@@ -261,12 +275,8 @@ struct MANGOS_DLL_DECL blackwing_mageAI : public ScriptedAI
 		arkane_explosion_timer = 2000;
 		fireball_timer = 0;
         movedToCenter = false;
-        CENTERPOINT = 1;
-
-        SetCombatMovement(false);
-        m_creature->GetMotionMaster()->MovePoint(CENTERPOINT, -7595.0f, -1053.0f, 409.0f);
-        m_creature->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-        m_creature->SetSpeedRate(MOVE_RUN, 1.2f);
+        startMoving = false;
+        CENTERPOINT = 0;        
     }
 
     void MovementInform(uint32 uiMotionType, uint32 uiPointId)
@@ -275,7 +285,8 @@ struct MANGOS_DLL_DECL blackwing_mageAI : public ScriptedAI
         {
             movedToCenter = true;
             SetCombatMovement(true);
-            m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim(), 25.0f);
+            m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIREBALL);
         }
     }
 
@@ -284,18 +295,30 @@ struct MANGOS_DLL_DECL blackwing_mageAI : public ScriptedAI
         //if creature gets attacked by a other player
         if (!movedToCenter)
         {
+            m_creature->GetMotionMaster()->Clear();
+            m_creature->GetMotionMaster()->MoveChase(pDoneBy);
             movedToCenter = true;
-            SetCombatMovement(true);
-            m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim(), 25.0f);
+            SetCombatMovement(true);           
         }
     }
 
     void UpdateAI(const uint32 diff)
     {
+        if (!startMoving && m_creature->isInCombat())
+        {
+            m_creature->GetMotionMaster()->Clear();
+            m_creature->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
+            m_creature->SetSpeedRate(MOVE_RUN, 1.3f);
+            SetCombatMovement(false);
+            uint8 pointID = urand(0, 4);
+            m_creature->GetMotionMaster()->MovePoint(CENTERPOINT, movePoint[pointID].fX, movePoint[pointID].fY, movePoint[pointID].fZ);       
+            startMoving = true;
+        }
+
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim() || !movedToCenter)
             return;
 
-		if (arkane_explosion_timer < diff)
+		if (arkane_explosion_timer <= diff)
 		{
 			uint8 player_count = 0;
 			Map* pInstance = m_creature->GetMap();
@@ -315,14 +338,14 @@ struct MANGOS_DLL_DECL blackwing_mageAI : public ScriptedAI
 			{
                 //Castet nurnoch arkane explosion, wenn zu viele spieler knubbeln
 				if (DoCastSpellIfCan(m_creature,SPELL_ARKANE_EXPLOSION) == CAST_OK)
-				    fireball_timer = 3000;
+				    fireball_timer = 5000;
 			}
 			arkane_explosion_timer = 2000;		
 		}
 		else
 			arkane_explosion_timer -= diff;
 
-		if (fireball_timer < diff)
+		if (fireball_timer <= diff)
 		{
 			if (DoCastSpellIfCan(m_creature->getVictim(),SPELL_FIREBALL)  == CAST_OK)
 			    fireball_timer = 3000;
