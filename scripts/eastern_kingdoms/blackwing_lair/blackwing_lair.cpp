@@ -528,6 +528,242 @@ CreatureAI* GetAI_death_talon_dragonspawn(Creature* pCreature)
     return new death_talon_dragonspawnAI(pCreature);
 }
 
+// !!! DEATH TALON TRASH GROUPS !!!
+enum deathTalonSpells
+{
+    //Captain
+    SPELL_AURA_OF_FLAMES        = 22436,
+    SPELL_CLEAVE                = 15496,
+    SPELL_INTIMIDATING_ORDERS   = 22440,
+    SPELL_MARK_OF_DETONATION    = 22438,
+
+    //Flamescale
+    SPELL_BERSERKER_CHARGE      = 16636,
+    SPELL_FLAME_SHOCK           = 22423,
+
+    //Wyrmkin
+    SPELL_BLAST_WAVE            = 22424,
+    SPELL_FIREBALL_VOLLEY       = 22425,
+
+    //Seether
+    SPELL_ENRAGE                = 22428,
+    SPELL_FLAME_BUFFET          = 22433,
+};
+
+//Captain
+struct MANGOS_DLL_DECL death_talon_captainAI : public ScriptedAI
+{
+    death_talon_captainAI(Creature* pCreature) : ScriptedAI(pCreature) 
+	{
+        Reset();
+    }
+
+    uint32 cleave_timer;
+    uint32 order_timer;
+    uint32 detonation_timer;
+
+    void Reset()
+    {
+        cleave_timer = urand(3000, 7000);
+        order_timer = urand(8000, 15000);
+        detonation_timer = urand(3000, 12000);
+    }
+
+    void Aggro(Unit* pWho)
+    {
+        DoCastSpellIfCan(m_creature, SPELL_AURA_OF_FLAMES);
+        m_creature->CallForHelp(10.0f);
+    }
+
+    void UpdateAI(const uint32 diff)
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        if (cleave_timer <= diff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
+                cleave_timer = urand(3000, 7000);
+        }
+        else
+            cleave_timer -= diff;
+
+        if (order_timer <= diff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_INTIMIDATING_ORDERS) == CAST_OK)
+                order_timer = urand(8000, 15000);
+        }
+        else
+            order_timer -= diff;
+
+        if (detonation_timer <= diff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_MARK_OF_DETONATION) == CAST_OK)
+                detonation_timer = urand(3000, 12000);
+        }
+        else
+            detonation_timer -= diff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_death_talon_captain(Creature* pCreature)
+{
+    return new death_talon_captainAI(pCreature);
+}
+
+//Flamescale
+struct MANGOS_DLL_DECL death_talon_flamescaleAI : public ScriptedAI
+{
+    death_talon_flamescaleAI(Creature* pCreature) : ScriptedAI(pCreature) 
+	{
+        Reset();
+    }
+
+    uint32 shock_timer;
+
+    void Reset()
+    {
+        shock_timer = urand(3000, 8000);
+    }
+
+    void Aggro(Unit* pWho)
+    {
+        DoCastSpellIfCan(pWho, SPELL_BERSERKER_CHARGE);
+        m_creature->CallForHelp(10.0f);
+    }
+
+    void UpdateAI(const uint32 diff)
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        if (!m_creature->IsWithinDist(m_creature->getVictim(), 10.0f))
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_BERSERKER_CHARGE);
+
+        if (shock_timer <= diff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_MARK_OF_DETONATION) == CAST_OK)
+                shock_timer = urand(3000, 8000);
+        }
+        else
+            shock_timer -= diff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_death_talon_flamescale(Creature* pCreature)
+{
+    return new death_talon_flamescaleAI(pCreature);
+}
+
+//Wyrmkin
+struct MANGOS_DLL_DECL death_talon_wyrmkinAI : public ScriptedAI
+{
+    death_talon_wyrmkinAI(Creature* pCreature) : ScriptedAI(pCreature) 
+	{
+        Reset();
+    }
+
+    uint32 wave_timer;
+    uint32 volley_timer;
+
+    void Reset()
+    {
+        wave_timer = urand(5000, 12000);
+        volley_timer = urand(8000, 15000);
+    }
+
+    void Aggro(Unit* pWho)
+    {
+        m_creature->CallForHelp(10.0f);
+    }
+
+    void UpdateAI(const uint32 diff)
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        if (wave_timer <= diff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_BLAST_WAVE) == CAST_OK)
+                wave_timer = urand(5000, 12000);
+        }
+        else
+            wave_timer -= diff;
+
+        if (volley_timer <= diff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_FIREBALL_VOLLEY) == CAST_OK)
+                volley_timer = urand(8000, 15000);
+        }
+        else
+            volley_timer -= diff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_death_talon_wyrmkin(Creature* pCreature)
+{
+    return new death_talon_wyrmkinAI(pCreature);
+}
+
+//Seether
+struct MANGOS_DLL_DECL death_talon_seetherAI : public ScriptedAI
+{
+    death_talon_seetherAI(Creature* pCreature) : ScriptedAI(pCreature) 
+	{
+        Reset();
+    }
+
+    uint32 enrage_timer;
+    uint32 buffet_timer;
+
+    void Reset()
+    {
+        enrage_timer = urand(12000, 20000);
+        buffet_timer = urand(3000, 12000);
+    }
+
+    void Aggro(Unit* pWho)
+    {
+        m_creature->CallForHelp(10.0f);
+    }
+
+    void UpdateAI(const uint32 diff)
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        if (enrage_timer <= diff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_ENRAGE) == CAST_OK)
+                enrage_timer = urand(12000, 20000);
+        }
+        else
+            enrage_timer -= diff;
+
+        if (buffet_timer <= diff)
+        {
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIREBALL_VOLLEY) == CAST_OK)
+                buffet_timer = urand(3000, 12000);
+        }
+        else
+            buffet_timer -= diff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_death_talon_seether(Creature* pCreature)
+{
+    return new death_talon_seetherAI(pCreature);
+}
+
+
 /* AddSC */
 
 void AddSC_blackwing_lair()
@@ -562,5 +798,25 @@ void AddSC_blackwing_lair()
     pNewScript = new Script;
     pNewScript->Name = "mob_blackwing_taskmaster";
     pNewScript->GetAI = &GetAI_mob_blackwing_taskmaster;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "death_talon_captain";
+    pNewScript->GetAI = &GetAI_death_talon_captain;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "death_talon_flamescale";
+    pNewScript->GetAI = &GetAI_death_talon_flamescale;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "death_talon_wyrmkin";
+    pNewScript->GetAI = &GetAI_death_talon_wyrmkin;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "death_talon_seether";
+    pNewScript->GetAI = &GetAI_death_talon_seether;
     pNewScript->RegisterSelf();
 }
