@@ -281,10 +281,6 @@ struct MANGOS_DLL_DECL mob_grethok_the_controllerAI : public ScriptedAI
         m_uiSlowTimer = 13000;
     }
 
-    void Aggro(Unit* pWho)
-    {
-    }
-
     void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())

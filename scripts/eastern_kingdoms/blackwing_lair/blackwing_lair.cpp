@@ -252,17 +252,47 @@ struct MANGOS_DLL_DECL blackwing_mageAI : public ScriptedAI
 
 	uint32 arkane_explosion_timer;
 	uint32 fireball_timer;
+    uint32 CENTERPOINT;
 
+    bool movedToCenter;
 
     void Reset()
     {
 		arkane_explosion_timer = 2000;
-		fireball_timer = 3000;
+		fireball_timer = 0;
+        movedToCenter = false;
+        CENTERPOINT = 1;
+
+        SetCombatMovement(false);
+        m_creature->GetMotionMaster()->MovePoint(CENTERPOINT, -7595.0f, -1053.0f, 409.0f);
+        m_creature->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
+        m_creature->SetSpeedRate(MOVE_RUN, 1.2f);
+    }
+
+    void MovementInform(uint32 uiMotionType, uint32 uiPointId)
+    {
+        if (uiMotionType == POINT_MOTION_TYPE && uiPointId == CENTERPOINT)
+        {
+            movedToCenter = true;
+            SetCombatMovement(true);
+            m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim(), 25.0f);
+        }
+    }
+
+    void DamageTaken(Unit* pDoneBy, uint32& uiDamage)
+    {
+        //if creature gets attacked by a other player
+        if (!movedToCenter)
+        {
+            movedToCenter = true;
+            SetCombatMovement(true);
+            m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim(), 25.0f);
+        }
     }
 
     void UpdateAI(const uint32 diff)
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim() || !movedToCenter)
             return;
 
 		if (arkane_explosion_timer < diff)

@@ -404,23 +404,30 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
                         uint32 spawnType = urand(1, orcCount + dragonCount);
                         if (!orcCount)
                             spawnType = 4;
+                   
+                         Creature* spawnedAdd = 0;
 
                         if (spawnType < 4)
                         {
                             ++m_uiOrcSummoned;
-                            Creature* myOrc = pRazorgore->SummonCreature(urand(0,1) ? NPC_BLACKWING_LEGIONNAIRE : NPC_BLACKWING_MAGE, Corner[i].x,
-                                    Corner[i].y, Corner[i].z, Corner[i].o, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 1000);
-
-                            if (myOrc)
-                                myOrc->SetInCombatWithZone();            
+                            spawnedAdd = pRazorgore->SummonCreature(urand(0,1) ? NPC_BLACKWING_LEGIONNAIRE : NPC_BLACKWING_MAGE, Corner[i].x,
+                                    Corner[i].y, Corner[i].z, Corner[i].o, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 1000);                 
                         }
                         else
                         {
                             ++m_uiDragonkinSummoned;
-                            Creature* myDragon = pRazorgore->SummonCreature(NPC_DEATH_TALON_DRAGONSPAWN, Corner[i].x, Corner[i].y, Corner[i].z, Corner[i].o,
+                            spawnedAdd = pRazorgore->SummonCreature(NPC_DEATH_TALON_DRAGONSPAWN, Corner[i].x, Corner[i].y, Corner[i].z, Corner[i].o,
                                 TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 1000);
-                            if (myDragon)
-                                myDragon->SetInCombatWithZone();
+                        }
+
+                        //All adds have initial aggro on the Razorgore controller. The mage types will run to the center of the room and start to attack the controller with their ranged fireballs
+                        Unit* pController = pRazorgore->GetCharmerOrOwner();
+                        if (spawnedAdd)
+                        {
+                            if (pController && pController->isAlive())
+                                spawnedAdd->AI()->AttackStart(pController);
+                            else
+                                spawnedAdd->SetInCombatWithZone(); 
                         }
                     }
                 }
