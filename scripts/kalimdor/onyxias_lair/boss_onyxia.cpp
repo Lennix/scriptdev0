@@ -499,7 +499,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     m_uiPhase = PHASE_BREATH;
 
                     if (m_pPointData)
-                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ);
+                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ,false);
 
                     return;
                 }
@@ -581,6 +581,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                             {
                                 //handle deep breath animation
                                 DoScriptText(EMOTE_BREATH, m_creature);
+                                //emote dont work therfore we actually do this
+                                m_creature->MonsterYell("takes in a deep Breath...", LANG_UNIVERSAL);
                                 spellDeepBreath = m_pPointData->uiSpellId;
                                 DoCastSpellIfCan(m_creature, spellDeepBreath, CAST_INTERRUPT_PREVIOUS);
                                 m_uiMovePoint = m_pPointData->uiLocIdEnd;
@@ -605,7 +607,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     }
 
                     if (m_pPointData = GetMoveData())
-                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ);
+                        m_creature->GetMotionMaster()->MovePoint(m_pPointData->uiLocId, m_pPointData->fX, m_pPointData->fY, m_pPointData->fZ,false);
                 }
                 else
                     m_uiMovementTimer -= uiDiff;
