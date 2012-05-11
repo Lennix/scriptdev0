@@ -65,18 +65,18 @@ void instance_blackwing_lair::OnCreatureCreate(Creature* pCreature)
             break;
         case NPC_NEFARIAN:
             //BWL REALEASE PART ONE - NEFARIAN IS NOT AVAILABLE
-            pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+            pCreature->SetVisibility(VISIBILITY_OFF);
             break;
         case NPC_FIREMAW:
         case NPC_EBONROC:
         case NPC_FLAMEGOR:
             //BWL REALEASE PART ONE - DRAGONTRIO IS NOT AVAILABLE
-            pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+            pCreature->SetVisibility(VISIBILITY_OFF);
             m_lDragonTrio.push_back(pCreature->GetObjectGuid());
             return;
         case NPC_CHROMAGGUS:
             //BWL REALEASE PART ONE - CHROMAGGUS IS NOT AVAILABLE
-            pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+            pCreature->SetVisibility(VISIBILITY_OFF);
             // VALUE_BREATH1, VALUE_BREATH2 and so forth are the ID-specific spells
             if (GetData(VALUE_BREATH1) == NOT_STARTED && GetData(VALUE_BREATH2) == NOT_STARTED)
                 SetData(VALUE_BREATH1, DONE);

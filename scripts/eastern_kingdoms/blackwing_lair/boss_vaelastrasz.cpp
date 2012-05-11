@@ -20,7 +20,7 @@
 /* ScriptData
 SDName: Boss_Vaelastrasz
 SD%Complete: 100
-SDComment: 30% health always
+SDComment: 30% health always, emote, new orientation, burning adrenalin 5% and explosion by death
 SDCategory: Blackwing Lair
 EndScriptData */
 
@@ -66,7 +66,7 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
         m_creature->setFaction(35);
         m_creature->SetMaxHealth(3331000);
         //start orientation while he is laying on the ground
-        m_creature->SetOrientation(4.90);
+        m_creature->SetOrientation(4.9f);
         m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
         m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
         //player can hit at
@@ -150,6 +150,10 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
 
         // Make boss stand
         m_creature->SetStandState(UNIT_STAND_STATE_STAND);
+
+        //new orientation - dont work
+        m_creature->GetMap()->CreatureRelocation(m_creature, m_creature->GetPositionX(),m_creature->GetPositionY(), m_creature->GetPositionZ(), 2.1f);
+        m_creature->SetOrientation(2.1f);
 
         //at this time we can hide the event goblins
         for(std::list<Creature*>::iterator itr = technicianArroundVael.begin(); itr != technicianArroundVael.end(); ++itr)
@@ -266,8 +270,6 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
                         switch (m_uiSpeechNum)
                         {
                             case 0:
-                                //new orientation
-                                m_creature->SetOrientation(2.158f);
                                 // 16 seconds till next line
                                 DoScriptText(SAY_LINE_2, m_creature);
                                 m_uiSpeechTimer = 16000;
@@ -280,7 +282,10 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
                                 ++m_uiSpeechNum;
                                 break;
                             case 2:
+                                //dont work - we have to fix that
                                 m_creature->HandleEmoteCommand(EMOTE_ONESHOT_ROAR);
+                                m_creature->MonsterTextEmote(TEXTEMOTE_ROAR,m_creature);
+
                                 m_uiSpeechTimer = 1500;
                                 ++m_uiSpeechNum;
                             case 3:
