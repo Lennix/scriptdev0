@@ -210,6 +210,7 @@ struct MANGOS_DLL_DECL boss_vaelastraszAI : public ScriptedAI
                         case 0:
                             pNef = m_creature->SummonCreature(NPC_LORD_NEFARIAN, aNefariusSpawnLoc[0], aNefariusSpawnLoc[1], aNefariusSpawnLoc[2], aNefariusSpawnLoc[3], TEMPSUMMON_MANUAL_DESPAWN, 0);
                             pNef->SetStandState(UNIT_STAND_STATE_STAND);
+                            pNef->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                             m_uiIntroTimer = 1000;		
                             break;
                         case 1:
