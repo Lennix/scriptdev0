@@ -344,19 +344,18 @@ bool GOUse_go_orb_of_domination(Player* pPlayer, GameObject* pGo)
 {
     instance_blackwing_lair* m_pInstance = (instance_blackwing_lair*)pGo->GetInstanceData();
 
-    if (m_pInstance && m_pInstance->GetData(TYPE_RAZORGORE) != IN_PROGRESS)
-        return true;
-
-    if (Group* pGroup = pPlayer->GetGroup())
+    if (m_pInstance)
     {
-        for(GroupReference* pRef = pGroup->GetFirstMember(); pRef != NULL; pRef = pRef->next())
+        if (m_pInstance->GetData(TYPE_RAZORGORE) != IN_PROGRESS)
+            return true;
+
+        if (Creature* pRazorgore = m_pInstance->GetSingleCreatureFromStorage(NPC_RAZORGORE))
         {
-            Player* pMember = pRef->getSource();
-            if (pMember && pMember->HasAura(SPELL_USE_DRAGON_ORB, EFFECT_INDEX_0))
+            if (pRazorgore->IsCharmerOrOwnerPlayerOrPlayerItself())
                 return true;
         }
     }
-
+       
     if (!pPlayer->HasAura(SPELL_MIND_EXHAUSTION, EFFECT_INDEX_0))
         pPlayer->CastSpell(pPlayer, SPELL_USE_DRAGON_ORB, true);
 
