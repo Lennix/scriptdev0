@@ -40,6 +40,10 @@ struct MANGOS_DLL_DECL boss_broodlordAI : public ScriptedAI
     boss_broodlordAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_creature->SetMaxHealth(916025);
+        //player can hit at
+        m_creature->SetBoundingValue(0, 6);
+        //boss can hit at:
+        m_creature->SetBoundingValue(1, 6);
         Reset();
     }
 
