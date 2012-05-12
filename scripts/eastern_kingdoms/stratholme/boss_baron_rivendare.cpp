@@ -69,7 +69,7 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
     uint32 m_uiShadowBoltTimer;
     uint32 m_uiSummonSkeletonsTimer;
 
-    GUIDList m_uiSkeletonGUID;
+    std::list<Creature*> rivendareAdds;
 
     void Reset()
     {
@@ -80,14 +80,30 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
         m_uiMortalStrikeTimer = urand(10000,12000);
         m_uiShadowBoltTimer = urand(2000,4000);
         m_uiSummonSkeletonsTimer = urand(15000,20000);
+    }
 
-        m_uiSkeletonGUID.clear();
+    void DespawnAdds()
+    {
+        if (!rivendareAdds.empty())
+        {
+            for(std::list<Creature*>::iterator itr = rivendareAdds.begin(); itr != rivendareAdds.end(); ++itr)
+            {
+                if ((*itr))
+                {
+                    (*itr)->ForcedDespawn();
+                    (*itr)->AddObjectToRemoveList();
+                }
+            }
+            rivendareAdds.clear();
+        }
     }
 
     void JustReachedHome()
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_BARON_RIVENDARE, FAIL);
+
+        DespawnAdds();
     }
 
     void Aggro(Unit* /*pWho*/)
@@ -98,20 +114,15 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
 
     void JustDied(Unit* /*pKiller*/)
     {
-        if (!m_uiSkeletonGUID.empty())
-            for(GUIDList::iterator itr = m_uiSkeletonGUID.begin(); itr != m_uiSkeletonGUID.end(); ++itr)
-            {
-                if (Creature* pSkeleton = m_creature->GetMap()->GetCreature(*itr))
-                    pSkeleton->ForcedDespawn();
-            }
-
         if (m_pInstance)
             m_pInstance->SetData(TYPE_BARON_RIVENDARE, DONE);
+
+        DespawnAdds();
     }
 
     void JustSummoned(Creature* pSummoned)
     {
-		m_uiSkeletonGUID.push_back(pSummoned->GetObjectGuid());
+		rivendareAdds.push_back(pSummoned);
 
         Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
         if (!pTarget && !m_creature->getVictim())
@@ -152,20 +163,26 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
 
         // Death Pact
         if (m_uiDeathPactTimer)
+        {
             if (m_uiDeathPactTimer <= uiDiff)
             {
-                if (!m_uiSkeletonGUID.empty())
-                    for(GUIDList::iterator itr = m_uiSkeletonGUID.begin(); itr != m_uiSkeletonGUID.end(); ++itr)
+                if (!rivendareAdds.empty())
+                {
+                    for(std::list<Creature*>::iterator itr = rivendareAdds.begin(); itr != rivendareAdds.end(); ++itr)
                     {
-                        if (Creature* pSkeleton = m_creature->GetMap()->GetCreature(*itr))
-                            if (pSkeleton->isAlive() && m_creature->GetHealth() < m_creature->GetMaxHealth())
+                        if (*itr)
+                        {
+                            if ((*itr)->isAlive() && m_creature->GetHealth() < m_creature->GetMaxHealth())
                                 m_creature->SetHealth(m_creature->GetHealth()+2000);
+                        }
                     }
+                }
 
                 m_uiDeathPactTimer = 0;
             }
             else
                 m_uiDeathPactTimer -= uiDiff;
+        }
 
         // Mortal Strike
         if (m_uiMortalStrikeTimer <= uiDiff)
