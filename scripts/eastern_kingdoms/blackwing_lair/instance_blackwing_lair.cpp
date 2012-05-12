@@ -246,8 +246,11 @@ void instance_blackwing_lair::OnObjectUse(GameObject* pGo)
                 //despawn all adds
                 for(std::list<Creature*>::const_iterator it = razorgoreAdds.begin(); it != razorgoreAdds.end(); ++it)
                 {
-                    (*it)->ForcedDespawn();
-                    (*it)->AddObjectToRemoveList();
+                    if (*it)
+                    {
+                        (*it)->ForcedDespawn();
+                        (*it)->AddObjectToRemoveList();
+                    }
                 }
                 razorgoreAdds.clear();
 

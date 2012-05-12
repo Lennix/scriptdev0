@@ -618,8 +618,11 @@ struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
     {
         for(std::vector<Creature*>::const_iterator it = NefarianBoneConstructs.begin(); it != NefarianBoneConstructs.end(); ++it)
         {
-            (*it)->ForcedDespawn();
-            (*it)->AddObjectToRemoveList();
+            if (*it)
+            {
+                (*it)->ForcedDespawn();
+                (*it)->AddObjectToRemoveList();
+            }
         }
         NefarianBoneConstructs.clear();
     }
