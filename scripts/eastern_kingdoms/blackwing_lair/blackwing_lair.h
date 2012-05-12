@@ -135,6 +135,8 @@ class MANGOS_DLL_DECL instance_blackwing_lair : public ScriptedInstance
         uint32 m_auiEncounter[MAX_ENCOUNTER];
         std::string strInstData;
 
+        std::list<Creature*> razorgoreAdds;
+
         uint32 m_uiRazorgoreSummonTimer;
         uint32 m_uiDragonkinSummoned;
         uint32 m_uiOrcSummoned;

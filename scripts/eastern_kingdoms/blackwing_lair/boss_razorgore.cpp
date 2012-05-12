@@ -94,6 +94,9 @@ struct MANGOS_DLL_DECL boss_razorgoreAI : public ScriptedAI
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_RAZORGORE, IN_PROGRESS);
+
+        //taunt immune
+        m_creature->CastSpell(m_creature, 20027, true);
     }
 
     void JustReachedHome()

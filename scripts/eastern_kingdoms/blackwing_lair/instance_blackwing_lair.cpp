@@ -236,12 +236,27 @@ void instance_blackwing_lair::OnObjectUse(GameObject* pGo)
         {
             m_lTempList.remove(pGo->GetObjectGuid());
 
-            if (m_lTempList.empty())                        // Switch Razorgore encounter to final phase
+            if (m_lTempList.empty())
             {
+                //start phase 2 if all eggs destroyed
                 SetData(TYPE_RAZORGORE, SPECIAL);
+                //cant use orb of domination anymore
+                if (GameObject* Orb = GetSingleGameObjectFromStorage(GO_ORB_OF_DOMINATION))
+                    Orb->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
+                //despawn all adds
+                for(std::list<Creature*>::const_iterator it = razorgoreAdds.begin(); it != razorgoreAdds.end(); ++it)
+                {
+                    (*it)->ForcedDespawn();
+                    (*it)->AddObjectToRemoveList();
+                }
+                razorgoreAdds.clear();
 
                 if (Creature* pRazorgore = GetSingleCreatureFromStorage(NPC_RAZORGORE))
                 {
+                    //razorgore gets full health
+                    pRazorgore->SetHealthPercent(100.0f);
+
+                    //handle last controller
                     if (Unit* pController = pRazorgore->GetCharmerOrOwner())
                     {
                         pController->RemoveAurasDueToSpell(SPELL_USE_DRAGON_ORB);
@@ -379,6 +394,7 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
     //IN_PROGRESS = Razorgore Phase 1
     if (GetData(TYPE_RAZORGORE) == IN_PROGRESS)
     {
+        
         if (m_uiRazorgoreSummonTimer <= uiDiff)
         {
             if (Creature* pRazorgore = GetSingleCreatureFromStorage(NPC_RAZORGORE))
@@ -391,6 +407,7 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
                      * 1 - 3     = orc
                      * 4         = dragon
                      */
+                     
                     uint8 orcCount = 0;
                     if (m_uiOrcSummoned < MAX_BLACKWING_ORC)
                         orcCount = 3;
@@ -424,6 +441,8 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
                         Unit* pController = pRazorgore->GetCharmerOrOwner();
                         if (spawnedAdd)
                         {
+                            razorgoreAdds.push_back(spawnedAdd);
+
                             if (pController && pController->isAlive())
                                 spawnedAdd->AI()->AttackStart(pController);
                             else
