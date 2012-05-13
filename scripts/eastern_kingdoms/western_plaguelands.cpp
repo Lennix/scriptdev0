@@ -780,7 +780,7 @@ struct MANGOS_DLL_DECL npc_highlord_taelan_fordringAI : public npc_escortAI
                         EventTimer = 8000;
                         break;
                     case 21:
-                        if (pTowerCreatures[6])
+                        if (pTowerCreatures[6] && m_creature)
                         {
                             pTowerCreatures[6]->SetFacingToObject(m_creature);
                             pTowerCreatures[6]->SetStandState(UNIT_STAND_STATE_KNEEL);
