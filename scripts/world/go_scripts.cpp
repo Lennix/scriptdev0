@@ -171,7 +171,8 @@ enum
 bool GOUse_go_orb_of_command(Player* pPlayer, GameObject* pGo)
 {
     if (pPlayer->GetQuestRewardStatus(QUEST_BLACKHANDS_COMMAND))
-        pPlayer->CastSpell(pPlayer, SPELL_TELEPORT_TO_BWL, true);
+        pPlayer->TeleportTo(469, -7672.73f, -1107.42f, 397.00f, 0.61f);
+        //pPlayer->CastSpell(pPlayer, SPELL_TELEPORT_TO_BWL, true);
 
     return true;
 }
