@@ -69,8 +69,6 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
     uint32 m_uiShadowBoltTimer;
     uint32 m_uiSummonSkeletonsTimer;
 
-    std::list<Creature*> rivendareAdds;
-
     void Reset()
     {
         m_bAuriusArrived = false;
@@ -84,17 +82,15 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
 
     void DespawnAdds()
     {
-        if (!rivendareAdds.empty())
+        std::list<Creature*> cList;
+		GetCreatureListWithEntryInGrid(cList, m_creature, NPC_MINDLESS_SKELETON, 30.0f);
+		for(std::list<Creature*>::iterator itr = cList.begin(); itr != cList.end(); ++itr)
         {
-            for(std::list<Creature*>::iterator itr = rivendareAdds.begin(); itr != rivendareAdds.end(); ++itr)
+			if (*itr)
             {
-                if ((*itr))
-                {
-                    (*itr)->ForcedDespawn();
-                    (*itr)->AddObjectToRemoveList();
-                }
+				(*itr)->ForcedDespawn();
+                (*itr)->AddObjectToRemoveList();
             }
-            rivendareAdds.clear();
         }
     }
 
@@ -122,8 +118,6 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
 
     void JustSummoned(Creature* pSummoned)
     {
-		rivendareAdds.push_back(pSummoned);
-
         Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
         if (!pTarget && !m_creature->getVictim())
             return;
@@ -166,17 +160,12 @@ struct MANGOS_DLL_DECL boss_baron_rivendareAI : public ScriptedAI
         {
             if (m_uiDeathPactTimer <= uiDiff)
             {
-                if (!rivendareAdds.empty())
-                {
-                    for(std::list<Creature*>::iterator itr = rivendareAdds.begin(); itr != rivendareAdds.end(); ++itr)
-                    {
-                        if (*itr)
-                        {
-                            if ((*itr)->isAlive() && m_creature->GetHealth() < m_creature->GetMaxHealth())
-                                m_creature->SetHealth(m_creature->GetHealth()+2000);
-                        }
-                    }
-                }
+                std::list<Creature*> cList;
+		        GetCreatureListWithEntryInGrid(cList, m_creature, NPC_MINDLESS_SKELETON, 30.0f);
+		        for(std::list<Creature*>::iterator itr = cList.begin(); itr != cList.end(); ++itr)
+			        if (*itr)
+				        if ((*itr)->isAlive() && m_creature->GetHealth() < m_creature->GetMaxHealth())
+                            m_creature->SetHealth(m_creature->GetHealth()+2000);
 
                 m_uiDeathPactTimer = 0;
             }
