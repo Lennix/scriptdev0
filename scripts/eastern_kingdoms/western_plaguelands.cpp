@@ -760,7 +760,7 @@ struct MANGOS_DLL_DECL npc_highlord_taelan_fordringAI : public npc_escortAI
                         for(uint8 itr = 1; itr != 6; ++itr)
                             if (pTowerCreatures[itr] && pTowerCreatures[itr]->isAlive())
                                 if (!pTowerCreatures[itr]->getVictim())
-                                    if (pTowerCreatures[6] && pTowerCreatures[6]->isAlive())
+                                    if (pTowerCreatures[6] && pTowerCreatures[6]->isAlive() && pTowerCreatures[itr]->AI())
                                         pTowerCreatures[itr]->AI()->AttackStart(pTowerCreatures[6]);
 
                         if (pTowerCreatures[6])

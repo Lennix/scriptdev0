@@ -51,7 +51,7 @@ enum eMajordomoExecutus
     SPELL_FIRE_BLAST            = 20623,
 
     // Flamewaker Healer
-    SPELL_SHADOW_BOLT           = 21077,
+    SPELL_SHADOW_BOLT           = 20603, // <-This is Shadow Shock; This is Shadow Bolt -> 21077,
     SPELL_GREATER_HEAL          = 24208,                //22883 (old) need correct pretbc spell id
 
     // Ragnaros's "underwater" spells
