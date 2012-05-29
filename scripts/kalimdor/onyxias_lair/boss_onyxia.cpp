@@ -490,7 +490,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 break;
             }
               ////////////////////////////////////////////
-             ///////PHASE 2 TO PHASE 3 (lift off)////////
+             ///////PHASE 1 TO PHASE 2 (lift off)////////
             ////////////////////////////////////////////
             case PHASE_BREATH_PRE:
             {
@@ -542,7 +542,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     m_uiPhase = PHASE_BREATH_POST;
                     DoScriptText(SAY_PHASE_3_TRANS, m_creature);
 
-                    m_creature->GetMotionMaster()->MovePoint(0, trans[landing][x], trans[landing][y], trans[landing][z]);
+                    m_creature->GetMotionMaster()->MovePoint(0, trans[landing][x], trans[landing][y], trans[landing][z], false);
                  
                     return;
                 }
