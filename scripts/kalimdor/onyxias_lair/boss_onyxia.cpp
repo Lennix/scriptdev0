@@ -308,21 +308,30 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         if (m_pInstance)
         {
             m_creature->SetInCombatWithZone();
-            Map* pMap = m_creature->GetMap();
-            if (pMap)
+            Map::PlayerList const &PlayerList = m_pInstance->instance->GetPlayers();
+            for(Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
             {
-                Map::PlayerList const &PlayerList = pMap->GetPlayers();
-                for(Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
+                if (Creature* pCenter = m_pInstance->GetSingleCreatureFromStorage(NPC_ONYXIA_TRIGGER))
                 {
-                    if (Creature* pCenter = m_pInstance->GetSingleCreatureFromStorage(NPC_ONYXIA_TRIGGER))
-                    {
-                        Player* pPlayer = itr->getSource();
-                        if (pPlayer && pPlayer->isAlive() && !pCenter->IsWithinDistInMap(pPlayer, 100))
-                            DoTeleportPlayer(pPlayer, pCenter->GetPositionX(), pCenter->GetPositionY(), pCenter->GetPositionZ(), 0); 
-                    }
+                    Player* pPlayer = itr->getSource();
+                    if (pPlayer && pPlayer->isAlive() && !pCenter->IsWithinDistInMap(pPlayer, 100))
+                        DoTeleportPlayer(pPlayer, pCenter->GetPositionX(), pCenter->GetPositionY(), pCenter->GetPositionZ(), 0); 
                 }
             }
         }
+    }
+
+    Player* getRandomPlayerPhaseTwo()
+    {
+        Map::PlayerList const &PlayerList = m_pInstance->instance->GetPlayers();
+        uint32 randomNumber = urand(1, PlayerList.getSize());
+        Player* randomPlayer = 0;
+        for (int i = 0; i < randomNumber; i++)
+        {
+            for(Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
+                randomPlayer = itr->getSource();
+        }
+        return randomPlayer;
     }
 
     void MovementInform(uint32 uiMoveType, uint32 uiPointId)
@@ -615,7 +624,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 if (m_uiFireballTimer < uiDiff)
                 {
                     //fireball completly random watch real classic onyxia movie
-                    Unit* pRandom = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+                    Player* pRandom = getRandomPlayerPhaseTwo();
                     if (pRandom && pRandom->isAlive())
                     {
                         if (DoCastSpellIfCan(pRandom, SPELL_FIREBALL) == CAST_OK)
