@@ -674,6 +674,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
             ///////////////////////////////////////////
             case PHASE_BREATH_POST:
             {
+                if (touchGround)
+                {
                     m_uiPhase = PHASE_END;
                
                     m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
@@ -683,6 +685,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     stopMeleeAttacking = false;
                     SetCombatMovement(true);
                     m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
+                }
             }
         }
     }
