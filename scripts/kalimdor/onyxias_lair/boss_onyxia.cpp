@@ -380,7 +380,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff)
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (m_uiPhase != PHASE_BREATH && (!m_creature->SelectHostileTarget() || !m_creature->getVictim()))
             return;
 
         //check onyias lair every 10 seconds
