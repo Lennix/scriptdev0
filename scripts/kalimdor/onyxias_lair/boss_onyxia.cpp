@@ -137,6 +137,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
     uint32 m_uiMovePoint;
     uint32 m_uiMovementTimer;
+    uint32 m_uiMovementTicker;
     OnyxiaMove* m_pPointData;
 
     uint32 m_uiFireballTimer;
@@ -188,6 +189,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         m_uiSummonWhelpsTimer   = 5000;
         m_uiBellowingRoarTimer  = 2000;                      // Immediately after landing
         m_uiWhelpTimer          = 1000;
+        m_uiMovementTicker      = 1000;
 
         m_uiCheckLairTimer      = 0;
 
@@ -418,6 +420,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff)
     {
+        //enter evade mode is handled here
         if  (m_uiPhase != PHASE_BREATH)
         {
             if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
@@ -502,6 +505,26 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
                     return;
                 }
+
+                //improved melee movement
+                if (m_uiMovementTicker < uiDiff)
+                {
+                    if (m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
+                    {
+                        m_creature->SetFacingToObject(m_creature->getVictim());
+                        if (!m_creature->isInRoots())
+                            m_creature->CastSpell(m_creature, 23973, true);
+                    }
+                    else
+                    {
+                        if (m_creature->isInRoots())
+                            m_creature->RemoveSpellsCausingAura(SPELL_AURA_MOD_ROOT);
+                    }
+
+                    m_uiMovementTicker = 1000;
+                }
+                else
+                    m_uiMovementTicker -= uiDiff;
 
                 if (m_uiFlameBreathTimer < uiDiff)
                 {
