@@ -256,10 +256,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
     void SpellHitTarget(Unit* pTarget, const SpellEntry* pSpell)
     {
-        //Wingbuffet reduces aggro by 10 - 30 %
         if (pSpell->Id == SPELL_WINGBUFFET)
         {
-            uint8 uiThreatReduce = urand(10, 30);
+            uint8 uiThreatReduce = urand(5, 15);
             m_creature->getThreatManager().modifyThreatPercent(pTarget, -uiThreatReduce);
             return;
         }
