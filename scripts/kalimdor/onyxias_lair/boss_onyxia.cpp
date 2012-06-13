@@ -20,8 +20,12 @@
 /* ScriptData
 SDName: Boss_Onyxia
 SD%Complete: 70
-SDComment: Finally we need to check the hitbox of onyxia, you arent able to hit ony in phase 2 with melee autoattacks.
-           Furthermore this will crash her fly animation
+SDComment: ToDo:
+                    - ony shouldnt move if the topaggro target is in her meleerange
+                    - ony shouldnt reset the aggro of player who arent reachable
+                    - problem with hover animation after reaching a new movepoint
+                    - special melee hits should hit her in phase breath
+
 SDCategory: Onyxia's Lair
 EndScriptData */
 
@@ -321,17 +325,50 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         }
     }
 
-    Player* getRandomPlayerPhaseTwo()
+    Player* getRandomPlayerPhaseTwo()	
     {
-        Map::PlayerList const &PlayerList = m_pInstance->instance->GetPlayers();
-        uint32 randomNumber = urand(1, PlayerList.getSize());
         Player* randomPlayer = 0;
-        for (int i = 0; i < randomNumber; i++)
+        if (m_pInstance)
         {
+            std::list<Player*> possiblePlayer;
+            Map::PlayerList const &PlayerList = m_pInstance->instance->GetPlayers();
             for(Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
-                randomPlayer = itr->getSource();
+            {
+                Player* pPlayer = itr->getSource();
+                if (pPlayer && !pPlayer->isGameMaster() && pPlayer->isAlive())
+                    possiblePlayer.push_back(pPlayer);                   
+            }
+
+            if (!possiblePlayer.empty())
+            {
+                std::list<Player*>::iterator i = possiblePlayer.begin();
+                advance(i, (rand() % possiblePlayer.size()));
+                randomPlayer = (*i);
+            }
         }
+
         return randomPlayer;
+    }
+
+
+    bool isAnyPlayerStillAlive()
+    {
+        bool alivePlayer = false;
+        if (m_pInstance && m_uiPhase == PHASE_BREATH)
+        {
+            Map::PlayerList const &PlayerList = m_pInstance->instance->GetPlayers();
+            for(Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
+            {
+                Player* pPlayer = itr->getSource();
+                if (pPlayer && !pPlayer->isGameMaster() && pPlayer->isAlive())
+                {
+                    alivePlayer = true;
+                    m_creature->SetInCombatWithZone();
+                }
+            }
+        }
+
+        return alivePlayer;
     }
 
     void MovementInform(uint32 uiMoveType, uint32 uiPointId)
@@ -343,6 +380,8 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         {
             if (Creature* pTrigger = m_pInstance->GetSingleCreatureFromStorage(NPC_ONYXIA_TRIGGER))
                 m_creature->SetFacingToObject(pTrigger);
+
+            m_creature->SendMeleeAttackStop(m_creature->getVictim());
 
             if (m_uiPhase == PHASE_BREATH_PRE)
             {
@@ -380,8 +419,21 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff)
     {
-        if (m_uiPhase != PHASE_BREATH && (!m_creature->SelectHostileTarget() || !m_creature->getVictim()))
-            return;
+        if  (m_uiPhase != PHASE_BREATH)
+        {
+            if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+                return;
+        }
+        else
+        {
+            if (!isAnyPlayerStillAlive())
+            {
+                if (!m_creature->IsInEvadeMode())
+                    m_creature->AI()->EnterEvadeMode();
+
+                return;
+            }
+        }
 
         //check onyias lair every 10 seconds
         if (m_uiCheckLairTimer < uiDiff)
@@ -624,7 +676,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 if (m_uiFireballTimer < uiDiff)
                 {
                     //fireball completly random watch real classic onyxia movie
-                    Player* pRandom = getRandomPlayerPhaseTwo();
+                    Unit* pRandom = getRandomPlayerPhaseTwo();
                     if (pRandom && pRandom->isAlive())
                     {
                         if (DoCastSpellIfCan(pRandom, SPELL_FIREBALL) == CAST_OK)
