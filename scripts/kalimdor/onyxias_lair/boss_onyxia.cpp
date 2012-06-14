@@ -216,6 +216,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
     void Aggro(Unit* pWho)
     {
+        m_creature->SetStandState(UNIT_STAND_STATE_STAND);
         DoScriptText(SAY_AGGRO, m_creature);
 
         if (m_pInstance)
@@ -225,7 +226,6 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     void JustReachedHome()
     {
         m_creature->SetStandState(UNIT_STAND_STATE_SLEEP);
-
         m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
         m_creature->SetSplineFlags(SPLINEFLAG_WALKMODE);
         m_creature->SetHover(false);
@@ -355,7 +355,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     bool isAnyPlayerStillAlive()
     {
         bool alivePlayer = false;
-        if (m_pInstance && m_uiPhase == PHASE_BREATH)
+        if (m_pInstance)
         {
             Map::PlayerList const &PlayerList = m_pInstance->instance->GetPlayers();
             for(Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
@@ -386,8 +386,6 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
             if (m_uiPhase == PHASE_BREATH_PRE)
             {
-                //set this flag here (not in void aggro!!!) cause else we get some visual flying bugs!
-                m_creature->SetStandState(UNIT_STAND_STATE_STAND);
                 stopMeleeAttacking = true;
                 m_uiLiftOffTimer = 1000;
             }
@@ -421,13 +419,15 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     void UpdateAI(const uint32 uiDiff)
     {
         //enter evade mode is handled here
-        if  (m_uiPhase != PHASE_BREATH)
+        if  (m_uiPhase == PHASE_START || m_uiPhase == PHASE_END)
         {
+            //do this if she attacks -> she is at the ground
             if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
                 return;
         }
         else
         {
+            //do this if she doesnt attack -> she is flying or is going to fly / touch ground
             if (!isAnyPlayerStillAlive())
             {
                 if (!m_creature->IsInEvadeMode())
@@ -498,6 +498,9 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                     m_uiPhase = PHASE_BREATH_PRE;
 
                     DoScriptText(SAY_PHASE_2_TRANS, m_creature);
+
+                    if (m_creature->isInRoots())
+                        m_creature->RemoveSpellsCausingAura(SPELL_AURA_MOD_ROOT);
 
                     SetCombatMovement(false);
                     m_creature->GetMotionMaster()->MoveIdle();
