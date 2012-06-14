@@ -131,7 +131,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
     uint32 m_uiFlameBreathTimer;
     uint32 m_uiCleaveTimer;
-    uint32 m_uiTailSweepTimer;
+    uint32 m_uiTailSweepTicker;
     uint32 m_uiWingBuffetTimer;
     uint32 m_uiKnockAwayTimer;
 
@@ -176,7 +176,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         m_uiPhase = PHASE_START;
 
         m_uiFlameBreathTimer    = urand(10000, 20000);
-        m_uiTailSweepTimer      = urand(15000, 20000);
+        m_uiTailSweepTicker     = 1000;
         m_uiCleaveTimer         = urand(2000, 5000);
         m_uiWingBuffetTimer     = urand(10000, 20000);
         m_uiKnockAwayTimer      = urand(20000, 30000);
@@ -372,6 +372,23 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
         return alivePlayer;
     }
 
+    bool isPlayerInBack()
+    {
+        bool doTailSweep = false;
+        if (m_pInstance)
+        {
+            Map::PlayerList const &PlayerList = m_pInstance->instance->GetPlayers();
+            for(Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
+            {
+                Player* pPlayer = itr->getSource();
+                if (pPlayer && !pPlayer->isGameMaster() && pPlayer->isAlive() && m_creature->isInBack(pPlayer, 40.0f))
+                    doTailSweep = true;
+            }
+        }
+
+        return doTailSweep;
+    }
+
     void MovementInform(uint32 uiMoveType, uint32 uiPointId)
     {
         if (uiMoveType != POINT_MOTION_TYPE || !m_pInstance)
@@ -537,13 +554,19 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 else
                     m_uiFlameBreathTimer -= uiDiff;
 
-                if (m_uiTailSweepTimer < uiDiff)
+                //improved tailsweep, this calculation should be used for all dragons in future!
+                if (m_uiTailSweepTicker < uiDiff)
                 {
-                    m_creature->CastSpell(m_creature, SPELL_TAILSWEEP, true);
-                    m_uiTailSweepTimer = urand(15000, 20000);
+                    if (isPlayerInBack())
+                    {
+                        if (DoCastSpellIfCan(m_creature, SPELL_TAILSWEEP) == CAST_OK)
+                            m_uiTailSweepTicker = 5000;
+                    }
+                    else
+                        m_uiTailSweepTicker = 1000;
                 }
                 else
-                    m_uiTailSweepTimer -= uiDiff;
+                    m_uiTailSweepTicker -= uiDiff;
 
                 if (m_uiCleaveTimer < uiDiff)
                 {
@@ -553,17 +576,6 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 else
                     m_uiCleaveTimer -= uiDiff;
 
-                /*if (m_uiKnockAwayTimer < uiDiff)
-                {
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_KNOCK_AWAY) == CAST_OK)
-                    {
-                        m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(), -25);
-                        m_uiKnockAwayTimer = urand(15000, 30000);
-                    }
-                }
-                else
-                    m_uiKnockAwayTimer -= uiDiff;
-		*/
                 if (m_uiWingBuffetTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_WINGBUFFET) == CAST_OK)
