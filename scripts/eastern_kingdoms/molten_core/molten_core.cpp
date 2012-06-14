@@ -239,7 +239,7 @@ struct MANGOS_DLL_DECL CoreHoundTriggerAI : public ScriptedAI
 			{
 				if (CoreHound_Timer[i] < diff)
 				{
-					if (pAdds[0]->isAlive() || pAdds[1]->isAlive() || pAdds[2]->isAlive() || pAdds[3]->isAlive() || pAdds[4]->isAlive())
+					if ((pAdds[0] && pAdds[0]->isAlive()) || (pAdds[1] && pAdds[1]->isAlive()) || (pAdds[2] && pAdds[2]->isAlive()) || (pAdds[3] && pAdds[3]->isAlive()) || (pAdds[4] && pAdds[4]->isAlive()))
 					{
 						pAdds[i]->SetDeathState(ALIVE);
 						pAdds[i]->SetHealthPercent(100);
