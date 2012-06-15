@@ -93,14 +93,14 @@ struct OnyxiaMove
 
 static OnyxiaMove aMoveData[]=
 {
-    {0, 4, SPELL_BREATH_NORTH_TO_SOUTH,  22.8763f, -217.152f, -60.0548f},   // north
-    {1, 5, SPELL_BREATH_NE_TO_SW,        10.2191f, -247.912f, -60.896f},    // north-east
-    {2, 6, SPELL_BREATH_EAST_TO_WEST,   -31.4963f, -250.123f, -60.1278f},   // east
-    {3, 7, SPELL_BREATH_SE_TO_NW,       -63.5156f, -240.096f, -60.477f},    // south-east
-    {4, 0, SPELL_BREATH_SOUTH_TO_NORTH, -65.8444f, -213.809f, -60.2985f},   // south
-    {5, 1, SPELL_BREATH_SW_TO_NE,       -58.2509f, -189.020f, -60.790f},    // south-west
-    {6, 2, SPELL_BREATH_WEST_TO_EAST,   -33.5561f, -182.682f, -60.9457f},   // west
-    {7, 3, SPELL_BREATH_NW_TO_SE,         6.8951f, -180.246f, -60.896f},    // north-west
+    {0, 4, SPELL_BREATH_NORTH_TO_SOUTH,  22.8763f, -217.152f, -70.0548f},   // north
+    {1, 5, SPELL_BREATH_NE_TO_SW,        10.2191f, -247.912f, -70.896f},    // north-east
+    {2, 6, SPELL_BREATH_EAST_TO_WEST,   -31.4963f, -250.123f, -70.1278f},   // east
+    {3, 7, SPELL_BREATH_SE_TO_NW,       -63.5156f, -240.096f, -70.477f},    // south-east
+    {4, 0, SPELL_BREATH_SOUTH_TO_NORTH, -65.8444f, -213.809f, -70.2985f},   // south
+    {5, 1, SPELL_BREATH_SW_TO_NE,       -58.2509f, -189.020f, -70.790f},    // south-west
+    {6, 2, SPELL_BREATH_WEST_TO_EAST,   -33.5561f, -182.682f, -70.9457f},   // west
+    {7, 3, SPELL_BREATH_NW_TO_SE,         6.8951f, -180.246f, -70.896f},    // north-west
 };
 
 static const float afSpawnLocations[2][3]=
@@ -133,6 +133,7 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
     uint32 m_uiCleaveTimer;
     uint32 m_uiTailSweepTicker;
     uint32 m_uiWingBuffetTimer;
+    uint32 m_uiWingBuffetActivationTime;
     uint32 m_uiKnockAwayTimer;
 
     uint32 m_uiMovePoint;
@@ -175,41 +176,42 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
         m_uiPhase = PHASE_START;
 
-        m_uiFlameBreathTimer    = urand(10000, 20000);
-        m_uiTailSweepTicker     = 1000;
-        m_uiCleaveTimer         = urand(2000, 5000);
-        m_uiWingBuffetTimer     = urand(10000, 20000);
-        m_uiKnockAwayTimer      = urand(20000, 30000);
+        m_uiFlameBreathTimer            = urand(10000, 20000);
+        m_uiTailSweepTicker             = 1000;
+        m_uiCleaveTimer                 = urand(2000, 5000);
+        m_uiWingBuffetTimer             = urand(10000, 20000);
+        m_uiWingBuffetActivationTime    = m_uiWingBuffetTimer;    
+        m_uiKnockAwayTimer              = urand(20000, 30000);
 
-        m_uiMovePoint           = urand(0, m_uiMaxBreathPositions - 1);
-        m_uiMovementTimer       = 20000;
-        m_pPointData            = GetMoveData();
+        m_uiMovePoint                   = urand(0, m_uiMaxBreathPositions - 1);
+        m_uiMovementTimer               = 20000;
+        m_pPointData                    = GetMoveData();
 
-        m_uiFireballTimer       = 5000;
-        m_uiSummonWhelpsTimer   = 5000;
-        m_uiBellowingRoarTimer  = 2000;                      // Immediately after landing
-        m_uiWhelpTimer          = 1000;
-        m_uiMovementTicker      = 1000;
+        m_uiFireballTimer               = 5000;
+        m_uiSummonWhelpsTimer           = 5000;
+        m_uiBellowingRoarTimer          = 2000;                      // Immediately after landing
+        m_uiWhelpTimer                  = 1000;
+        m_uiMovementTicker              = 1000;
 
-        m_uiCheckLairTimer      = 0;
+        m_uiCheckLairTimer              = 0;
 
-        m_uiLiftOffTimer		= 0;
-        liftOffData				= 0;
+        m_uiLiftOffTimer		        = 0;
+        liftOffData				        = 0;
 
-        spellDeepBreath         = 0;
-        m_uiToastTimer          = 0;
-        m_uiToastAgainTimer     = 0;
+        spellDeepBreath                 = 0;
+        m_uiToastTimer                  = 0;
+        m_uiToastAgainTimer             = 0;
 
-        m_uiSummonCount         = 0;
+        m_uiSummonCount                 = 0;
 
-        m_bIsSummoningWhelps    = false;
-        touchGround             = false;
-        fearMode                = false;
-        hasTank                 = false;
-        stopMeleeAttacking      = false;
-        toastUnits              = false;
+        m_bIsSummoningWhelps            = false;
+        touchGround                     = false;
+        fearMode                        = false;
+        hasTank                         = false;
+        stopMeleeAttacking              = false;
+        toastUnits                      = false;
 
-        mTank                   = 0;
+        mTank                           = 0;
 
         m_creature->ApplySpellImmune(0, IMMUNITY_SCHOOL, SPELL_SCHOOL_MASK_FIRE, true);
     }
@@ -258,10 +260,16 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
 
     void SpellHitTarget(Unit* pTarget, const SpellEntry* pSpell)
     {
+        //wing buffet threat reduce calculation
+        //statement: "a skilled tank revieves 10000 threat in 30 seconds"
         if (pSpell->Id == SPELL_WINGBUFFET)
         {
-            uint8 uiThreatReduce = urand(5, 15);
-            m_creature->getThreatManager().modifyThreatPercent(pTarget, -uiThreatReduce);
+            uint32 maxThreat = m_creature->getThreatManager().getThreat(pTarget);
+            uint32 reduceThreatValue = 4500 + (0.05f * m_uiWingBuffetActivationTime) + urand(-1000, 500);
+            int32 reduceThreatPercent = 0;
+            if (maxThreat != 0)
+                reduceThreatPercent = (-1) * ((reduceThreatValue * 100) / maxThreat);
+            m_creature->getThreatManager().modifyThreatPercent(pTarget, reduceThreatPercent);
             return;
         }
     }
@@ -579,7 +587,10 @@ struct MANGOS_DLL_DECL boss_onyxiaAI : public ScriptedAI
                 if (m_uiWingBuffetTimer < uiDiff)
                 {
                     if (DoCastSpellIfCan(m_creature, SPELL_WINGBUFFET) == CAST_OK)
+                    {
                         m_uiWingBuffetTimer = urand(15000, 30000);
+                        m_uiWingBuffetActivationTime = m_uiWingBuffetTimer;
+                    }
                 }
                 else
                     m_uiWingBuffetTimer -= uiDiff;
