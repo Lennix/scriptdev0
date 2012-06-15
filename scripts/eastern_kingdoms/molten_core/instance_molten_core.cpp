@@ -70,31 +70,37 @@ bool instance_molten_core::IsEncounterInProgress() const
     return false;
 }
 
-void instance_molten_core::HandleRune(uint32 uiEntry, uint32 uiData)
+void instance_molten_core::HandleRune(GameObject* pGo, uint32 uiData)
 {
-    if (GameObject* pGo = GetSingleGameObjectFromStorage(uiEntry))
+    if (pGo)
     {
-        if (uiData == DONE)
+        switch (uiData)
         {
-            // Exception for Kress rune which includes killing two bosses
-            if (pGo->GetEntry() == GO_RUNE_OF_KRESS)
+            //fire is on and u can interact
+            case DONE:
             {
-                if (m_auiEncounter[0] == uiData && m_auiEncounter[1] == uiData)
+                // Exception for Kress rune which includes killing two bosses
+                if (pGo->GetEntry() == GO_RUNE_OF_KRESS)
+                {
+                    if (m_auiEncounter[0] == uiData && m_auiEncounter[1] == uiData)
+                        pGo->SetGoState(GO_STATE_ACTIVE);
+                }
+                else
                     pGo->SetGoState(GO_STATE_ACTIVE);
-            }
-            else
-                pGo->SetGoState(GO_STATE_ACTIVE);
-        }
-        else
-        {
-            pGo->SetGoState(GO_STATE_READY);
 
-            if (uiData == SPECIAL)
+                break;
+            }
+            //rune is disabled
+            case SPECIAL:
+                pGo->SetGoState(GO_STATE_READY);
                 DoSpawnMajordomoIfCan();
+                break;
+            //fire is on but u can't interact
+            default:
+                pGo->SetGoState(GO_STATE_ACTIVE);
+                break;
         }
     }
-    else
-        debug_log("SD0: Molten Core: Rune not handled properly!");
 }
 
 bool instance_molten_core::CanSpawnDomoOrRagnaros(bool spawn_majordomo)
@@ -253,25 +259,25 @@ void instance_molten_core::OnObjectCreate(GameObject* pGo)
             lLavaBomb.push_back(pGo->GetObjectGuid());
             return;
         case GO_RUNE_OF_KRESS:                                   // Magmadar
-            HandleRune(pGo->GetEntry(), m_auiEncounter[1]);
+            HandleRune(pGo, m_auiEncounter[1]);
             break;
         case GO_RUNE_OF_MOHN:                                    // Gehennas
-            HandleRune(pGo->GetEntry(), m_auiEncounter[2]);
+            HandleRune(pGo, m_auiEncounter[2]);
             break;
         case GO_RUNE_OF_BLAZ:                                    // Garr
-            HandleRune(pGo->GetEntry(), m_auiEncounter[3]);
+            HandleRune(pGo, m_auiEncounter[3]);
             break;
         case GO_RUNE_OF_MAZJ:                                    // Shazzrah
-            HandleRune(pGo->GetEntry(), m_auiEncounter[4]);
+            HandleRune(pGo, m_auiEncounter[4]);
             break;
         case GO_RUNE_OF_ZETH:                                    // Geddon
-            HandleRune(pGo->GetEntry(), m_auiEncounter[5]);
+            HandleRune(pGo, m_auiEncounter[5]);
             break;
         case GO_RUNE_OF_KORO:                                    // Sulfuron
-            HandleRune(pGo->GetEntry(), m_auiEncounter[6]);
+            HandleRune(pGo, m_auiEncounter[6]);
             break;
         case GO_RUNE_OF_THERI:                                   // Golemagg
-            HandleRune(pGo->GetEntry(), m_auiEncounter[7]);
+            HandleRune(pGo, m_auiEncounter[7]);
             break;
         case GO_FIRELORD_CACHE:									// Majordomo's chest
             break;
@@ -493,13 +499,13 @@ void instance_molten_core::SetData(uint32 uiType, uint32 uiData)
     {
         case TYPE_LUCIFRON:
             m_auiEncounter[0] = uiData;
-            HandleRune(GO_RUNE_OF_KRESS, uiData);
+            HandleRune(GetSingleGameObjectFromStorage(GO_RUNE_OF_KRESS), uiData);
             if (uiData == FAIL)
                 RespawnBossAdds(lFlamewakerProtector);
             break;
         case TYPE_MAGMADAR:
             m_auiEncounter[1] = uiData;
-            HandleRune(GO_RUNE_OF_KRESS, uiData);
+            HandleRune(GetSingleGameObjectFromStorage(GO_RUNE_OF_KRESS), uiData);
             if (!lLavaBomb.empty() && (uiData == FAIL || uiData == DONE))
             {
                 for(GUIDList::iterator itr = lLavaBomb.begin(); itr != lLavaBomb.end(); ++itr)
@@ -512,33 +518,33 @@ void instance_molten_core::SetData(uint32 uiType, uint32 uiData)
             break;
         case TYPE_GEHENNAS:
             m_auiEncounter[2] = uiData;
-            HandleRune(GO_RUNE_OF_MOHN, uiData);
+            HandleRune(GetSingleGameObjectFromStorage(GO_RUNE_OF_MOHN), uiData);
             if (uiData == FAIL)
                 RespawnBossAdds(lFlamewaker);
             break;
         case TYPE_GARR:
             m_auiEncounter[3] = uiData;
-            HandleRune(GO_RUNE_OF_BLAZ, uiData);
+            HandleRune(GetSingleGameObjectFromStorage(GO_RUNE_OF_BLAZ), uiData);
             if (uiData == FAIL)
                 RespawnBossAdds(lFiresworn);
             break;
         case TYPE_SHAZZRAH:
             m_auiEncounter[4] = uiData;
-            HandleRune(GO_RUNE_OF_MAZJ, uiData);
+            HandleRune(GetSingleGameObjectFromStorage(GO_RUNE_OF_MAZJ), uiData);
             break;
         case TYPE_GEDDON:
             m_auiEncounter[5] = uiData;
-            HandleRune(GO_RUNE_OF_ZETH, uiData);
+            HandleRune(GetSingleGameObjectFromStorage(GO_RUNE_OF_ZETH), uiData);
             break;
         case TYPE_SULFURON:
             m_auiEncounter[6] = uiData;
-            HandleRune(GO_RUNE_OF_KORO, uiData);
+            HandleRune(GetSingleGameObjectFromStorage(GO_RUNE_OF_KORO), uiData);
             if (uiData == FAIL)
                 RespawnBossAdds(lFlamewakerPriest);
             break;
         case TYPE_GOLEMAGG:
             m_auiEncounter[7] = uiData;
-            HandleRune(GO_RUNE_OF_THERI, uiData);
+            HandleRune(GetSingleGameObjectFromStorage(GO_RUNE_OF_THERI), uiData);
             if (uiData == FAIL)
                 RespawnBossAdds(lCoreRager);
             else if (uiData == DONE)    // Despawn Golemagg's adds

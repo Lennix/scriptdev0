@@ -104,7 +104,7 @@ class MANGOS_DLL_DECL instance_molten_core : public ScriptedInstance
 
         void Update(uint32 uiDiff);
 
-		void HandleRune(uint32 uiEntry, uint32 uiData);
+		void HandleRune(GameObject* pGo, uint32 uiData);
 		bool CanSpawnDomoOrRagnaros(bool spawn_majordomo);
 		void SetMoltenCoreCreatureVisibility(Creature* pCreature, ObjectGuid pCreatureGUID, bool set_visible, bool m_bKillAndRespawn = false);
 		void DoSpawnMajordomoIfCan(bool m_bKillAndRespawn = true);
