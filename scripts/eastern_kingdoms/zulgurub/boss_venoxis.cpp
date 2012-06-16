@@ -40,6 +40,8 @@ enum eVenoxis
     SPELL_TRASH             = 3391,
     SPELL_VENOM_SPIT        = 23862,
     SPELL_VENOXIS_TRANSFORM = 23849,
+
+    NPC_PARASITIC_SERPENT   = 14884,
 };
 
 struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
@@ -153,16 +155,16 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
         {
             if (m_uiDispellTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature, SPELL_DISPELL);
-                m_uiDispellTimer = urand(15000, 30000);
+                if (DoCastSpellIfCan(m_creature, SPELL_DISPELL) == CAST_OK)
+                    m_uiDispellTimer = urand(15000, 30000);
             }
             else
                 m_uiDispellTimer -= uiDiff;
 
             if (m_uiRenewTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature, SPELL_RENEW);
-                m_uiRenewTimer = urand(15000, 30000);
+                if (DoCastSpellIfCan(m_creature, SPELL_RENEW) == CAST_OK)
+                    m_uiRenewTimer = urand(15000, 30000);
             }
             else
                 m_uiRenewTimer -= uiDiff;
@@ -170,8 +172,8 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
             if (m_uiHolyWrathTimer <= uiDiff)
             {
                 Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
-                DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_HOLY_WRATH);
-                m_uiHolyWrathTimer = urand(8000, 10000);       // 15000, 25000
+                if (DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_HOLY_WRATH) == CAST_OK)
+                    m_uiHolyWrathTimer = urand(8000, 10000);       // 15000, 25000
             }
             else
                 m_uiHolyWrathTimer -= uiDiff;
@@ -182,14 +184,16 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
                 for(uint8 i = 0; i < 10; ++i)
                 {
                     if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_TOPAGGRO,i))
+                    {
                         if (m_creature->CanReachWithMeleeAttack(pTarget))
                             ++m_uiTargetsInRangeCount;
+                    }
                 }
 
                 if (m_uiTargetsInRangeCount > 1)
                 {
-                    DoCastSpellIfCan(m_creature->getVictim(), SPELL_HOLY_NOVA);
-                    m_uiHolyNovaTimer = 1000;
+                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_HOLY_NOVA) == CAST_OK)
+                        m_uiHolyNovaTimer = 1000;
                 }
                 else
                     m_uiHolyNovaTimer = 2000;
@@ -200,9 +204,8 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
             if (m_uiHolyFireTimer <= uiDiff && m_uiTargetsInRangeCount < 3)
             {
                 Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
-                DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_HOLY_FIRE);
-
-                m_uiHolyFireTimer = 3000;       // 8000
+                if (DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_HOLY_FIRE) == CAST_OK)
+                    m_uiHolyFireTimer = 3000;       // 8000
             }
             else
                 m_uiHolyFireTimer -= uiDiff;
@@ -212,8 +215,8 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
             // Poison Cloud
             if (m_uiPoisonCloudTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(), SPELL_POISON_CLOUD);
-                m_uiPoisonCloudTimer = urand(5000,8000);        // 10000
+                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_POISON_CLOUD) == CAST_OK)
+                    m_uiPoisonCloudTimer = urand(5000,8000);        // 10000
             }
             else
                 m_uiPoisonCloudTimer -= uiDiff;
@@ -222,9 +225,8 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
             if (m_uiVenomSpitTimer <= uiDiff)
             {
                 Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
-                DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_VENOM_SPIT);
-
-                m_uiVenomSpitTimer = urand(5000,6000);       // 15000, 20000
+                if (DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_VENOM_SPIT) == CAST_OK)
+                    m_uiVenomSpitTimer = urand(5000,6000);       // 15000, 20000
             }
             else
                 m_uiVenomSpitTimer -= uiDiff;
@@ -233,18 +235,31 @@ struct MANGOS_DLL_DECL boss_venoxisAI : public ScriptedAI
             if (m_uiParasiticTimer <= uiDiff)
             {
                 Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
-                DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_PARASITIC_SERPENT);
+                if (DoCastSpellIfCan(pTarget ? pTarget : m_creature->getVictim(), SPELL_PARASITIC_SERPENT) == CAST_OK)
+                {
+                    m_uiParasiticTimer = 10000;
+                    //summon 3 snakes
+                    for (uint8 i = 0; i < 3; i++)
+                    {
+                        if (!pTarget)
+                            pTarget = m_creature->getVictim();
 
-                m_uiParasiticTimer = 10000;
+                        if (Creature* littleSnake = m_creature->SummonCreature(NPC_PARASITIC_SERPENT, (pTarget->GetPositionX() + urand(-3,3)), (pTarget->GetPositionY() + urand(-3,3)), pTarget->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 3000))
+                        {
+                            littleSnake->SetFloatValue(OBJECT_FIELD_SCALE_X, 0.2f);
+                            littleSnake->SetMaxHealth(99);
+                            littleSnake->AI()->AttackStart(pTarget);
+                        }
+                    }
+                }
             }
             else
                 m_uiParasiticTimer -= uiDiff;
 
             if (m_uiTrashTimer <= uiDiff)
             {
-                DoCastSpellIfCan(m_creature, SPELL_TRASH);
-                m_uiTrashTimer = urand(8000, 12000);
-                
+                if (DoCastSpellIfCan(m_creature, SPELL_TRASH) == CAST_OK)
+                    m_uiTrashTimer = urand(8000, 12000);         
             }
             else
                 m_uiTrashTimer -= uiDiff;
