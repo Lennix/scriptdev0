@@ -16,8 +16,13 @@
 
 /* ScriptData
 SDName: Instance_Blackwing_Lair
-SD%Complete: 0
-SDComment:
+SD%Complete: 95
+SDComment: 
+            - we cannot link pat groups (core problem)
+            - supression room whelp respawntime bugged (core problem)
+            - goblins have normally alchemy animation -> salja db
+            - all weapons for trash mobs -> salja db
+
 SDCategory: Blackwing Lair
 EndScriptData */
 

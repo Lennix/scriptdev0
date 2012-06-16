@@ -40,7 +40,7 @@ std::vector<Creature*> NefarianBoneConstructs;
 /* ScriptData
 SD%Complete: 75
 SDComment:		Victor Nefarius:	spawns Nef in wrong place, need more flying points
-                Nefarian :			Some issues with class calls effecting more than one class
+                Nefarian :			Some issues with class calls effecting more than one class (core problems)
 EndScriptData */
 
 enum

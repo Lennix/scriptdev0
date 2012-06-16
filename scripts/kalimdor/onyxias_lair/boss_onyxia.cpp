@@ -20,11 +20,13 @@
 /* ScriptData
 SDName: Boss_Onyxia
 SD%Complete: 70
-SDComment: ToDo:
-                    - ony shouldnt move if the topaggro target is in her meleerange
-                    - ony shouldnt reset the aggro of player who arent reachable
-                    - problem with hover animation after reaching a new movepoint
+SDComment:
+                    - ony shouldnt reset the aggro of player who arent reachable (possible fix by lennix?)
+                    - liftoff-, landinganiamtion and deep breath emote is missing
+                    - problem with hover animation after reaching a new movepoint, phase 1 to phase 2
                     - special melee hits should hit her in phase breath
+                    - less whelps are spawing in phase 2?
+                    - onyxia is able to cast multiple fireballs in phase 2?
 
 SDCategory: Onyxia's Lair
 EndScriptData */

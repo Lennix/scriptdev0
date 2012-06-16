@@ -20,7 +20,11 @@
 /* ScriptData
 SDName: Boss_Vaelastrasz
 SD%Complete: 100
-SDComment: 30% health always, emote, new orientation, burning adrenalin 5% and explosion by death
+SDComment: 
+            - 30% health always 
+            - emote when he got corrupted
+            - new orientation after speech
+
 SDCategory: Blackwing Lair
 EndScriptData */
 

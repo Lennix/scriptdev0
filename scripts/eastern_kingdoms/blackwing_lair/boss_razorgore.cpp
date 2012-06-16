@@ -17,7 +17,9 @@
 /* ScriptData
 SDName: Boss_Razorgore
 SD%Complete: 75
-SDComment: NOTE THAT THESE SCRIPT ISNT USED WHILE WE CONTROLLING HIM !!!    
+SDComment: 
+            - huge core problems while using the orb 
+
 SDCategory: Blackwing Lair
 EndScriptData */
 
