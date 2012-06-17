@@ -105,12 +105,19 @@ struct MANGOS_DLL_DECL boss_jeklikAI : public ScriptedAI
         m_uiSummonList.clear();
     }
 
-    void Aggro(Unit* /*pWho*/)
+    void Aggro(Unit* pVictim)
     {
         DoScriptText(SAY_AGGRO, m_creature);
 
         // Transform Jeklik into a bat on Aggro
         DoCastSpellIfCan(m_creature, SPELL_JEKLIK_TRANSFORM, CAST_FORCE_TARGET_SELF);
+
+        // fly to attacker
+        SetCombatMovement(false);
+        m_creature->GetMotionMaster()->MoveIdle();
+        m_creature->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
+        m_creature->AddSplineFlag(SPLINEFLAG_FLYING);
+        m_creature->GetMotionMaster()->MovePoint(0, pVictim->GetPositionX(), pVictim->GetPositionY(), pVictim->GetPositionZ(), false);
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_JEKLIK, IN_PROGRESS);
@@ -134,6 +141,17 @@ struct MANGOS_DLL_DECL boss_jeklikAI : public ScriptedAI
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_JEKLIK, NOT_STARTED);
+    }
+
+    void MovementInform(uint32 uiMoveType, uint32 uiPointId)
+    {
+        if (uiMoveType != POINT_MOTION_TYPE || !m_pInstance || !m_creature->getVictim())
+            return;
+
+        m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
+        m_creature->SetSplineFlags(SPLINEFLAG_WALKMODE);
+        SetCombatMovement(true);
+        m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
     }
 
     void DespawnSummonedBats()
@@ -174,7 +192,7 @@ struct MANGOS_DLL_DECL boss_jeklikAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff)
     {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())           
             return;
 
         // Start Phase Two

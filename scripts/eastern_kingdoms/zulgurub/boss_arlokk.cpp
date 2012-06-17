@@ -19,7 +19,10 @@ SDName: Boss_Arlokk
 SD%Complete: 95
 SDComment: Red aura is missing.
 SDCategory: Zul'Gurub
-EndScriptData */
+EndScriptData 
+
+Pathfinding is deactivated for Arlokk in database
+*/
 
 #include "precompiled.h"
 #include "zulgurub.h"
