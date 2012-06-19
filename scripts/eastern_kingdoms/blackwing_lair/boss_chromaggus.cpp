@@ -80,6 +80,11 @@ struct MANGOS_DLL_DECL boss_chromaggusAI : public ScriptedAI
 {
     boss_chromaggusAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
+        //player can hit at
+        m_creature->SetBoundingValue(0, 7);
+        //boss can hit at:
+        m_creature->SetBoundingValue(1, 4);
+
         // Select the 2 different breaths that we are going to use until despawned
         // 5 possiblities for the first breath, 4 for the second, 20 total possiblites
 

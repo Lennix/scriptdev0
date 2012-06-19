@@ -17,9 +17,7 @@
 /* ScriptData
 SDName: Bosses Ebonroc, Firemaw, Flamegor
 SD%Complete: 100
-SDComment: 
-            - core problems with mmaps in the boss area
-
+SDComment: -
 SDCategory: Blackwing Lair
 EndScriptData */
 
