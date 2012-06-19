@@ -21,12 +21,16 @@
 SDName: Boss_Chromaggus
 SD%Complete: 95
 SDComment:
-            - core problems with mmaps in the boss area
             - chromatic mutation needs test
-            - chromaggus trigger button is not implemented
 
 SDCategory: Blackwing Lair
-EndScriptData */
+EndScriptData 
+
+Button Sql:
+INSERT INTO `gameobject` VALUES ('632891', '179148', '469', '-7510.41', '-1094.64', '476.555', '2.0929', '0', '0', '0.865652', '0.500646', '25', '100', '1');
+*/
+
+
 
 #include "precompiled.h"
 #include "blackwing_lair.h"

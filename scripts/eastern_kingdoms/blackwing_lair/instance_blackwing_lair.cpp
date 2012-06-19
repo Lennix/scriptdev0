@@ -33,7 +33,8 @@ instance_blackwing_lair::instance_blackwing_lair(Map* pMap) : ScriptedInstance(p
 
     m_uiRazorgoreSummonTimer(TIMER_START_SPAWMING_ADDS),
     m_uiDragonkinSummoned(0),
-    m_uiOrcSummoned(0)
+    m_uiOrcSummoned(0),
+    m_uiChromaggusPullTimer(0)
 {
     Initialize();
 }
@@ -82,8 +83,7 @@ void instance_blackwing_lair::OnCreatureCreate(Creature* pCreature)
             m_lDragonTrio.push_back(pCreature->GetObjectGuid());
             return;
         case NPC_CHROMAGGUS:
-            //BWL REALEASE PART ONE - CHROMAGGUS IS NOT AVAILABLE
-            pCreature->SetVisibility(VISIBILITY_OFF);
+            //you have to push his lever to attack him
             pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE + UNIT_FLAG_NOT_SELECTABLE);
             // VALUE_BREATH1, VALUE_BREATH2 and so forth are the ID-specific spells
             if (GetData(VALUE_BREATH1) == NOT_STARTED && GetData(VALUE_BREATH2) == NOT_STARTED)
@@ -218,7 +218,13 @@ void instance_blackwing_lair::OnObjectCreate(GameObject* pGo)
             if (m_auiEncounter[2] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
+        case GO_CHROMAGGUS_LEVER:
+            pGo->SetObjectScale(3.0f);
+            if (m_auiEncounter[3] == DONE)
+                pGo->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
+            break;
         case GO_PORTCULLIS_CHROMAGGUS:
+            pGo->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
             if (m_auiEncounter[3] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
@@ -281,6 +287,13 @@ void instance_blackwing_lair::OnObjectUse(GameObject* pGo)
                 debug_log("BWL: Black Dragon Eggs left to destroy: %u", m_lTempList.size());
             break;
         }
+        case GO_CHROMAGGUS_LEVER:
+            if (GameObject* pGo = GetSingleGameObjectFromStorage(GO_PORTCULLIS_CHROMAGGUS))
+            {
+                pGo->SetGoState(GO_STATE_ACTIVE);
+                m_uiChromaggusPullTimer = 1500;
+            }
+            break;
         default:
             break;
     }
@@ -467,6 +480,21 @@ void instance_blackwing_lair::Update(uint32 uiDiff)
         }
         else
             m_uiRazorgoreSummonTimer -= uiDiff;
+    }
+
+    if (m_uiChromaggusPullTimer)
+    {
+        if (m_uiChromaggusPullTimer <= uiDiff)
+        {
+            if (Creature* pChromaggus = GetSingleCreatureFromStorage(NPC_CHROMAGGUS))
+            {
+                pChromaggus->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE + UNIT_FLAG_NOT_SELECTABLE);
+                pChromaggus->SetInCombatWithZone();
+            }
+            m_uiChromaggusPullTimer = 0;
+        }
+        else
+            m_uiChromaggusPullTimer -= uiDiff;
     }
 }
 

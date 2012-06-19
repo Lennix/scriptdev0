@@ -59,6 +59,7 @@ enum GameObjects
     GO_PORTCULLIS_NEFARIAN      = 179117,                       // Door before Nefarian
     GO_SUPPRESSION_DEVICE       = 179784,
     GO_ORB_OF_DOMINATION        = 177808,
+    GO_CHROMAGGUS_LEVER         = 179148,
 };
 
 enum Misc
@@ -140,6 +141,7 @@ class MANGOS_DLL_DECL instance_blackwing_lair : public ScriptedInstance
         uint32 m_uiRazorgoreSummonTimer;
         uint32 m_uiDragonkinSummoned;
         uint32 m_uiOrcSummoned;
+        uint32 m_uiChromaggusPullTimer;
 
         GUIDList m_lBlackwingGuardsman;
         GUIDList m_lBlackDragonEgg;
